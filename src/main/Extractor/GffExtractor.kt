@@ -1,4 +1,4 @@
-package main.extractor
+package main.Extractor
 
 import java.io.File
 import java.io.IOException
@@ -6,7 +6,7 @@ import java.util.Scanner
 import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import main.Carrier.Genes
 
 
 /**
@@ -21,11 +21,16 @@ import main.carrier.Genes
  * @param gff 输入的gff文件的路径
  * @param silent Boolean值，减少信息输出，默认为false
  */
-class GffExtractor(private val gff: String, private val silent: Boolean = false) : Extractor(silent) {
+class GffExtractor(
+        private val gff: String,
+        private val silent: Boolean = false
+) : Extractor(silent) {
+
     override val logger = Logger.getLogger(GtfExtractor::class.java)
 
     init {
         this.data = gffReader()
+        this.totalLine = this.data.size
     }
 
 
@@ -131,9 +136,10 @@ class GffExtractor(private val gff: String, private val silent: Boolean = false)
     }
 }
 
-
+/*
 fun main(args: Array<String>) {
     val test = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
 
     test.saveTo("/home/zhang/genome/test/hsa_gff.txt")
 }
+*/

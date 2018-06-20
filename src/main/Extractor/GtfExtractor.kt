@@ -1,4 +1,4 @@
-package main.extractor
+package main.Extractor
 
 import java.io.File
 import java.io.IOException
@@ -7,7 +7,7 @@ import java.util.Scanner
 import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import main.Carrier.Genes
 
 
 /**
@@ -22,11 +22,16 @@ import main.carrier.Genes
  * @param gtf 输入的gtf文件的路径
  * @param silent Boolean值，减少信息输出，默认为false
  */
-class GtfExtractor(private val gtf: String, private val silent: Boolean = false): Extractor(silent) {
+class GtfExtractor(
+        private val gtf: String,
+        private val silent: Boolean = false
+): Extractor(silent) {
+
     override val logger = Logger.getLogger(GtfExtractor::class.java)
 
     init {
         this.data = gtfReader()
+        this.totalLine = this.data.size
     }
 
     /**
@@ -119,9 +124,11 @@ class GtfExtractor(private val gtf: String, private val silent: Boolean = false)
 }
 
 
+/*
 fun main(args: Array<String>) {
     val test = GtfExtractor("/home/zhang/genome/gencode.v19.annotation.gtf")
     test.saveTo("/home/zhang/genome/test/hsa_gtf.txt")
 
 
 }
+*/
