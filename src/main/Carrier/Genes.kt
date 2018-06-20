@@ -1,6 +1,8 @@
-package main.carrier
+package main.Carrier
 
-import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException
+import java.util.*
+
+import main.Errors.ChromosomeException
 
 /**
  * @since 2018.06.14
@@ -18,13 +20,13 @@ class Genes: Comparable<Genes> {
     var start: Int = -1
     set(value) {
         if (value > 0) field = value
-        else throw ValueException("${value} < 0")
+        else throw ChromosomeException("$value < 0")
     }
 
     var end: Int = -1
     set(value) {
         if (value >= this.start && value > 0) field = value
-        else throw ValueException("End (${value}) < start ${this.start} or ${value} < 0")
+        else throw ChromosomeException("End ($value) < start ${this.start} or $value < 0")
     }
 
     var strand: Char = '.'
@@ -128,7 +130,7 @@ class Genes: Comparable<Genes> {
      * 首选transcript id作为hashCode的来源，其次选择gene id
      */
     override fun hashCode(): Int {
-        return this.transcriptId.hashCode()
+        return Objects.hash(this.transcriptId)
     }
 
     /**
@@ -216,7 +218,7 @@ class Genes: Comparable<Genes> {
     }
 }
 
-
+/*
 fun main(args: Array<String>) {
     val test = Genes(
             "chr1", 1, 100,
@@ -227,3 +229,4 @@ fun main(args: Array<String>) {
 
     println(test)
 }
+*/

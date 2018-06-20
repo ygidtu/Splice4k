@@ -1,4 +1,4 @@
-package main.extractor
+package main.Extractor
 
 import java.io.File
 
@@ -7,7 +7,7 @@ import htsjdk.samtools.SAMRecord
 
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import main.Carrier.Genes
 
 
 /**
@@ -24,20 +24,22 @@ import main.carrier.Genes
  * @param unique 保留匹配到几个位点上的reads， 默认为1
  * @param silent Boolean值，减少信息输出，默认为false
  */
-class BamExtractor(bam: String, private val unique: Int=1, private val silent: Boolean = false): Extractor(silent) {
+class BamExtractor(
+        bam: String,
+        private val unique: Int=1,
+        private val silent: Boolean = false
+): Extractor(silent) {
 
     override val logger: Logger = Logger.getLogger(BamExtractor::class.java)
-
     private val reader = SamReaderFactory
             .makeDefault()
             .open(File(bam))
 
     init {
         this.data = getAllRegions()
+        this.totalLine = this.data.size
     }
 
-    val N = data.size
-    var index = 0
 
     /**
      * private function
@@ -129,10 +131,11 @@ class BamExtractor(bam: String, private val unique: Int=1, private val silent: B
     }
 }
 
-
+/*
 fun main(args: Array<String>) {
     val test = BamExtractor("/home/zhang/splicehunter_test/test.bam")
 
     test.saveTo("/home/zhang/splicehunter_test/tt/bam_extracted.txt")
 }
+*/
 
