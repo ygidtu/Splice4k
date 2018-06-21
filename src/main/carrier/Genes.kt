@@ -1,8 +1,8 @@
-package main.Carrier
+package main.carrier
 
 import java.util.*
-
-import main.Errors.ChromosomeException
+import kotlin.math.*
+import main.errors.ChromosomeException
 
 /**
  * @since 2018.06.14
@@ -12,8 +12,6 @@ import main.Errors.ChromosomeException
 */
 
 class Genes: Comparable<Genes> {
-
-    var fileType : String = "gtf"
 
     var chrom: String = "."
 
@@ -57,10 +55,15 @@ class Genes: Comparable<Genes> {
 
     var exons: MutableList<Array<Int>> = mutableListOf()
     get() {
-        return field.sortedWith(compareBy({it[0]})).toMutableList()
+        return field.sortedWith(compareBy { it[0] }).toMutableList()
     }
 
     var parent: String = ""
+
+    val length: Int
+    get() {
+        return this.end - this.start
+    }
 
 
     /**
@@ -115,12 +118,6 @@ class Genes: Comparable<Genes> {
         this.strand = strand
     }
 
-    fun isGtf(): Boolean {
-        if (this.fileType == "gtf") {
-            return true
-        }
-        return false
-    }
 
     override fun equals(other: Any?): Boolean {
         return this.transcriptId == other.toString()
@@ -158,6 +155,7 @@ class Genes: Comparable<Genes> {
     /**
      * 判断这个位点是否覆盖另外一个位点
      * @other Genes
+     * @return true这个位点覆盖另外一个位点，false则不
      */
     fun isCover(other: Genes): Boolean {
         if (
@@ -171,8 +169,20 @@ class Genes: Comparable<Genes> {
     }
 
     /**
+     * 判断这个位点是否与另外一个位点有重合
+     * @param other Genes
+     * @return true有重合，false没有重合
+     */
+    fun isOverlap(other: Genes): Boolean {
+        return this.chrom == other.chrom &&
+                this.start <= other.end &&
+                this.end >= other.start
+    }
+
+    /**
      * 判断该位点是否为另一个位点的上游
-     * @other Genes
+     * @param other Genes
+     * @return true是上游，false不是
      */
     fun isUpStream(other: Genes) : Boolean {
         if (this.chrom != other.chrom) {
@@ -185,7 +195,8 @@ class Genes: Comparable<Genes> {
 
     /**
      * 判断该位点是否在另一个位点的下游
-     * @other Genes
+     * @param other Genes
+     * @return true是下游，false不是
      */
     fun isDownStream(other: Genes) : Boolean {
         if (this.chrom != other.chrom) {
@@ -195,6 +206,19 @@ class Genes: Comparable<Genes> {
        return this.start > other.end
     }
 
+
+    /**
+     * 返回两个位点的重合bp数
+     * @param other Genes
+     * @return null 没有重合，int重合的bp数q
+     */
+    fun getOverlap(other: Genes): Int? {
+        if (!this.isOverlap(other)) {
+            return null
+        }
+        return min(this.end, other.end) - max(this.start, other.start)
+    }
+
     /**
      * 返回目前已有的数据
      * @return list of message
@@ -202,7 +226,7 @@ class Genes: Comparable<Genes> {
     fun get() : List<String> {
         var exonString = ""
         for (i in this.exons) {
-            exonString += i.joinToString(prefix = "", postfix = "\t", separator = "\t")
+            exonString += i.joinToString(prefix = "", postfix = "，", separator = "，")
         }
 
         return listOf(

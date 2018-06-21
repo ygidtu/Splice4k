@@ -1,4 +1,4 @@
-package main.Extractor
+package main.extractor
 
 import java.io.File
 import java.io.IOException
@@ -6,13 +6,13 @@ import java.io.PrintWriter
 
 import org.apache.log4j.Logger
 
-import main.Carrier.Genes
+import main.carrier.Genes
 
 open class Extractor(private val silent: Boolean = false) {
     open val logger = Logger.getLogger(Extractor::class.java)
     protected var data = mutableListOf<Genes>().toList()
-    protected var totalLine = 0
-    protected var index = 0
+    var totalLine = 0
+    var index = 0
 
 
     /**
@@ -66,9 +66,9 @@ open class Extractor(private val silent: Boolean = false) {
      * @return Genes，如果index不在合法范围内，则返回null
      */
     fun get(index: Int): Genes? {
-        val tmpIndex = when(index) {
-            < 0 -> this.totalLine + index
-            >= 0 -> index
+        val tmpIndex = when(index < 0) {
+            true -> this.totalLine + index
+            false -> index
         }
 
         if (tmpIndex < this.totalLine) {
