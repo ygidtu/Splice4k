@@ -1,4 +1,4 @@
-package main.Extractor
+package main.extractor
 
 import java.io.File
 import java.io.IOException
@@ -7,7 +7,7 @@ import java.util.Scanner
 import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
-import main.Carrier.Genes
+import main.carrier.Genes
 
 
 /**

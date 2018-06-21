@@ -1,4 +1,4 @@
-package main.Extractor
+package main.extractor
 
 import java.io.File
 
@@ -7,7 +7,7 @@ import htsjdk.samtools.SAMRecord
 
 import org.apache.log4j.Logger
 
-import main.Carrier.Genes
+import main.carrier.Genes
 
 
 /**
