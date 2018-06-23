@@ -44,7 +44,7 @@ fun main(args: Array<String>) {
 
         var silent = false
         when {
-            parameters.hasOption("help") || args.size < 1 -> {
+            parameters.hasOption("help") || args.isEmpty() -> {
                 help.printHelp("usage message", options)
                 exitProcess(0)
             }
