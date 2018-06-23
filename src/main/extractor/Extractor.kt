@@ -82,7 +82,7 @@ open class Extractor(private val silent: Boolean = false) {
      * @return Genes, 若没有下一条，返回null
      */
     fun next(): Genes? {
-        if (this.index in 0..this.totalLine) {
+        if (this.index in 0..(this.totalLine-1)) {
             this.index ++
             return this.data[this.index-1]
         }
@@ -95,7 +95,7 @@ open class Extractor(private val silent: Boolean = false) {
      */
     fun prev(): Genes? {
         this.index--
-        if (this.index in 0..this.totalLine) {
+        if (this.index in 0..(this.totalLine-1)) {
             return this.data[this.index]
         }
         return null

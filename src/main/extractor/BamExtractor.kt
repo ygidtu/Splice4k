@@ -49,7 +49,7 @@ class BamExtractor(
      */
     private fun extractSpliceFromCigar(record: SAMRecord): List<Int> {
         val results = mutableListOf(record.alignmentStart)
-        var position = 0
+        var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
 
         for (i in record.cigar.toString()) {
@@ -66,9 +66,8 @@ class BamExtractor(
                     )
 
                     results.add(position)
-                } else {
-                    tmp.clear()
                 }
+                tmp.clear()
             }
         }
         results.add(record.alignmentEnd)
@@ -107,6 +106,8 @@ class BamExtractor(
             // get all exons
             val introns = this.extractSpliceFromCigar(record)
 
+            if (introns.size < 2) continue
+
             // init Genes
             val tmpGene = Genes(
                     chrom = record.referenceName,
@@ -120,10 +121,11 @@ class BamExtractor(
             )
 
             // add exons
+            val tmpExons = mutableListOf<Array<Int>>()
             for (i in 0..(introns.size - 1) step 2) {
-                tmpGene.addExons(arrayOf(introns[i], introns[i + 1]))
+                tmpExons.add(arrayOf(introns[i], introns[i + 1]))
             }
-
+            tmpGene.exons = tmpExons
             results.add(tmpGene)
         }
         results.sortWith(compareBy({it.chrom}, {it.start}, {it.end}))
@@ -131,11 +133,11 @@ class BamExtractor(
     }
 }
 
-/*
+
 fun main(args: Array<String>) {
     val test = BamExtractor("/home/zhang/splicehunter_test/test.bam")
 
     test.saveTo("/home/zhang/splicehunter_test/tt/bam_extracted.txt")
 }
-*/
+
 
