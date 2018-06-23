@@ -144,13 +144,6 @@ class Genes: Comparable<Genes> {
      */
     override fun compareTo(other: Genes) = compareValuesBy(this, other, {it.chrom}, {it.start}, {it.end})
 
-    /**
-     * 添加exon
-     * @param exon 两个元素的数据，int，分别为外显子的起始和终止位点
-     */
-    fun addExons(exon: Array<Int>) {
-        this.exons.add(exon.sliceArray(0..1))
-    }
 
     /**
      * 判断这个位点是否覆盖另外一个位点

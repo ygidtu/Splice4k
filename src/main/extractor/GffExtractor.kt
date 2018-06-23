@@ -33,11 +33,6 @@ class GffExtractor(
         this.totalLine = this.data.size
     }
 
-
-    val N: Int = this.data.size
-
-    var index: Int = 0
-
     /**
      * 提取每一行gtf中gene_id等标签信息
      * @info 含有标签信息的列表

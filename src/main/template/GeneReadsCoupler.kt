@@ -16,24 +16,37 @@ import main.extractor.*
  */
 
 
-class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor) {
+class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor, private val silent: Boolean = false) {
     private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
 
-    private val matchedGeneRead = this.matchGeneReads()
+//    val matchedGeneRead = this.matchGeneReads()
+    val matchedGeneRead = mutableListOf<GeneRead>()
+    val novelReads = mutableListOf<Genes>()
+
+    init {
+        this.matchGeneReads()
+    }
+
     /**
      * 将基因与reads匹配到一起
      */
-    private fun matchGeneReads(): List<GeneRead> {
-        val discardReads = mutableSetOf<Genes>()
-        val tmpMatched = mutableMapOf<Genes, GeneRead>()
+    private fun matchGeneReads() {
+//        val results = mutableListOf<GeneRead>()
+        val tmpMatched = mutableMapOf<Genes, MutableList<GeneRead>>()
 
         var firstOverlap = true
         var readIndex = 0
         var tmpGene = this.Gene.next()
         var tmpRead = this.Reads.next()
 
-
+        // 统计所有的配对信息
         while (tmpGene != null && tmpRead != null) {
+            if (!silent) {
+                if (this.Gene.index % 10000 == 0) {
+                    logger.info("Gene Reads matching at ${this.Gene.index}/${this.Gene.totalLine}")
+                }
+            }
+
             when {
                 // 基因在read上游，下一个基因
                 tmpGene.isUpStream(tmpRead) -> {
@@ -46,10 +59,11 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
                 }
                 // 基因在read下游，读一个read
                 tmpGene.isDownStream(tmpRead) -> {
-                    // 保证读取的read不是discarded的
-                    while (tmpRead != null && discardReads.contains(tmpRead)) {
-                        tmpRead = this.Reads.next()
+                    if (!tmpMatched.containsKey(tmpRead) && tmpRead.exons.size == 1) {
+                        this.novelReads.add(tmpRead)
                     }
+
+                    tmpRead = this.Reads.next()
                 }
 
                 else -> {
@@ -61,44 +75,44 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
                     val tmpGeneRead = GeneRead(tmpGene, tmpRead)
 
                     // 判断是否临时的匹配中是否含有该条read了
-                    when(tmpMatched.containsKey(tmpRead)) {
-                        true -> {  // 有，判断一下重合程度
-                            val overlap = arrayOf(
-                                    tmpGeneRead.overlap,
-                                    tmpMatched[tmpRead]!!.overlap
-                            )
+                    val tmpList = mutableListOf(tmpGeneRead)
 
-                            overlap.sort()
-
-                            when(overlap[1] / overlap[0].toDouble() < 1.5) {
-                                true -> {
-                                    tmpMatched.remove(tmpRead)
-                                    discardReads.add(tmpRead)
-                                }
-                                false -> {
-                                    when(tmpGeneRead.overlap > tmpMatched[tmpRead]!!.overlap) {
-                                        true -> tmpMatched[tmpRead] = tmpGeneRead
-                                    }
-                                }
-                            }
-                        }
-                        false -> {
-                            tmpMatched[tmpRead] = tmpGeneRead
-                        }
+                    if (tmpMatched.containsKey(tmpRead)) {
+                        tmpList.addAll(tmpMatched[tmpRead]!!)
                     }
 
-                    // 保证读取的read不是discarded的
-                    while (tmpRead != null && discardReads.contains(tmpRead)) {
-                        tmpRead = this.Reads.next()
-                    }
+                    tmpMatched[tmpRead] = tmpList
+
+                    tmpRead = this.Reads.next()
+
                 }
             }
         }
 
-        return tmpMatched.values.toList()
+
+        for (v in tmpMatched.values) {
+            when {
+                v.size > 1 -> {
+//                    results.addAll(v)
+                    val tmpV = v.sortedBy { it.overlap.dec() }
+
+                    if (tmpV[0].overlap / tmpV[1].overlap.toDouble() > 1.5) {
+                        this.matchedGeneRead.add(tmpV[0])
+                    }
+                }
+
+                v.size == 1 -> this.matchedGeneRead.add(v[0])
+            }
+        }
+
+//        return results
 
     }
 
+    /**
+     * 保存基因与Reads匹配的样本和novel的read到文件
+     * @param outfile 输出文件路径
+     */
     fun saveTo(outfile: String) {
         val outFile = File(outfile).absoluteFile
 
@@ -110,6 +124,10 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
 
             for (i in this.matchedGeneRead) {
                 writer.println(i)
+            }
+
+            for (i in this.novelReads) {
+                writer.println("None|$i")
             }
 
         } catch (err: IOException) {
@@ -126,7 +144,11 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
 
 fun main(args: Array<String>) {
     val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
-    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam")
+    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
+
+    val test = GeneReadsCoupler(gene, reads)
+
+    test.saveTo("/home/zhang/splicehunter_test/gene_read1.txt")
 
 
 }
