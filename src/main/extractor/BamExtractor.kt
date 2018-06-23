@@ -84,12 +84,11 @@ class BamExtractor(
 
         var readed = 0
         for (record in this.reader) {
-            if (!this.silent) {
-                if (readed % 100000 == 0) {
-                    this.logger.info("Read $readed lines")
-                }
-                readed ++
+
+            if (readed % 100000 == 0) {
+                this.logger.info("Read $readed lines")
             }
+            readed ++
 
             // 判断reads是否为unique mapped
             if (record.hasAttribute("NH")) {
@@ -133,11 +132,12 @@ class BamExtractor(
     }
 }
 
-
+/*
 fun main(args: Array<String>) {
     val test = BamExtractor("/home/zhang/splicehunter_test/test.bam")
 
-    test.saveTo("/home/zhang/splicehunter_test/tt/bam_extracted.txt")
+    test.saveTo("/home/zhang/splicehunter_test/bam_extracted.txt")
 }
+*/
 
 

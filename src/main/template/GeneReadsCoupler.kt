@@ -31,7 +31,7 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
      * 将基因与reads匹配到一起
      */
     private fun matchGeneReads() {
-//        val results = mutableListOf<GeneRead>()
+        var logged = -1
         val tmpMatched = mutableMapOf<Genes, MutableList<GeneRead>>()
 
         var firstOverlap = true
@@ -41,10 +41,12 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
 
         // 统计所有的配对信息
         while (tmpGene != null && tmpRead != null) {
-            if (!silent) {
-                if (this.Gene.index % 10000 == 0) {
+            if (this.Gene.index % 10000 == 0) {
+                if (logged != this.Gene.index) {
                     logger.info("Gene Reads matching at ${this.Gene.index}/${this.Gene.totalLine}")
+                    logged = this.Gene.index
                 }
+
             }
 
             when {
@@ -141,7 +143,7 @@ class GeneReadsCoupler(private val Gene: Extractor, private val Reads: Extractor
     }
 }
 
-
+/*
 fun main(args: Array<String>) {
     val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
     val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
@@ -152,3 +154,4 @@ fun main(args: Array<String>) {
 
 
 }
+*/
