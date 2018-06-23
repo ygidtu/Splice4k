@@ -38,8 +38,13 @@ class SJFinder(private val pair: GeneReadsCoupler) {
     }
 
 
-
-
+    /**
+     * 比较位点
+     * @param gene 基因外显子构成的列表
+     * @param reads Reads外显子构成的列表
+     * @param splice 收集可变剪接类型的类
+     * @return SpliceJuntion 某基因上所有可变剪接的类型
+     */
     private fun compareSites(
             gene: List<Array<Int>>,
             reads: List<Array<Int>>,
@@ -113,6 +118,11 @@ class SJFinder(private val pair: GeneReadsCoupler) {
     }
 
 
+    /**
+     * 保存至文件
+     * @param outfile 输出文件的路径
+     * @return
+     */
     fun saveTo(outfile: String) {
         val outFile = File(outfile).absoluteFile
 
@@ -143,7 +153,7 @@ class SJFinder(private val pair: GeneReadsCoupler) {
 
 }
 
-
+/*
 fun main(args: Array<String>) {
     val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
     val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
@@ -152,3 +162,4 @@ fun main(args: Array<String>) {
 
     test.saveTo("/home/zhang/splicehunter_test/stat.txt")
 }
+*/

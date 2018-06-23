@@ -36,7 +36,7 @@ class SpliceJunction(val gene: Genes) {
         if (this.index < this.events.size) {
             val event = events[this.index]
             this.index++
-            return "${this.gene.transcriptId}\t${this.gene.start}\t${this.gene.end}\t$event"
+            return "${this.gene.transcriptId}\t${this.gene.chrom}\t${this.gene.start}\t${this.gene.end}\t$event"
         }
         return null
     }

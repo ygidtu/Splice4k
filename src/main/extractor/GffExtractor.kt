@@ -71,12 +71,10 @@ class GffExtractor(
 
             var readed = 0
             while (reader.hasNext()) {
-                if (!this.silent) {
-                    if (readed % 100000 == 0) {
-                        this.logger.info("Read $readed lines")
-                    }
-                    readed ++
+                if (readed % 100000 == 0) {
+                    this.logger.info("Read $readed lines")
                 }
+                readed ++
 
                 val line = reader.nextLine()
 

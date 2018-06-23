@@ -219,7 +219,7 @@ class Genes: Comparable<Genes> {
     fun get() : List<String> {
         var exonString = ""
         for (i in this.exons) {
-            exonString += i.joinToString(prefix = "", postfix = "，", separator = "，")
+            exonString += i.joinToString(prefix = "", postfix = ",", separator = ",")
         }
 
         return listOf(
