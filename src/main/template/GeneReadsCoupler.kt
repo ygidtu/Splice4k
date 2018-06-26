@@ -333,7 +333,7 @@ class GeneReadsCoupler(
 
 }
 
-
+/*
 fun main(args: Array<String>) {
     val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
     val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
@@ -369,3 +369,4 @@ fun main(args: Array<String>) {
 //
 //    reader.close()
 }
+*/
