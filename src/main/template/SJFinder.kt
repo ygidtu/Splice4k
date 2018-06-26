@@ -1,5 +1,6 @@
 package main.template
 
+import com.sun.org.apache.xpath.internal.operations.Bool
 import main.carrier.SpliceJunction
 import main.extractor.BamExtractor
 import main.extractor.GffExtractor
@@ -17,9 +18,12 @@ import java.io.PrintWriter
  */
 
 
-class SJFinder(private val pair: GeneReadsCoupler) {
+class SJFinder(
+        private val pair: GeneReadsCoupler,
+        private val distance: Int = 3
+) {
     private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
-    val results = mutableListOf<SpliceJunction>()
+    private val results = mutableListOf<SpliceJunction>()
 
 
     init {
@@ -30,13 +34,42 @@ class SJFinder(private val pair: GeneReadsCoupler) {
      * 识别各种可变剪接类型
      */
     fun identifySJ() {
-        for (pair in this.pair.matchedGeneRead) {
+        for (pair in this.pair.templates) {
             val splice = SpliceJunction(pair.gene)
-            this.compareSites(pair.gene.exons, pair.reads.exons, splice)
+            this.compareSites(pair.geneExons, pair.template.exons, splice)
             this.results.add(splice)
         }
     }
 
+    /**
+     * 检查第一个外显子是否在第二个的上游
+     * @param first 外显子位点 Array(start, end)
+     * @param second 外显子位点 Array(start, end)
+     * @return true 有。false 没有
+     */
+    private fun isUpStream(first: Array<Int>, second: Array<Int>): Boolean {
+        return first[1] < second[0]
+    }
+
+
+    /**
+     * 检查第一个外显子是否在第二个的下游
+     * @param first 外显子位点 Array(start, end)
+     * @param second 外显子位点 Array(start, end)
+     * @return true 有。false 没有
+     */
+    private fun isDownStream(first: Array<Int>, second: Array<Int>): Boolean {
+        return first[0] > second[1]
+    }
+
+
+    /**
+     * 检查两个点是否在特定范围内
+     *
+     */
+    private fun isSameRegion(first: Int, second: Int): Boolean {
+        return kotlin.math.abs(first - second) <= this.distance
+    }
 
     /**
      * 比较位点
@@ -59,7 +92,7 @@ class SJFinder(private val pair: GeneReadsCoupler) {
             val tmpRead = reads[j]
 
             when {
-                tmpGene[1] < tmpRead[0] -> {  // 基因在上游
+                this.isUpStream(tmpGene, tmpRead) -> {  // 基因在上游
                     if (
                             i < gene.size - 1 &&
                             tmpRead[0] > tmpGene[1] &&
@@ -71,7 +104,7 @@ class SJFinder(private val pair: GeneReadsCoupler) {
 
                     i++
                 }
-                tmpGene[0] > tmpRead[1] -> {    // 基因在下游
+                this.isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
                     if (!spliced.contains(tmpGene)) {
                         splice.addEvent("exon_skipping", tmpGene[0], tmpGene[1])
                         spliced.add(tmpGene)
@@ -83,27 +116,28 @@ class SJFinder(private val pair: GeneReadsCoupler) {
                 else -> {   // 有重合
 
                     when {
-                        tmpGene[0] == tmpRead[0] && tmpGene[1] != tmpRead[1] -> {
-                            splice.addEvent("doner", tmpRead[0], tmpRead[1])
-                            spliced.add(tmpGene)
-                        }
-
-                        tmpGene[0] != tmpRead[0] && tmpRead[1] == tmpRead[1] -> {
-                            splice.addEvent("acceptor", tmpRead[0], tmpRead[1])
-                            spliced.add(tmpGene)
-                        }
-
-                        tmpGene[0] != tmpRead[0] && tmpGene[1] != tmpRead[1] -> {
-                            splice.addEvent("donor/acceptor", tmpGene[0], tmpGene[1])
-                            spliced.add(tmpGene)
-                        }
-
                         j < reads.size - 1 &&
                                 tmpGene[0] < tmpRead[1] &&
                                 tmpGene[1] > reads[j+1][0] -> {
                             splice.addEvent("intron_retention", tmpRead[1], reads[j+1][0])
                             spliced.add(tmpGene)
                         }
+
+                        !this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
+                            splice.addEvent("donor/acceptor", tmpGene[0], tmpGene[1])
+                            spliced.add(tmpGene)
+                        }
+
+                        this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
+                            splice.addEvent("doner", tmpRead[0], tmpRead[1])
+                            spliced.add(tmpGene)
+                        }
+
+                        !this.isSameRegion(tmpGene[0], tmpRead[0]) && this.isSameRegion(tmpRead[1], tmpRead[1]) -> {
+                            splice.addEvent("acceptor", tmpRead[0], tmpRead[1])
+                            spliced.add(tmpGene)
+                        }
+
                     }
 
                     j++
@@ -113,8 +147,6 @@ class SJFinder(private val pair: GeneReadsCoupler) {
             }
 
         }
-
-
     }
 
 
@@ -152,6 +184,7 @@ class SJFinder(private val pair: GeneReadsCoupler) {
     }
 
 }
+
 
 /*
 fun main(args: Array<String>) {
