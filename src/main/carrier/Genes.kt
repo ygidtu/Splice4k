@@ -75,6 +75,8 @@ class Genes: Comparable<Genes> {
      * @information gtf和gff文件中额外的信息封装成的map
      * @strand + -
      */
+    constructor()    // 该构造器仅仅为了站位而已
+
     constructor(chrom: String, start: Int, end: Int) {
         this.chrom = chrom
         this.start = start
@@ -177,12 +179,12 @@ class Genes: Comparable<Genes> {
      * @param other Genes
      * @return true是上游，false不是
      */
-    fun isUpStream(other: Genes) : Boolean {
+    fun isUpStream(other: Genes, distanceError: Int = 0) : Boolean {
         if (this.chrom != other.chrom) {
             return this.chrom < other.chrom
         }
 
-        return this.end < other.start
+        return this.end - other.start < abs(distanceError)
     }
 
 
@@ -191,12 +193,12 @@ class Genes: Comparable<Genes> {
      * @param other Genes
      * @return true是下游，false不是
      */
-    fun isDownStream(other: Genes) : Boolean {
+    fun isDownStream(other: Genes, distanceError: Int = 0) : Boolean {
         if (this.chrom != other.chrom) {
             return this.chrom > other.chrom
         }
 
-       return this.start > other.end
+       return other.end - this.start < abs(distanceError)
     }
 
 

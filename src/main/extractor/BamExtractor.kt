@@ -82,13 +82,11 @@ class BamExtractor(
     private fun getAllRegions(): List<Genes> {
         val results = mutableListOf<Genes>()
 
-        var readed = 0
-        for (record in this.reader) {
+        for ( (index, record) in this.reader.withIndex()) {
 
-            if (readed % 100000 == 0) {
-                this.logger.info("Read $readed lines")
+            if (index % 100000 == 0) {
+                this.logger.info("Read $index lines")
             }
-            readed ++
 
             // 判断reads是否为unique mapped
             if (record.hasAttribute("NH")) {
@@ -130,14 +128,20 @@ class BamExtractor(
         results.sortWith(compareBy({it.chrom}, {it.start}, {it.end}))
         return results
     }
+
+
+    fun get(): List<Genes> {
+        return this.data
+    }
 }
 
 /*
 fun main(args: Array<String>) {
+    /*
+    GT-AG规则
+    */
     val test = BamExtractor("/home/zhang/splicehunter_test/test.bam")
 
     test.saveTo("/home/zhang/splicehunter_test/bam_extracted.txt")
 }
 */
-
-

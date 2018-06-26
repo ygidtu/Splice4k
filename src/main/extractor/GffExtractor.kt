@@ -26,7 +26,7 @@ class GffExtractor(
         private val silent: Boolean = false
 ) : Extractor(silent) {
 
-    override val logger = Logger.getLogger(GtfExtractor::class.java)
+//    override val logger = Logger.getLogger(GffExtractor::class.java)
 
     init {
         this.data = gffReader()
