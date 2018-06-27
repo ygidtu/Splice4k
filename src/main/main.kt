@@ -37,7 +37,7 @@ fun addFileAppender(logFile: String) {
 
 
 /**
- *
+ * 设定命令行参数
  */
 fun setOptions(): Options {
     val options = Options()
