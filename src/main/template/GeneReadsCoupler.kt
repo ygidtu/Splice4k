@@ -43,6 +43,8 @@ class GeneReadsCoupler(
      * 将基因与reads匹配到一起
      */
     private fun matchGeneReads() {
+        // 这个gap就是为了控制输出一个合适的进度条的
+        val gap = this.Gene.totalLine.toString().length - 2
         var logged = -1
         val tmpMatched = mutableMapOf<Genes, MutableList<GeneRead>>()
 
@@ -53,7 +55,7 @@ class GeneReadsCoupler(
 
         // 统计所有的配对信息
         while (tmpGene != null && tmpRead != null) {
-            if (this.Gene.index % 10000 == 0) {
+            if (this.Gene.index % 10.0.pow(gap.toDouble()).toInt() == 0) {
                 if (logged != this.Gene.index) {
                     logger.info("Gene Reads matching at ${this.Gene.index}/${this.Gene.totalLine}")
                     logged = this.Gene.index
@@ -334,39 +336,53 @@ class GeneReadsCoupler(
 }
 
 /*
+fun readInfo(infile: String): Extractor {
+    val results = mutableListOf<Genes>()
+
+    val reader = Scanner(File(infile))
+
+    while (reader.hasNext()) {
+        val lines = reader.nextLine().split("\t")
+
+        val tmpGenes = Genes(
+                chrom = lines[2],
+                start = lines[3].toInt(),
+                end = lines[4].toInt(),
+                geneName = lines[0],
+                strand = lines[8].toCharArray()[0]
+        )
+
+        val exons = mutableListOf<Array<Int>>()
+        for (i in 9..(lines.size - 1) step 2) {
+            exons.add(arrayOf(lines[i].toInt(), lines[i+1].toInt()))
+        }
+
+        tmpGenes.exons = exons
+        results.add(tmpGenes)
+
+    }
+
+    val tmp = Extractor()
+    tmp.data = results
+
+    return tmp
+}
+
+
 fun main(args: Array<String>) {
-    val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
-    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
+//    val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
+//    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
+
+    val gene = readInfo("/home/zhang/CloudStation/Code/jofiel_tests/ori_Mac/PG_exon_inf.tsv")
+    val reads = readInfo("/home/zhang/CloudStation/Code/jofiel_tests/ori_Mac/EST_exon_inf.tsv")
+
+    println(gene.totalLine)
+
     val test = GeneReadsCoupler(gene, reads)
 
-    test.saveTo("/home/zhang/splicehunter_test/gene_read.txt")
-    test.saveTemplate("/home/zhang/splicehunter_test/templates.txt")
+    test.saveTo("/home/zhang/splicehunter_test/mac_gene_reads.txt")
+    test.saveTemplate("/home/zhang/splicehunter_test/mac_templates.txt")
 
-//    val reader = Scanner(File("/home/zhang/splicehunter_test/test.txt"))
-//
-//    val reads = mutableListOf<Genes>()
-//    while (reader.hasNext()) {
-//        val lines = reader.nextLine().split("|")[1].split("\t")
-//
-//        reads.add(
-//                Genes(
-//                        chrom=lines[0],
-//                        start=lines[1].toInt(),
-//                        end=lines[2].toInt()
-//                )
-//        )
-//
-//        val exons = mutableListOf<Array<Int>>()
-//        val exs = lines[7].split(",")
-//        for (i in 0..(exs.size - 2) step 2) {
-//            exons.add(
-//                    arrayOf(exs[i].toInt(), exs[i+1].toInt())
-//            )
-//        }
-//        reads.last().exons = exons
-//
-//    }
-//
-//    reader.close()
+
 }
 */

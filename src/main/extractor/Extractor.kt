@@ -9,9 +9,15 @@ import org.apache.log4j.Logger
 import main.carrier.Genes
 
 open class Extractor(private val silent: Boolean = false) {
-    open val logger = Logger.getLogger(Extractor::class.java)
-    protected var data = mutableListOf<Genes>().toList()
+    private val logger = Logger.getLogger(Extractor::class.java)
+    var data = mutableListOf<Genes>().toList()
     var totalLine = 0
+    get() {
+        if (field != this.data.size) {
+            return this.data.size
+        }
+        return field
+    }
     var index = 0
 
 
@@ -21,7 +27,7 @@ open class Extractor(private val silent: Boolean = false) {
      * @silent 减少信息输出
      */
     fun saveTo(outfile: String) {
-        if (!this.silent) logger.info("Write information to ${outfile}")
+        if (!this.silent) logger.info("Write information to $outfile")
 
         val outFile = File(outfile).absoluteFile
 

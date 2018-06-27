@@ -13,22 +13,9 @@ class Template(
         val gene: Genes,
         val template: Genes
 ): Comparable<Template> {
-    var geneExons: MutableList<Array<Int>>
-
-    init {
-        this.geneExons = this.filterExons()
-    }
-
-
-    /**
-     * 检查两个外显子是否有重合位点
-     * @param first 外显子位点 Array(start, end)
-     * @param second 外显子位点 Array(start, end)
-     * @return true 有。false 没有
-     */
-    private fun isExonOverlap(first: Array<Int>, second: Array<Int>): Boolean {
-        return (first[0] <= second[1] && first[1] >= second[0])
-    }
+    var geneExons = this.gene.exons.sortedWith(
+            compareBy( {it[0]}, {it[1]} )
+    ).toMutableList()
 
 
     /**
@@ -58,6 +45,7 @@ class Template(
      * 仅保留基因中与template中有重合的外显子
      * @return 一列外显子的坐标
      */
+    @Deprecated("发现没有必要过滤基因的外显子")
     private fun filterExons(): MutableList<Array<Int>> {
         val geneExons = mutableListOf<Array<Int>>()
 
