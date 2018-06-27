@@ -10,9 +10,30 @@ package main.carrier
 
 class SpliceJunction(val gene: Genes) {
 
-    data class Event(val name: String, val start: Int, val end: Int) {
+    data class Event(
+            val name: String,
+            val start: Int,
+            val end: Int
+    ) {
+        /**
+         * 重载toString
+         * @return 名称，start和end以tab分割
+         */
         override fun toString(): String {
             return "${this.name}\t${this.start}\t${this.end}"
+        }
+
+        /**
+         * 提取其中的位置信息
+         * @return 按照start和end之间差距的1/20为范围，分别向上下游扩大这么多
+         */
+        fun getPosition() : String {
+            val gap = (this.end - this.start) / 20
+
+            if (this.start >= gap) {
+                return "${this.start - gap}-${this.end + gap}"
+            }
+            return "0-${this.end + gap}"
         }
     }
 
@@ -36,7 +57,8 @@ class SpliceJunction(val gene: Genes) {
         if (this.index < this.events.size) {
             val event = events[this.index]
             this.index++
-            return "${this.gene.transcriptId}\t${this.gene.chrom}\t${this.gene.start}\t${this.gene.end}\t$event"
+            val eventString = "${event.name}\t${this.gene.chrom}:${event.getPosition()}"
+            return "${this.gene.transcriptId}\t${this.gene.chrom}\t${this.gene.start}\t${this.gene.end}\t$eventString"
         }
         return null
     }

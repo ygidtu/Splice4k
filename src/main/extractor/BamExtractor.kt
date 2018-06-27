@@ -30,7 +30,7 @@ class BamExtractor(
         private val silent: Boolean = false
 ): Extractor(silent) {
 
-    override val logger: Logger = Logger.getLogger(BamExtractor::class.java)
+    private val logger: Logger = Logger.getLogger(BamExtractor::class.java)
     private val reader = SamReaderFactory
             .makeDefault()
             .open(File(bam))
@@ -81,11 +81,13 @@ class BamExtractor(
      */
     private fun getAllRegions(): List<Genes> {
         val results = mutableListOf<Genes>()
+        var gap = 1
 
         for ( (index, record) in this.reader.withIndex()) {
 
-            if (index % 100000 == 0) {
-                this.logger.info("Read $index lines")
+            if (index % gap == 0) {
+                this.logger.info("Reading $index lines")
+                if (gap < 10001) gap *= 10
             }
 
             // 判断reads是否为unique mapped

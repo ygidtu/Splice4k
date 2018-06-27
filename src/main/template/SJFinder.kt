@@ -1,13 +1,16 @@
 package main.template
 
-import com.sun.org.apache.xpath.internal.operations.Bool
-import main.carrier.SpliceJunction
-import main.extractor.BamExtractor
-import main.extractor.GffExtractor
 import org.apache.log4j.Logger
+
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
+
+import kotlin.math.*
+
+import main.carrier.SpliceJunction
+import main.extractor.*
+
 
 /**
  * @since 2018.06.21
@@ -20,9 +23,10 @@ import java.io.PrintWriter
 
 class SJFinder(
         private val pair: GeneReadsCoupler,
-        private val distance: Int = 3
+        private val distance: Int = 3,
+        private val overlap: Double = 90.0
 ) {
-    private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
+    private val logger = Logger.getLogger(SJFinder::class.java)
     private val results = mutableListOf<SpliceJunction>()
 
 
@@ -33,8 +37,17 @@ class SJFinder(
     /**
      * 识别各种可变剪接类型
      */
-    fun identifySJ() {
-        for (pair in this.pair.templates) {
+    private fun identifySJ() {
+
+
+        // 这个gap就是为了控制输出一个合适的进度条的
+        val gap = this.pair.templates.size.toString().length - 2
+
+        for ((index, pair) in this.pair.templates.withIndex()) {
+            if (index % 10.0.pow(gap.toDouble()).toInt() == 0) {
+                logger.info("Splice events identifying at $index/${this.pair.templates.size}")
+            }
+
             val splice = SpliceJunction(pair.gene)
             this.compareSites(pair.geneExons, pair.template.exons, splice)
             this.results.add(splice)
@@ -72,6 +85,17 @@ class SJFinder(
     }
 
     /**
+     * 计算两个文件之间的重合程度
+     * @param first 第一个位点的坐标，主要是reads上的exon
+     * @param second 第二个位点的坐标，主要是基因的intron
+     * @return double, 两个位点重合的比例，如果<=0，则没有重合
+     */
+    private fun overlapPercent(first: Array<Int>, second: Array<Int>): Double {
+        return (min(first[1], second[1]) - max(first[0], second[0])) /
+                (second[1] - second[0]).toDouble()
+    }
+
+    /**
      * 比较位点
      * @param gene 基因外显子构成的列表
      * @param reads Reads外显子构成的列表
@@ -93,6 +117,11 @@ class SJFinder(
 
             when {
                 this.isUpStream(tmpGene, tmpRead) -> {  // 基因在上游
+                    /*
+                    exon inclusion
+                    reads的exon一定在注释的intron范围内
+                    因此，
+                     */
                     if (
                             i < gene.size - 1 &&
                             tmpRead[0] > tmpGene[1] &&
@@ -104,7 +133,12 @@ class SJFinder(
 
                     i++
                 }
+
                 this.isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
+                    /*
+                     如果基因的外显子，并没有与任何read的外显子有重合，
+                     那么这个exon基本就是exon_skipping了
+                      */
                     if (!spliced.contains(tmpGene)) {
                         splice.addEvent("exon_skipping", tmpGene[0], tmpGene[1])
                         spliced.add(tmpGene)
@@ -116,30 +150,38 @@ class SJFinder(
                 else -> {   // 有重合
 
                     when {
-                        j < reads.size - 1 &&
-                                tmpGene[0] < tmpRead[1] &&
-                                tmpGene[1] > reads[j+1][0] -> {
+                        /*
+                        intron_retention
+                        应当是reads的exon与intron区域有重合
+                        重合比例应当达到90%以上
+                         */
+                        i < gene.size - 1 &&
+                            this.overlapPercent(
+                                    tmpRead,
+                                    arrayOf(tmpGene[1], gene[i+1][0])
+                            ) > this.overlap -> {
                             splice.addEvent("intron_retention", tmpRead[1], reads[j+1][0])
-                            spliced.add(tmpGene)
                         }
 
+                        /*
+                        如果不属于intron_retention
+                        那么就需要判断是否属于donor或者acceptor
+                        位点之间距离误差在3以内的就认为是同一个位点
+                         */
                         !this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
                             splice.addEvent("donor/acceptor", tmpGene[0], tmpGene[1])
-                            spliced.add(tmpGene)
                         }
 
                         this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
                             splice.addEvent("doner", tmpRead[0], tmpRead[1])
-                            spliced.add(tmpGene)
                         }
 
                         !this.isSameRegion(tmpGene[0], tmpRead[0]) && this.isSameRegion(tmpRead[1], tmpRead[1]) -> {
                             splice.addEvent("acceptor", tmpRead[0], tmpRead[1])
-                            spliced.add(tmpGene)
                         }
 
                     }
-
+                    spliced.add(tmpGene)
                     j++
 
                 }
@@ -188,11 +230,15 @@ class SJFinder(
 
 /*
 fun main(args: Array<String>) {
-    val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
-    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
 
-    val test = SJFinder(GeneReadsCoupler(gene, reads))
+   val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
+   val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
 
-    test.saveTo("/home/zhang/splicehunter_test/stat.txt")
+   val test = SJFinder(GeneReadsCoupler(gene, reads))
+
+   test.saveTo("/home/zhang/splicehunter_test/stat1.txt")
+
+   println(Regex("\\.gff3?$").containsMatchIn("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3"))
+
 }
 */

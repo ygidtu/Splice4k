@@ -26,7 +26,7 @@ class GffExtractor(
         private val silent: Boolean = false
 ) : Extractor(silent) {
 
-//    override val logger = Logger.getLogger(GffExtractor::class.java)
+    private val logger = Logger.getLogger(GffExtractor::class.java)
 
     init {
         this.data = gffReader()
@@ -69,12 +69,16 @@ class GffExtractor(
             reader = Scanner(File(this.gff))
             val pattern = Regex(".*transcript:.*")
 
-            var readed = 0
+            var readIn = 0
+            var gap = 10
             while (reader.hasNext()) {
-                if (readed % 100000 == 0) {
-                    this.logger.info("Read $readed lines")
+
+                if (readIn % gap == 0) {
+                    this.logger.info("Reading $readIn lines")
+
+                    if (gap < 10001) gap *= 10
                 }
-                readed ++
+                readIn ++
 
                 val line = reader.nextLine()
 
