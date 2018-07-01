@@ -149,38 +149,88 @@ class SJFinder(
 
                 else -> {   // 有重合
 
-                    when {
-                        /*
-                        intron_retention
-                        应当是reads的exon与intron区域有重合
-                        重合比例应当达到90%以上
-                         */
-                        i < gene.size - 1 &&
+                    if (  // intron retention   require 90% coverage
+                            i < gene.size -1 &&
                             this.overlapPercent(
-                                    tmpRead,
-                                    arrayOf(tmpGene[1], gene[i+1][0])
-                            ) > this.overlap -> {
-                            splice.addEvent("intron_retention", tmpRead[1], reads[j+1][0])
-                        }
+                                tmpRead,
+                                arrayOf(tmpGene[1], gene[i+1][0])
+                            ) > this.overlap
+                    ) {
+                        splice.addEvent("intron_retention", tmpRead[1], reads[j+1][0])
 
                         /*
-                        如果不属于intron_retention
-                        那么就需要判断是否属于donor或者acceptor
-                        位点之间距离误差在3以内的就认为是同一个位点
+                        由于intron retention
+                        reads的该外显子可能横跨多个基因的外显子，
+                        因此，通过一个循环，找出其横跨的最后一个基因外显子的index是多少
+
+                        如果是横跨到基因的最后一个外显子了，那么index肯定为最后一个
+
+                        如果不是，那么index需要减一，才是他横跨的最后一个外显子的index
+
+                        再次基础上调整临时基因的范围，去判断是否存在donor/acceptor
                          */
-                        !this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
-                            splice.addEvent("donor/acceptor", tmpGene[0], tmpGene[1])
+                        var k = i
+                        while (k < gene.size && tmpRead[1] > gene[k][0]) {
+                            k++
                         }
 
-                        this.isSameRegion(tmpGene[0], tmpRead[0]) && !this.isSameRegion(tmpGene[1], tmpRead[1]) -> {
-                            splice.addEvent("doner", tmpRead[0], tmpRead[1])
-                        }
+                        if (k < gene.size - 1 ) k--
 
-                        !this.isSameRegion(tmpGene[0], tmpRead[0]) && this.isSameRegion(tmpRead[1], tmpRead[1]) -> {
-                            splice.addEvent("acceptor", tmpRead[0], tmpRead[1])
-                        }
+                        tmpGene[1] = gene[k][1]
 
                     }
+
+
+                    if (  // intron in exon
+                        j < reads.size - 1 &&
+                                tmpRead[1] > tmpGene[0] &&
+                                reads[j + 1][0] < tmpGene[1]
+                    ) {
+                        splice.addEvent("intron_in_exon", tmpRead[0], tmpRead[1])
+
+                        /*
+                        intron in exon就表明，
+                        基因的外显子会横跨多个reads的外显子
+
+                        因此，同上，通过循环找出横跨的最后一个reads外显子的index
+                         */
+                        var k = j
+                        while (k < reads.size && tmpGene[1] > reads[k][0]) {
+                            k++
+                        }
+
+                        if (k < reads.size - 1 ) k--
+
+                        tmpRead[1] = reads[k][1]
+                    }
+
+                    // 在不同情形下，确定了不同的基因和reads外显子范围，用来比对donor/acceptor
+                    when {
+                        !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                            splice.addEvent(
+                                    "donor/acceptor",
+                                    tmpRead[0],
+                                    tmpRead[1]
+                            )
+
+                        !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                            splice.addEvent(
+                                    "donor",
+                                    kotlin.math.min(tmpGene[0], tmpRead[0]),
+                                    kotlin.math.max(tmpGene[0], tmpRead[0])
+                            )
+
+                        this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                            splice.addEvent(
+                                    "acceptor",
+                                    kotlin.math.min(tmpGene[1], tmpRead[1]),
+                                    kotlin.math.max(tmpGene[1], tmpRead[1])
+                            )
+                    }
+
                     spliced.add(tmpGene)
                     j++
 
