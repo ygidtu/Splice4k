@@ -8,6 +8,7 @@ import htsjdk.samtools.SAMRecord
 import org.apache.log4j.Logger
 
 import main.carrier.Genes
+import main.errors.ExonException
 
 
 /**
@@ -122,6 +123,7 @@ class BamExtractor(
             // add exons
             val tmpExons = mutableListOf<Array<Int>>()
             for (i in 0..(introns.size - 1) step 2) {
+                if (introns[i] > introns[i + 1]) throw ExonException("start[${introns[i]}] > end[${introns[i+1]}]")
                 tmpExons.add(arrayOf(introns[i], introns[i + 1]))
             }
             tmpGene.exons = tmpExons
