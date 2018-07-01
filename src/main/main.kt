@@ -19,6 +19,10 @@ import main.extractor.*
 import main.template.*
 
 
+const val version = "2018.06.28"
+
+
+
 /**
  * 为log添加文件appender
  * @param logFile log文件的地址
@@ -102,6 +106,13 @@ fun setOptions(): Options {
             "Minimal overlap level to identify the intron retention [default: 90.0]"
     )
 
+    options.addOption(
+            "v",
+            "version",
+            false,
+            "display version [current: $version]"
+    )
+
     return options
 }
 
@@ -150,6 +161,11 @@ fun main(args: Array<String>) {
         when {
             parm.hasOption("help") -> {
                 help.printHelp("usage message", options)
+                exitProcess(0)
+            }
+
+            parm.hasOption("version") -> {
+                println("Current version: $version")
                 exitProcess(0)
             }
 
