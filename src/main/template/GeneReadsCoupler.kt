@@ -32,6 +32,7 @@ class GeneReadsCoupler(
 
     val matchedGeneRead = mutableListOf<GeneRead>()
     val novelReads = mutableListOf<GeneRead>()
+    val fusionReads = mutableListOf<GeneRead>()
 
     lateinit var templates : MutableList<Template>
 
@@ -115,12 +116,12 @@ class GeneReadsCoupler(
             when {
                 v.size > 1 -> {
                     val tmpV = v.sortedBy { it.overlap.dec() }
+                    val overlapFC = tmpV[0].overlap / tmpV[1].overlap.toDouble()
 
-                    if (
-                            tmpV[0].overlap / tmpV[1].overlap.toDouble() > this.foldChange &&
-                            tmpV[0].overlapPercent > this.overlap
-                    ) {
-                        this.matchedGeneRead.add(tmpV[0])
+                    if ( overlapFC > this.foldChange ) {
+                        if (tmpV[0].overlapPercent > this.overlap) this.matchedGeneRead.add(tmpV[0])
+                    } else {
+                        this.fusionReads.addAll(tmpV)
                     }
                 }
 
@@ -134,6 +135,8 @@ class GeneReadsCoupler(
 
         this.matchedGeneRead.sort()
         this.novelReads.sort()
+
+        this.fusionReads.sortWith(compareBy({it.reads}, {it.gene}))
 
         this.buildTemplates()
     }
@@ -310,6 +313,11 @@ class GeneReadsCoupler(
         }
     }
 
+
+    /**
+     * 保存构件好的基因的template
+     * @param outfile 输出文件路径
+     */
     fun saveTemplate(outfile: String) {
         val outFile = File(outfile).absoluteFile
 
@@ -333,56 +341,31 @@ class GeneReadsCoupler(
         }
     }
 
-}
 
-/*
-fun readInfo(infile: String): Extractor {
-    val results = mutableListOf<Genes>()
+    /**
+     * 保存可能的融合基因
+     * @param outfile 输出文件路径
+     */
+    fun savePotentialFusion(outfile: String) {
+        val outFile = File(outfile).absoluteFile
 
-    val reader = Scanner(File(infile))
+        var writer = PrintWriter(System.out)
+        try{
+            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
 
-    while (reader.hasNext()) {
-        val lines = reader.nextLine().split("\t")
+            writer = PrintWriter(outFile)
 
-        val tmpGenes = Genes(
-                chrom = lines[2],
-                start = lines[3].toInt(),
-                end = lines[4].toInt(),
-                geneName = lines[0],
-                strand = lines[8].toCharArray()[0]
-        )
+            for (i in this.fusionReads) {
+                writer.println(i.toStringReverse())
+            }
 
-        val exons = mutableListOf<Array<Int>>()
-        for (i in 9..(lines.size - 1) step 2) {
-            exons.add(arrayOf(lines[i].toInt(), lines[i+1].toInt()))
+        } catch (err: IOException) {
+            logger.error(err.message)
+            for (i in err.stackTrace) {
+                logger.error(i)
+            }
+        } finally {
+            writer.close()
         }
-
-        tmpGenes.exons = exons
-        results.add(tmpGenes)
-
     }
-
-    val tmp = Extractor()
-    tmp.data = results
-
-    return tmp
 }
-
-
-fun main(args: Array<String>) {
-//    val gene = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
-//    val reads = BamExtractor("/home/zhang/splicehunter_test/test.bam", silent = true)
-
-    val gene = readInfo("/home/zhang/CloudStation/Code/jofiel_tests/ori_Mac/PG_exon_inf.tsv")
-    val reads = readInfo("/home/zhang/CloudStation/Code/jofiel_tests/ori_Mac/EST_exon_inf.tsv")
-
-    println(gene.totalLine)
-
-    val test = GeneReadsCoupler(gene, reads)
-
-    test.saveTo("/home/zhang/splicehunter_test/mac_gene_reads.txt")
-    test.saveTemplate("/home/zhang/splicehunter_test/mac_templates.txt")
-
-
-}
-*/

@@ -25,7 +25,7 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      * @return gene|read
      */
     override fun toString(): String {
-        if (this.gene.transcriptId == ".") {
+        if (this.gene.transcriptId == "." && this.gene.geneName == "." && this.gene.length <= 0 ) {
             return "None|${this.reads}"
         }
         return "${this.gene}|${this.reads}"
@@ -74,5 +74,18 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      */
     fun increaseCount() {
         this.count++
+    }
+
+
+    /**
+     * toString是按照gene|reads的顺序构建
+     * 这个function反过来
+     * @return string
+     */
+    fun toStringReverse() : String {
+        if (this.gene.transcriptId == "." && this.gene.geneName == "." && this.gene.length <= 0 ) {
+            return "${this.reads}|None"
+        }
+        return "${this.reads}|${this.gene}"
     }
 }

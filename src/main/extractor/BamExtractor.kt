@@ -60,7 +60,12 @@ class BamExtractor(
                 if (tmp.size == 0) {
                     continue
                 }
-                position += tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
+
+                // Soft clip以及insertion的两种区域都不记载在alignment之内
+                if (i != 'S' && i != 'I') {
+                    position += tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
+                }
+
                 if (i == 'N') {
                     results.add(
                             position - tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
@@ -122,7 +127,10 @@ class BamExtractor(
 
             // add exons
             val tmpExons = mutableListOf<Array<Int>>()
+
+            println("${record.start}, ${record.alignmentStart}")
             for (i in 0..(introns.size - 1) step 2) {
+                println(i)
                 if (introns[i] > introns[i + 1]) throw ExonException("start[${introns[i]}] > end[${introns[i+1]}]")
                 tmpExons.add(arrayOf(introns[i], introns[i + 1]))
             }
