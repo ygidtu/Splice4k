@@ -19,7 +19,7 @@ import main.extractor.*
 import main.template.*
 
 
-const val version = "2018.06.28"
+const val version = "2018.07.03"
 
 
 
@@ -119,8 +119,8 @@ fun setOptions(): Options {
 
 /**
  * @author zhangyiming
- * @since 2018.06.23
- * @version 0.1
+ * @since 2018.07.01
+ * @version 0.2
  *
  * command line parameters
  */

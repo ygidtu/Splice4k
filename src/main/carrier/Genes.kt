@@ -49,7 +49,12 @@ class Genes: Comparable<Genes> {
                 '.' -> "${this.chrom}:${this.start}-${this.end}"
                 else -> "${this.chrom}:${this.start}-${this.end}${this.strand}"
             }
-            else -> this.geneId
+            else -> {
+                if (this.geneId != ".") {
+                    return this.geneId
+                }
+                return this.geneName
+            }
         }
     }
 

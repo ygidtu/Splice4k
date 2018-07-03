@@ -6,6 +6,8 @@ import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
 
+import java.util.Objects
+
 import kotlin.math.*
 
 import main.carrier.SpliceJunction
@@ -108,8 +110,10 @@ class SJFinder(
             splice: SpliceJunction
     ) {
         var i = 0; var j = 0
+        var firstOverlap = true
+        var logged = 0
 
-        val spliced = mutableSetOf<Array<Int>>()
+        val spliced = mutableSetOf<Int>()
 
         while (i < gene.size && j < reads.size) {
             val tmpGene = gene[i]
@@ -117,6 +121,22 @@ class SJFinder(
 
             when {
                 this.isUpStream(tmpGene, tmpRead) -> {  // 基因在上游
+                    /*
+                     如果基因的外显子，并没有与任何read的外显子有重合，
+                     那么这个exon基本就是exon_skipping了
+
+                     2018.07.03 修正
+                     如果基因已经在上游了，
+                     要么他是最开始，
+                     要么就已经与合适范围内的所有reads比对过一遍了
+                     这种情况下，它还没有任何重合的reads，就必定是skipping了
+                      */
+                    if (Objects.hash(tmpGene) !in spliced) {
+                        splice.addEvent("exon_skipping", tmpGene[0], tmpGene[1])
+                        spliced.add(Objects.hash(tmpGene))
+                    }
+
+
                     /*
                     exon inclusion
                     reads的exon一定在注释的intron范围内
@@ -128,26 +148,28 @@ class SJFinder(
                             tmpRead[1] < gene[i+1][0]
                     ) {
                         splice.addEvent("exon_inclusion", tmpRead[0], tmpRead[1])
-                        spliced.add(tmpGene)
+                        spliced.add(Objects.hash(tmpGene))
                     }
 
                     i++
+
+                    if (!firstOverlap) {
+                        j = logged
+                        firstOverlap = true
+                    }
                 }
 
                 this.isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
-                    /*
-                     如果基因的外显子，并没有与任何read的外显子有重合，
-                     那么这个exon基本就是exon_skipping了
-                      */
-                    if (!spliced.contains(tmpGene)) {
-                        splice.addEvent("exon_skipping", tmpGene[0], tmpGene[1])
-                        spliced.add(tmpGene)
-                    }
-
                     j++
                 }
 
                 else -> {   // 有重合
+
+                    if (firstOverlap) {
+                        logged = j
+                        firstOverlap = false
+                    }
+                    spliced.add(Objects.hash(tmpGene))
 
                     if (  // intron retention   require 90% coverage
                             i < gene.size -1 &&
@@ -173,20 +195,27 @@ class SJFinder(
                         while (k < gene.size && tmpRead[1] > gene[k][0]) {
                             k++
                         }
-
-                        if (k < gene.size - 1 ) k--
-
+                        k--
                         tmpGene[1] = gene[k][1]
 
+                        /*
+                        同理，检查这个reads是否横跨前边的基因外显子，
+                        然后构成一个完成的基因范围
+                         */
+                        k = i
+                        while ( k >= 0 && tmpGene[1] > tmpRead[0]) {
+                            k--
+                        }
+                        if (k < 0) k++
+                        tmpGene[0] = gene[k][0]
                     }
-
 
                     if (  // intron in exon
                         j < reads.size - 1 &&
                                 tmpRead[1] > tmpGene[0] &&
                                 reads[j + 1][0] < tmpGene[1]
                     ) {
-                        splice.addEvent("intron_in_exon", tmpRead[0], tmpRead[1])
+                        splice.addEvent("intron_in_exon", tmpRead[1], reads[j + 1][0])
 
                         /*
                         intron in exon就表明，
@@ -198,10 +227,18 @@ class SJFinder(
                         while (k < reads.size && tmpGene[1] > reads[k][0]) {
                             k++
                         }
-
-                        if (k < reads.size - 1 ) k--
-
+                        k--
                         tmpRead[1] = reads[k][1]
+
+                        /*
+                        同上
+                         */
+                        k = j
+                        while (k >= 0 && tmpGene[0] > reads[k][1]) {
+                            k--
+                        }
+                        if (k < 0) k++
+                        tmpRead[0] = reads[k][0]
                     }
 
                     // 在不同情形下，确定了不同的基因和reads外显子范围，用来比对donor/acceptor
@@ -231,7 +268,6 @@ class SJFinder(
                             )
                     }
 
-                    spliced.add(tmpGene)
                     j++
 
                 }

@@ -1,5 +1,7 @@
 package main.carrier
 
+import java.util.Objects
+
 /**
  * @since 2018.06.21
  * @version 0.1
@@ -21,6 +23,28 @@ class SpliceJunction(val gene: Genes) {
          */
         override fun toString(): String {
             return "${this.name}\t${this.start}\t${this.end}"
+        }
+
+
+        /**
+         * 重载，识别两个事件是否相同
+         */
+        override fun equals(other: Any?): Boolean {
+            try {
+                return this.hashCode() == other!!.hashCode()
+            } catch (err: NullPointerException) {
+                return false
+            }
+
+        }
+
+
+        /**
+         * 重载，根据事件的信息，生成hashCode
+         * @return hashCode
+         */
+        override fun hashCode(): Int {
+            return Objects.hash(this.name, this.start, this.end)
         }
 
         /**
@@ -49,7 +73,12 @@ class SpliceJunction(val gene: Genes) {
      * @param end 发生终止位点
      */
     fun addEvent(name: String, start: Int, end: Int) {
-        this.events.add(Event(name, start, end))
+        val tmpEvent = Event(name, start, end)
+
+        if (tmpEvent !in this.events) {
+            this.events.add(tmpEvent)
+        }
+
     }
 
     /**
