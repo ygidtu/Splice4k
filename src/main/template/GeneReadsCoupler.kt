@@ -31,7 +31,7 @@ class GeneReadsCoupler(
     private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
 
     val matchedGeneRead = mutableListOf<GeneRead>()
-    val novelReads = mutableListOf<GeneRead>()
+    val novelReads = mutableListOf<Genes>()
     val fusionReads = mutableListOf<GeneRead>()
 
     lateinit var templates : MutableList<Template>
@@ -78,17 +78,15 @@ class GeneReadsCoupler(
                 }
                 // 基因在read下游，读一个read
                 tmpGene.isDownStream(tmpRead, this.distanceError) -> {
-                    if (!tmpMatched.containsKey(tmpRead) && tmpRead.exons.size == 1) {
-                        this.novelReads.add(GeneRead(Genes(), tmpRead))
+                    if (!tmpMatched.containsKey(tmpRead)) {
+                        this.novelReads.add(tmpRead)
                     }
 
                     tmpRead = this.Reads.next()
                 }
 
                 else -> {
-                    if (tmpGene.strand != tmpRead.strand) {
-                        this.novelReads.add(GeneRead(tmpGene, tmpRead))
-                    } else {
+                    if (tmpGene.strand == tmpRead.strand) {
                         // log read index
                         if (firstOverlap) {
                             readIndex = this.Reads.index
@@ -96,14 +94,18 @@ class GeneReadsCoupler(
                         }
                         val tmpGeneRead = GeneRead(tmpGene, tmpRead)
 
-                        // 判断是否临时的匹配中是否含有该条read了
-                        val tmpList = mutableListOf(tmpGeneRead)
-
-                        if (tmpMatched.containsKey(tmpRead)) {
-                            tmpList.addAll(tmpMatched[tmpRead]!!)
+                        /*
+                        2018.07.04
+                        修正，使用基因和reads外显子的覆盖度作为基因和read匹配评判的标准
+                         */
+                        if (tmpGeneRead.isGeneReadsExonsOverlapQualified(this.overlap)) {
+                            // 判断是否临时的匹配中是否含有该条read了
+                            if (tmpMatched.containsKey(tmpRead)) {
+                                tmpMatched[tmpRead]!!.add(tmpGeneRead)
+                            } else {
+                                tmpMatched[tmpRead] = mutableListOf(tmpGeneRead)
+                            }
                         }
-
-                        tmpMatched[tmpRead] = tmpList
                     }
 
                     tmpRead = this.Reads.next()
@@ -313,6 +315,32 @@ class GeneReadsCoupler(
         }
     }
 
+    /**
+     * 保存novel的read到文件
+     * @param outfile 输出文件路径
+     */
+    fun saveNovel(outfile: String) {
+        val outFile = File(outfile).absoluteFile
+
+        var writer = PrintWriter(System.out)
+        try{
+            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
+
+            writer = PrintWriter(outFile)
+
+            for (i in this.novelReads) {
+                writer.println("None|$i")
+            }
+
+        } catch (err: IOException) {
+            logger.error(err.message)
+            for (i in err.stackTrace) {
+                logger.error(i)
+            }
+        } finally {
+            writer.close()
+        }
+    }
 
     /**
      * 保存构件好的基因的template

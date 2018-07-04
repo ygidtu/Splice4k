@@ -11,7 +11,12 @@ import java.util.Objects
 import kotlin.math.*
 
 import main.carrier.SpliceJunction
+import main.carrier.isDownStream
+import main.carrier.isUpStream
+import main.carrier.overlapPercent
+
 import main.extractor.*
+
 
 
 /**
@@ -57,44 +62,11 @@ class SJFinder(
     }
 
     /**
-     * 检查第一个外显子是否在第二个的上游
-     * @param first 外显子位点 Array(start, end)
-     * @param second 外显子位点 Array(start, end)
-     * @return true 有。false 没有
-     */
-    private fun isUpStream(first: Array<Int>, second: Array<Int>): Boolean {
-        return first[1] < second[0]
-    }
-
-
-    /**
-     * 检查第一个外显子是否在第二个的下游
-     * @param first 外显子位点 Array(start, end)
-     * @param second 外显子位点 Array(start, end)
-     * @return true 有。false 没有
-     */
-    private fun isDownStream(first: Array<Int>, second: Array<Int>): Boolean {
-        return first[0] > second[1]
-    }
-
-
-    /**
      * 检查两个点是否在特定范围内
      *
      */
     private fun isSameRegion(first: Int, second: Int): Boolean {
         return kotlin.math.abs(first - second) <= this.distance
-    }
-
-    /**
-     * 计算两个文件之间的重合程度
-     * @param first 第一个位点的坐标，主要是reads上的exon
-     * @param second 第二个位点的坐标，主要是基因的intron
-     * @return double, 两个位点重合的比例，如果<=0，则没有重合
-     */
-    private fun overlapPercent(first: Array<Int>, second: Array<Int>): Double {
-        return (min(first[1], second[1]) - max(first[0], second[0])) /
-                (second[1] - second[0]).toDouble()
     }
 
     /**
@@ -120,7 +92,7 @@ class SJFinder(
             val tmpRead = reads[j]
 
             when {
-                this.isUpStream(tmpGene, tmpRead) -> {  // 基因在上游
+                isUpStream(tmpGene, tmpRead) -> {  // 基因在上游
                     /*
                      如果基因的外显子，并没有与任何read的外显子有重合，
                      那么这个exon基本就是exon_skipping了
@@ -159,7 +131,7 @@ class SJFinder(
                     }
                 }
 
-                this.isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
+                isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
                     j++
                 }
 
@@ -173,7 +145,7 @@ class SJFinder(
 
                     if (  // intron retention   require 90% coverage
                             i < gene.size -1 &&
-                            this.overlapPercent(
+                            overlapPercent(
                                 tmpRead,
                                 arrayOf(tmpGene[1], gene[i+1][0])
                             ) > this.overlap
