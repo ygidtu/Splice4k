@@ -21,6 +21,32 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
     private var count: Int = 1
 
     /**
+     * 判断基因和reads的exon的重合程度是否符合90%的要求
+     * 任意一对符合要求即可
+     * @return Boolean  true符合；false不符合
+     */
+    fun isGeneReadsExonsOverlapQualified(overlapStandard: Double = 90.0): Boolean {
+        var i = 0; var j = 0
+
+        while (i < this.gene.exons.size && j < this.reads.exons.size ) {
+            val tmpGene = this.gene.exons[i]
+            val tmpRead = this.reads.exons[j]
+
+            if (isUpStream(tmpGene, tmpRead)) {
+                i++
+            } else if (isDownStream(tmpGene, tmpRead)) {
+                j++
+            } else {
+                if (overlapPercent(tmpGene, tmpRead) >= overlapStandard) {
+                    return true
+                }
+                j++
+            }
+        }
+        return false
+    }
+
+    /**
      * toString 重载，将对应的基因和reads配对成一行文本输出
      * @return gene|read
      */

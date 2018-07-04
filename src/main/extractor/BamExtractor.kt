@@ -128,9 +128,7 @@ class BamExtractor(
             // add exons
             val tmpExons = mutableListOf<Array<Int>>()
 
-            println("${record.start}, ${record.alignmentStart}")
             for (i in 0..(introns.size - 1) step 2) {
-                println(i)
                 if (introns[i] > introns[i + 1]) throw ExonException("start[${introns[i]}] > end[${introns[i+1]}]")
                 tmpExons.add(arrayOf(introns[i], introns[i + 1]))
             }

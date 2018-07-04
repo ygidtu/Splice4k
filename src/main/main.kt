@@ -240,8 +240,10 @@ fun main(args: Array<String>) {
 
 
         println()
-        matched.saveTo(File(outDir, "join_stats.tsv").toString())
+        matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
         matched.saveTemplate(File(outDir, "templates.tsv").toString())
+        matched.saveNovel(File(outDir, "novel.tsv").toString())
+        matched.savePotentialFusion(File(outDir, "potential_fusions.tsv").toString())
 
         logger.info("Start to identify splice events\n")
         SJFinder(
