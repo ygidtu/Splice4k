@@ -33,7 +33,7 @@ class SJFinder(
         private val distance: Int = 3,
         private val overlap: Double = 90.0
 ) {
-    private val logger = Logger.getLogger(SJFinder::class.java)
+    private val logger = Logger.getLogger(SJFinder::class.java.toString())
     private val results = mutableListOf<SpliceJunction>()
 
 
@@ -82,8 +82,9 @@ class SJFinder(
             splice: SpliceJunction
     ) {
         var i = 0; var j = 0
-        var firstOverlap = true
-        var logged = 0
+        // var firstOverlap = true
+        var skipped = false
+        // var logged = 0
 
         val spliced = mutableSetOf<Int>()
 
@@ -124,11 +125,12 @@ class SJFinder(
                     }
 
                     i++
-
+                    /* 
                     if (!firstOverlap) {
                         j = logged
                         firstOverlap = true
                     }
+                    */
                 }
 
                 isDownStream(tmpGene, tmpRead) -> {    // 基因在下游
@@ -136,11 +138,12 @@ class SJFinder(
                 }
 
                 else -> {   // 有重合
-
+                    /*
                     if (firstOverlap) {
                         logged = j
                         firstOverlap = false
                     }
+                     */
                     spliced.add(Objects.hash(tmpGene))
 
                     if (  // intron retention   require 90% coverage
@@ -168,18 +171,9 @@ class SJFinder(
                             k++
                         }
                         k--
+                        skipped = true
+                        i = k + 1
                         tmpGene[1] = gene[k][1]
-
-                        /*
-                        同理，检查这个reads是否横跨前边的基因外显子，
-                        然后构成一个完成的基因范围
-                         */
-                        k = i
-                        while ( k >= 0 && tmpGene[1] > tmpRead[0]) {
-                            k--
-                        }
-                        if (k < 0) k++
-                        tmpGene[0] = gene[k][0]
                     }
 
                     if (  // intron in exon
@@ -200,48 +194,45 @@ class SJFinder(
                             k++
                         }
                         k--
+                        skipped = true
+                        j = k + 1
                         tmpRead[1] = reads[k][1]
+                    }
 
-                        /*
-                        同上
-                         */
-                        k = j
-                        while (k >= 0 && tmpGene[0] > reads[k][1]) {
-                            k--
+                    if (j != 0 && j != reads.size - 1) {
+                        // 在不同情形下，确定了不同的基因和reads外显子范围，用来比对donor/acceptor
+                        when {
+                            !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                    !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                                splice.addEvent(
+                                        "donor/acceptor",
+                                        tmpRead[0],
+                                        tmpRead[1]
+                                )
+
+                            !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                    this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                                splice.addEvent(
+                                        "donor",
+                                        kotlin.math.min(tmpGene[0], tmpRead[0]),
+                                        kotlin.math.max(tmpGene[0], tmpRead[0])
+                                )
+
+                            this.isSameRegion(tmpGene[0], tmpRead[0]) &&
+                                    !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
+                                splice.addEvent(
+                                        "acceptor",
+                                        kotlin.math.min(tmpGene[1], tmpRead[1]),
+                                        kotlin.math.max(tmpGene[1], tmpRead[1])
+                                )
                         }
-                        if (k < 0) k++
-                        tmpRead[0] = reads[k][0]
                     }
 
-                    // 在不同情形下，确定了不同的基因和reads外显子范围，用来比对donor/acceptor
-                    when {
-                        !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
-                                !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
-                            splice.addEvent(
-                                    "donor/acceptor",
-                                    tmpRead[0],
-                                    tmpRead[1]
-                            )
-
-                        !this.isSameRegion(tmpGene[0], tmpRead[0]) &&
-                                this.isSameRegion(tmpGene[1], tmpRead[1]) ->
-                            splice.addEvent(
-                                    "donor",
-                                    kotlin.math.min(tmpGene[0], tmpRead[0]),
-                                    kotlin.math.max(tmpGene[0], tmpRead[0])
-                            )
-
-                        this.isSameRegion(tmpGene[0], tmpRead[0]) &&
-                                !this.isSameRegion(tmpGene[1], tmpRead[1]) ->
-                            splice.addEvent(
-                                    "acceptor",
-                                    kotlin.math.min(tmpGene[1], tmpRead[1]),
-                                    kotlin.math.max(tmpGene[1], tmpRead[1])
-                            )
+                    if (!skipped) {
+                        j++
+                    } else {
+                        skipped = false
                     }
-
-                    j++
-
                 }
 
             }

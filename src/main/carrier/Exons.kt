@@ -36,7 +36,13 @@ fun isDownStream(first: Array<Int>, second: Array<Int>): Boolean {
  * @param second 第二个位点的坐标，主要是基因的intron
  * @return double, 两个位点重合的比例，如果<=0，则没有重合
  */
-fun overlapPercent(first: Array<Int>, second: Array<Int>): Double {
-    return (min(first[1], second[1]) - max(first[0], second[0])) /
-            (second[1] - second[0]).toDouble() * 100
+fun overlapPercent(first: Array<Int>, second: Array<Int>, all: Boolean = false): Double {
+    
+    if (all) {
+        return (min(first[1], second[1]) - max(first[0], second[0])) /
+                    (second[1] - second[0]).toDouble() * 100
+    } else {
+        return (min(first[1], second[1]) - max(first[0], second[0])) /
+                    (max(first[1], second[1]) - min(first[0], second[0])).toDouble() * 100
+    }
 }

@@ -69,7 +69,7 @@ class GtfExtractor(
             var gap = 10
             while (reader.hasNext()) {
                 if (readIn % gap == 0) {
-                    this.logger.info("Reading $readIn lines")
+                    this.logger.info("Read $readIn lines")
                     if (gap < 10001) gap *= 10
                 }
                 readIn ++

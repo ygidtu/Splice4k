@@ -21,12 +21,22 @@ import main.extractor.*
  */
 
 
+/**
+ * 将基因与read匹配到一起的class
+ * @param Gene 参考基因组的Extractor
+ * @param Reads 测序reads的BamExtractor
+ * @param overlap 定义基因和read确实具是一对的重合程度的阈值
+ * @param foldChange read与基因可能存在多对多的关系，其中重合程度最高的要大于第二多少，才将两者匹配在一起
+ * @param distanceError 多少bp以内，可以认为两个位点其实是同一个位点，这里是容错率
+ * @param chunk 若内存不够，文件过大，分成小块读取
+ */
 class GeneReadsCoupler(
         private val Gene: Extractor,
-        private val Reads: Extractor,
+        private val Reads: BamExtractor,
         private val overlap: Double = 90.0,
         private val foldChange: Double = 1.5,
-        private val distanceError: Int = 3
+        private val distanceError: Int = 3,
+        private val chunk: Boolean = false
         ) {
     private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
 
@@ -40,10 +50,11 @@ class GeneReadsCoupler(
         this.matchGeneReads()
     }
 
+
     /**
-     * 将基因与reads匹配到一起
+     * 内存足够，不需要分块读取
      */
-    private fun matchGeneReads() {
+    private fun matchGeneReadsWithoutChunk(): MutableMap<Genes, MutableList<GeneRead>>  {
         // 这个gap就是为了控制输出一个合适的进度条的
         val gap = this.Gene.totalLine.toString().length - 2
         var logged = -1
@@ -64,10 +75,10 @@ class GeneReadsCoupler(
             }
 
             when {
-                /*
-                 基因在read上游，下一个基因
-                 添加了3bp的误差空间，如果距离在3bp内的都算是同一个点了
-                 */
+            /*
+             基因在read上游，下一个基因
+             添加了3bp的误差空间，如果距离在3bp内的都算是同一个点了
+             */
                 tmpGene.isUpStream(tmpRead, this.distanceError) -> {
                     tmpGene = this.Gene.next()
 
@@ -76,7 +87,7 @@ class GeneReadsCoupler(
                     tmpRead = this.Reads.get(readIndex)
                     firstOverlap = true
                 }
-                // 基因在read下游，读一个read
+            // 基因在read下游，读一个read
                 tmpGene.isDownStream(tmpRead, this.distanceError) -> {
                     if (!tmpMatched.containsKey(tmpRead)) {
                         this.novelReads.add(tmpRead)
@@ -111,6 +122,76 @@ class GeneReadsCoupler(
                     tmpRead = this.Reads.next()
                 }
             }
+        }
+        return tmpMatched
+    }
+
+
+    /**
+     * 文件过大，内存不够，分割文件进行读取
+     * 唯独一点需要注意，为了保证有3bp的容错，
+     * 在获取overlap区域的时候，需要在基因的start和end区域进行相应的加减
+     * 由于这个获取方式，可能会导致不停的遍历整个bam文件
+     * 因此执行效率可能会有比较大的降低
+     */
+    private fun matchGeneReadsWithChunk(): MutableMap<Genes, MutableList<GeneRead>> {
+        val tmpMatched = mutableMapOf<Genes, MutableList<GeneRead>>()
+
+        val gap = this.Gene.totalLine.toString().length - 2
+        var logged = -1
+
+        var tmpGene = this.Gene.next()
+
+        while (tmpGene != null) {
+            if (this.Gene.index % 10.0.pow(gap.toDouble()).toInt() == 0) {
+                if (logged != this.Gene.index) {
+                    logger.info("Gene Reads matching at ${this.Gene.index}/${this.Gene.totalLine}")
+                    logged = this.Gene.index
+                }
+            }
+
+            val tmpReads = this.Reads.getAllRegions(
+                    tmpGene.chrom,
+                    tmpGene.start - this.distanceError,
+                    tmpGene.end + this.distanceError
+            )
+
+
+            for (tmpRead in tmpReads) {
+                if (tmpGene.strand == tmpRead.strand) {
+                    val tmpGeneRead = GeneRead(tmpGene, tmpRead)
+
+                    /*
+                    2018.07.04
+                    修正，使用基因和reads外显子的覆盖度作为基因和read匹配评判的标准
+                     */
+                    if (tmpGeneRead.isGeneReadsExonsOverlapQualified(this.overlap)) {
+                        // 判断是否临时的匹配中是否含有该条read了
+                        if (tmpMatched.containsKey(tmpRead)) {
+                            tmpMatched[tmpRead]!!.add(tmpGeneRead)
+                        } else {
+                            tmpMatched[tmpRead] = mutableListOf(tmpGeneRead)
+                        }
+                    }
+                }
+            }
+
+            tmpGene = this.Gene.next()
+        }
+
+        return tmpMatched
+    }
+
+
+    /**
+     * 将基因与reads匹配到一起
+     * 根据是否采用chunk，
+     * 采用不同的文件读取方式进行处理
+     */
+    private fun matchGeneReads() {
+        val tmpMatched = when {
+            this.chunk -> this.matchGeneReadsWithoutChunk()
+            else -> this.matchGeneReadsWithChunk()
         }
 
         // 添加重合程度判断，相较于两者中短的区域，覆盖程度要大于90%
