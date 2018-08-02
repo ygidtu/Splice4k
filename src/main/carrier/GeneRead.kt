@@ -37,7 +37,7 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
             } else if (isDownStream(tmpGene, tmpRead)) {
                 j++
             } else {
-                if (overlapPercent(tmpGene, tmpRead) >= overlapStandard) {
+                if (overlapPercent(tmpGene, tmpRead, true) >= overlapStandard) {
                     return true
                 }
                 j++

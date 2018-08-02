@@ -133,10 +133,12 @@ fun main(args: Array<String>) {
     val parser = DefaultParser()
     val help = HelpFormatter()
 
+
     if (args.isEmpty()) {
         help.printHelp("usage message", options)
         exitProcess(0)
     }
+
 
     try{
         
@@ -156,7 +158,6 @@ fun main(args: Array<String>) {
 
         }
 
-
         var silent = false
         when {
             parm.hasOption("help") -> {
@@ -172,7 +173,7 @@ fun main(args: Array<String>) {
             parm.hasOption("silent") -> silent = true
         }
 
-
+        // 生成各种文件路径
         val outDir = File(parm.getOptionValue("output")).absoluteFile
 
         if (!outDir.exists()) outDir.parentFile.mkdirs()
@@ -180,15 +181,22 @@ fun main(args: Array<String>) {
         val bamFile = File(parm.getOptionValue("bam")).absoluteFile
         val bamTsv = File(outDir, bamFile.name.split(".")[0] + ".tsv")
 
-        println()
-        logger.info("Start to read $bamFile")
-        val bam = BamExtractor(bamFile.toString(), silent = silent)
-        bam.saveTo(bamTsv.toString())
+        val runtime = Runtime.getRuntime()
+        val memoryChunk = runtime.totalMemory() / 10
+        val chunk = when {
+            bamFile.length() > runtime.freeMemory() ||
+                    runtime.freeMemory() < memoryChunk ||
+                    bamFile.length() > memoryChunk -> true
+            else -> false
+        }
 
+        logger.info("Start to read $bamFile")
+        val bam = BamExtractor(bamFile.toString(), silent = silent, chunk = chunk)
+
+        if (!chunk) bam.saveTo(bamTsv.toString())
 
         val ref : Extractor
 
-        println()
         logger.info("Start to read ${parm.getOptionValue("r")}")
         when {
 
@@ -229,17 +237,15 @@ fun main(args: Array<String>) {
 
         }
 
-        println()
         logger.info("Start to compare ref and reads\n")
         val matched = GeneReadsCoupler(
                 ref, bam,
                 overlap = parm.getOptionValue("min-ref-read", "90.0").toDouble(),
                 foldChange = parm.getOptionValue("fold-change", "1.5").toDouble(),
-                distanceError = parm.getOptionValue("min-AS-length", "3").toInt()
+                distanceError = parm.getOptionValue("min-AS-length", "3").toInt(),
+                chunk = chunk
         )
 
-
-        println()
         matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
         matched.saveTemplate(File(outDir, "templates.tsv").toString())
         matched.saveNovel(File(outDir, "novel.tsv").toString())
