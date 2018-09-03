@@ -1,4 +1,4 @@
-package main.carrier
+package dsu.carrier
 
 import java.util.Objects
 
@@ -52,7 +52,7 @@ class SpliceJunction(val gene: Genes) {
          * @return 按照start和end之间差距的1/20为范围，分别向上下游扩大这么多
          */
         fun getPosition() : String {
-//            val gap = (this.end - this.start) / 20
+
             val gap = 100
             if (this.start >= gap) {
                 return "${this.start - gap}-${this.end + gap}"
@@ -87,9 +87,9 @@ class SpliceJunction(val gene: Genes) {
      * @return 事件字符串，主要包括事件基因，基因位置，和事件位置以及扩展后的位置（方便画图）
      */
     private fun getEventString(event: Event): String {
-        val genePosition = "${this.gene.chrom}:${this.gene.start}-${this.gene.end}${this.gene.strand}"
-        val eventString = "${event.name}\t${this.gene.chrom}:${event.start}-${event.end}"
-        val eventSpan = "${this.gene.chrom}:${event.getPosition()}"
+        val genePosition = "${this.gene.chromosome}:${this.gene.start}-${this.gene.end}${this.gene.strand}"
+        val eventString = "${event.name}\t${this.gene.chromosome}:${event.start}-${event.end}"
+        val eventSpan = "${this.gene.chromosome}:${event.getPosition()}"
         return "${this.gene.transcriptId}\t$genePosition\t$eventString\t$eventSpan"
     }
 

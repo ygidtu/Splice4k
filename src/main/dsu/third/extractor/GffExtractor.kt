@@ -1,4 +1,4 @@
-package main.extractor
+package dsu.third.extractor
 
 import java.io.File
 import java.io.IOException
@@ -6,12 +6,14 @@ import java.util.Scanner
 import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import dsu.carrier.Genes
+import dsu.carrier.Exons
+import dsu.progressbar.ProgressBar
 
 
 /**
  * @since 2018.06.14
- * @version 0.1
+ * @version 20180903
  * @author zhangyiming
  * 从gff3格式中提取所需信息
  */
@@ -45,8 +47,15 @@ class GffExtractor(
             val tmp = inf.split("=")
 
             if (tmp[0] == "Parent") {
-                results["ParentType"] = tmp[1].split(":")[0]
-                results["Parent"] = tmp[1].split(":")[1]
+                results["ParentType"] = when {
+                    ":" in tmp[1] -> tmp[1].split(":")[0]
+                    else -> tmp[1]
+                }
+
+                results["Parent"] = when {
+                    ":" in tmp[1] -> tmp[1].split(":")[1]
+                    else -> tmp[1]
+                }
             } else {
                 results[tmp[0]] = tmp[1]
             }
@@ -62,32 +71,24 @@ class GffExtractor(
      */
     private fun gffReader(): List<Genes> {
         val transcripts: MutableList<Genes> = mutableListOf()
-        val exons: MutableMap<String, List<Array<Int>>> = mutableMapOf()
+        val exons: MutableMap<String, List<Exons>> = mutableMapOf()
 
+        val pb = ProgressBar(message = "Reading Gff")
         var reader = Scanner(System.`in`)
         try{
             reader = Scanner(File(this.gff))
-            val pattern = Regex(".*transcript:.*")
-
-            var readIn = 0
-            var gap = 10
             while (reader.hasNext()) {
-
-                if (readIn % gap == 0) {
-                    this.logger.info("Read $readIn lines")
-
-                    if (gap < 10001) gap *= 10
-                }
-                readIn ++
-
+                pb.step()
                 val line = reader.nextLine()
 
-                if (!pattern.matches(line)) continue   // skip annotations
+                val lines = line.split("\\s+".toRegex())
 
-                val lines = line.split("\t")
+                if ( line.startsWith("#") || !lines[2].toLowerCase().matches("(.*(rna|transcript)(.*)?|exon)".toRegex()) ) {
+                    continue
+                }
 
                 val tmpGene = Genes(
-                        chrom = lines[0],
+                        chromosome = lines[0],
                         start = lines[3].toInt(),
                         end = lines[4].toInt(),
                         strand = lines[6].toCharArray()[0],
@@ -95,12 +96,11 @@ class GffExtractor(
                 )
 
                 // 分别判断是否为转录本和exon
-                if (".*ID=transcript:.*".toRegex().matches(line)) {
+                if ( lines[2].toLowerCase().matches("(.*rna|transcript)(.*)?".toRegex()) ) {
                     transcripts.add(tmpGene)
-                } else if (".*Parent=transcript:.*".toRegex().matches(line) && lines[2] == "exon") {
-
+                } else if ( lines[2] == "exon" ) {
                     // 外显子收集的这个写法比Python复杂些，但是功能是一样的
-                    val tmp = mutableListOf(arrayOf(tmpGene.start, tmpGene.end))
+                    val tmp = mutableListOf(Exons(tmpGene.start, tmpGene.end))
 
                     if (exons.containsKey(tmpGene.parent)) {
                         tmp.addAll(exons[tmpGene.parent]!!)
@@ -119,8 +119,6 @@ class GffExtractor(
         } finally {
             reader.close()
         }
-
-        transcripts.sort()
 
         // 为转录本指定外显子
         for (i in transcripts) {

@@ -1,4 +1,4 @@
-package main.extractor
+package dsu.third.extractor
 
 import java.io.File
 import java.io.IOException
@@ -6,11 +6,14 @@ import java.io.PrintWriter
 
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import dsu.carrier.Genes
 
 open class Extractor(private val silent: Boolean = false) {
     private val logger = Logger.getLogger(Extractor::class.java)
     var data = mutableListOf<Genes>().toList()
+    get() {
+        return field.sorted()
+    }
     var totalLine = 0
     get() {
         if (field != this.data.size) {

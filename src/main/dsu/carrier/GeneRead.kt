@@ -1,4 +1,4 @@
-package main.carrier
+package dsu.carrier
 
 import java.util.Objects
 
@@ -32,12 +32,12 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
             val tmpGene = this.gene.exons[i]
             val tmpRead = this.reads.exons[j]
 
-            if (isUpStream(tmpGene, tmpRead)) {
+            if (tmpGene.isUpStream(tmpRead)) {
                 i++
-            } else if (isDownStream(tmpGene, tmpRead)) {
+            } else if (tmpGene.isDownStream(tmpRead)) {
                 j++
             } else {
-                if (overlapPercent(tmpGene, tmpRead, true) >= overlapStandard) {
+                if (tmpGene.overlapPercent(tmpRead, true) >= overlapStandard) {
                     return true
                 }
                 j++
@@ -93,13 +93,6 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
                 }
             }
         }
-    }
-
-    /**
-     * 上调count数目
-     */
-    fun increaseCount() {
-        this.count++
     }
 
 
