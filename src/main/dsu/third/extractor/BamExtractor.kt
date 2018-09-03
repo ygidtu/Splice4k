@@ -1,20 +1,22 @@
-package main.extractor
+package dsu.third.extractor
 
 import java.io.File
 
 import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMRecord
-import htsjdk.samtools.SAMRecordIterator
 
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
-import main.errors.ExonException
+import dsu.carrier.Genes
+import dsu.carrier.Exons
+import dsu.errors.ExonException
+
+import dsu.progressbar.ProgressBar
 
 
 /**
  * @since 2018.06.18
- * @version 0.1
+ * @version 20180903
  * @author zhangyiming
  *
  * 从bam/sam文件中提取所有的exon区域，并且统计其exon数目
@@ -25,13 +27,11 @@ import main.errors.ExonException
  * @param bam 输入的bam文件的路径
  * @param unique 保留匹配到几个位点上的reads， 默认为1
  * @param silent Boolean值，减少信息输出，默认为false
- * @param chunk Boolean值，如果文件过大，就分成采用片段式读取节省内存
  */
 class BamExtractor(
         bam: String,
         private val unique: Int=1,
-        private val silent: Boolean = false,
-        private val chunk: Boolean = false
+        private val silent: Boolean = false
 ): Extractor(silent) {
 
     private val logger: Logger = Logger.getLogger(BamExtractor::class.java)
@@ -41,10 +41,8 @@ class BamExtractor(
 
 
     init {
-        if ( !this.chunk ) {
-            this.data = getAllRegions()
-            this.totalLine = this.data.size
-        }
+        this.data = getAllRegions()
+        this.totalLine = this.data.size
     }
 
 
@@ -89,31 +87,18 @@ class BamExtractor(
 
     /**
      * 获取每条bam中的exon信息
-     * @param chrom 染色体信息
-     * @param start 起始位点
-     * @param end 终止位点
      * @return list of Genes
      */
-    fun getAllRegions(chrom: String?=null, start: Int?=null, end: Int?=null): List<Genes> {
-        /*
-        提供某个区域便于查询特定区域内的BamRecords。
-        主要可以节省内存
-         */
-
-        val tmpReader = when {
-            chrom != null && start != null && end != null -> this.reader.queryOverlapping(chrom, start, end)
-            else -> this.reader.iterator()
-        }
+    private fun getAllRegions(): List<Genes> {
+        val tmpReader = this.reader.iterator()
 
         val results = mutableListOf<Genes>()
-        var gap = 1
 
-        for ( (index, record) in tmpReader.withIndex()) {
 
-            if (index % gap == 0) {
-                this.logger.info("Read $index lines")
-                if (gap < 10001) gap *= 10
-            }
+        val pb = ProgressBar(message = "Reading Bam")
+        for ( record in tmpReader) {
+
+            pb.step()
 
             // 判断reads是否为unique mapped
             if (record.hasAttribute("NH")) {
@@ -134,7 +119,7 @@ class BamExtractor(
 
             // init Genes
             val tmpGene = Genes(
-                    chrom = record.referenceName,
+                    chromosome = record.referenceName,
                     start = record.alignmentStart,
                     end = record.alignmentEnd,
                     geneName = record.readName,
@@ -145,16 +130,16 @@ class BamExtractor(
             )
 
             // add exons
-            val tmpExons = mutableListOf<Array<Int>>()
+            val tmpExons = mutableListOf<Exons>()
 
             for (i in 0..(introns.size - 1) step 2) {
                 if (introns[i] > introns[i + 1]) throw ExonException("start[${introns[i]}] > end[${introns[i+1]}]")
-                tmpExons.add(arrayOf(introns[i], introns[i + 1]))
+                tmpExons.add(Exons(introns[i], introns[i + 1]))
             }
             tmpGene.exons = tmpExons
             results.add(tmpGene)
         }
-        results.sortWith(compareBy({it.chrom}, {it.start}, {it.end}))
+
         return results
     }
 

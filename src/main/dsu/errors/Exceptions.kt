@@ -1,4 +1,4 @@
-package main.errors
+package dsu.errors
 
 class ChromosomeException(override val message: String) : Throwable()
 

@@ -1,4 +1,4 @@
-package main.extractor
+package dsu.third.extractor
 
 import java.io.File
 import java.io.IOException
@@ -7,12 +7,14 @@ import java.util.Scanner
 import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
-import main.carrier.Genes
+import dsu.carrier.Genes
+import dsu.carrier.Exons
+import dsu.progressbar.ProgressBar
 
 
 /**
  * @since 2018.06.14
- * @version 0.1
+ * @version 20180903
  * @author zhangyiming
  * 从gtf格式中提取所需信息
  */
@@ -42,7 +44,12 @@ class GtfExtractor(
     private fun extractTagInformation(info: List<String>): Map<String, String> {
         val results: MutableMap<String, String> = mutableMapOf()
 
+        val msgWeNeed = arrayOf("gene_name", "gene_id", "transcript_name", "transcript_id")
+
         for (i in 0..(info.size - 1) step 2) {
+            if (info[i] !in msgWeNeed) {
+                continue
+            }
             results[info[i]] = info[i+1]     // get rid of useless characters
                     .replace("\"", "")
                     .replace(";", "")
@@ -58,21 +65,17 @@ class GtfExtractor(
      */
     private fun gtfReader(): List<Genes> {
         val transcripts: MutableList<Genes> = mutableListOf()
-        val exons: MutableMap<String, List<Array<Int>>> = mutableMapOf()
+        val exons: MutableMap<String, List<Exons>> = mutableMapOf()
 
         var reader = Scanner(System.`in`)
-
+        val pb = ProgressBar(message = "Reading Gtf")
         try {
             reader = Scanner(File(this.gtf))
 
-            var readIn = 0
-            var gap = 10
             while (reader.hasNext()) {
-                if (readIn % gap == 0) {
-                    this.logger.info("Read $readIn lines")
-                    if (gap < 10001) gap *= 10
-                }
-                readIn ++
+
+
+                pb.step()
 
                 val line = reader.nextLine()
 
@@ -80,9 +83,9 @@ class GtfExtractor(
 
                 val lines = line.split("\\s+".toRegex())
                 val tmpGene = Genes(
-                        chrom=lines[0],
-                        start=lines[3].toInt(),
-                        end=lines[4].toInt(),
+                        chromosome = lines[0],
+                        start = lines[3].toInt(),
+                        end = lines[4].toInt(),
                         strand = lines[6].toCharArray()[0],
                         information = this.extractTagInformation(lines.subList(8, lines.size))
                 )
@@ -90,7 +93,7 @@ class GtfExtractor(
                 if (lines[2] == "transcript") {
                     transcripts.add(tmpGene)
                 } else if (lines[2] == "exon") {
-                    val tmp = mutableListOf(arrayOf(tmpGene.start, tmpGene.end))
+                    val tmp = mutableListOf(Exons(tmpGene.start, tmpGene.end))
 
                     if (exons.containsKey(tmpGene.geneId)) {
                         tmp.addAll(exons[tmpGene.geneId]!!)
@@ -109,8 +112,6 @@ class GtfExtractor(
         } finally {
             reader.close()
         }
-
-        transcripts.sort()
 
         for (i in transcripts) {
             if (exons.containsKey(i.geneId)) {
