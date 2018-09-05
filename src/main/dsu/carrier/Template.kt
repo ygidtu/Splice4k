@@ -11,10 +11,10 @@ import java.util.Objects
  */
 
 class Template(
-        val gene: Genes,
+        val reference: Genes,
         val template: Genes
 ): Comparable<Template> {
-    var geneExons = this.gene.exons.sorted().toMutableList()
+    var geneExons = this.reference.exons.sorted().toMutableList()
     get() {
         return field.sorted().toMutableList()
     }
@@ -30,14 +30,14 @@ class Template(
             exonString += "$i,"
         }
 
-        return "${this.template.chromosome}\t${this.template.start}\t${this.template.end}\t${this.gene.transcriptId}\t${this.gene.geneName}\t$exonString"
+        return "${this.template.chromosome}\t${this.template.start}\t${this.template.end}\t${this.reference.transcriptId}\t${this.reference.geneName}\t$exonString"
     }
 
     /**
      * hashCode重载
      */
     override fun hashCode(): Int {
-        return Objects.hash(this.gene.transcriptId, this.template.transcriptId)
+        return Objects.hash(this.reference.transcriptId, this.template.transcriptId)
     }
 
     /**
@@ -59,8 +59,8 @@ class Template(
      */
     override fun compareTo(other: Template): Int {
         return when {
-            this.gene > other.gene -> 1
-            this.gene < other.gene -> -1
+            this.reference > other.reference -> 1
+            this.reference < other.reference -> -1
             else -> {
                 when {
                     this.template > other.template -> 1

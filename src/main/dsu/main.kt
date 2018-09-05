@@ -23,15 +23,17 @@ import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.PatternLayout
 import java.io.File
+import java.io.FileNotFoundException
 import kotlin.system.exitProcess
 
 
 
-class Parameters: CliktCommand() {
+class Parameters: CliktCommand(invokeWithoutSubcommand = true) {
     private val version by option("--version", "-v", help = "version").flag(default = false)
 
     override fun run() {
         if ( this.version ) {
+            println("2080905")
             exitProcess(0)
         }
     }
@@ -48,11 +50,11 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
 }
 
 
-class PacBio: CliktCommand(help = "Find AS from PacBio data") {
+class Long: CliktCommand(help = "Find AS from PacBio data") {
 
-    private val input by argument("-i", help = "Path to input Bam/Sam file").file(exists = true)
-    private val reference by argument("-r", help = "Path to reference file [gtf|gff3]").file(exists = true)
-    private val output by argument("-o", help = "Path to output directory").file()
+    private val input by option("-i", "--input", help = "Path to input Bam/Sam file").file(exists = true)
+    private val reference by option("-r", "--reference", help = "Path to reference file [gtf|gff3]").file(exists = true)
+    private val output by option("-o", "--output", help = "Path to output directory").file()
 
     private val error by option(
             "-e",
@@ -83,7 +85,7 @@ class PacBio: CliktCommand(help = "Find AS from PacBio data") {
         require( it > 0 && it <= 100 ) {"this value must between 0 and 100"}
     }
 
-    private val silent by option("--show", "-s", help = "Enable detailed messages").flag(default = false)
+    private val show by option("--show", "-s", help = "Enable detailed messages").flag(default = false)
     private val log: String? by option(help = "Path to the log file")
 
 
@@ -104,51 +106,61 @@ class PacBio: CliktCommand(help = "Find AS from PacBio data") {
     }
 
 
+    private fun checkFile(infile: File?) {
+        if ( infile == null ) {
+            throw FileNotFoundException("Input could not be null")
+        }
+    }
+
     override fun run() {
         if ( this.log != null ) {
             this.addFileAppender(log.toString())
         }
 
-        val logger = Logger.getLogger(PacBio::class.java)
+        this.checkFile(this.input)
+        this.checkFile(this.output)
+        this.checkFile(this.reference)
+
+        val logger = Logger.getLogger(Long::class.java)
 
         // 生成各种文件路径
-        val outDir = this.output.absoluteFile
+        val outDir = this.output!!.absoluteFile
 
         if (!outDir.exists()) outDir.parentFile.mkdirs()
 
-        val bamFile = this.input.absoluteFile
+        val bamFile = this.input!!.absoluteFile
         val bamTsv = File(outDir, bamFile.name.split(".")[0] + ".tsv")
 
         logger.info("Start to read $bamFile")
-        val bam = BamExtractor(bamFile.toString(), silent = silent)
+        val bam = BamExtractor(bamFile.toString(), silent = !this.show)
 
         bam.saveTo(bamTsv.toString())
 
         val ref : Extractor
 
         logger.info("Start to read ${this.reference}")
-        val refFile = this.reference.absoluteFile
+        val refFile = this.reference!!.absoluteFile
         val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
         when {
 
             Regex(".*\\.gff3?$").matches(
                     this.reference.toString().toLowerCase()
             ) -> {
-                ref = GffExtractor(refFile.toString(), silent)
+                ref = GffExtractor(refFile.toString(), !this.show)
                 ref.saveTo(refTsv.toString())
             }
 
             Regex(".*\\.gtf$").matches(
                     this.reference.toString().toLowerCase()
             ) -> {
-                ref = GtfExtractor(refFile.toString(), silent)
+                ref = GtfExtractor(refFile.toString(), !this.show)
                 ref.saveTo(refTsv.toString())
             }
 
             Regex(".*\\.(bam|sam)$").matches(
                     this.reference.toString().toLowerCase()
             ) -> {
-                ref = GtfExtractor(refFile.toString(), silent)
+                ref = GtfExtractor(refFile.toString(), !this.show)
                 ref.saveTo(refTsv.toString())
             }
 
@@ -184,11 +196,11 @@ class PacBio: CliktCommand(help = "Find AS from PacBio data") {
 
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
-    val cmd = Parameters().subcommands(Extract()).subcommands(PacBio())
+    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Long())
     if (args.size <= 1) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
-            args[0] == "pacbio" -> PacBio().getFormattedHelp()
+            args[0] == "long" -> dsu.Long().getFormattedHelp()
             args[0] == "extract" -> Extract().getFormattedHelp()
             else -> cmd.getFormattedHelp()
         }
@@ -196,10 +208,14 @@ fun main(args: Array<String>) {
         exitProcess(0)
     }
 
-    try {
+    try{
         cmd.parse(args)
     } catch (e: CliktError) {
         logger.error(e.localizedMessage)
         println(cmd.getFormattedHelp())
+        println()
+        println(dsu.Long().getFormattedHelp())
+        println()
+        println(Extract().getFormattedHelp())
     }
 }
