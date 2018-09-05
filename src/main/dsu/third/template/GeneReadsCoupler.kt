@@ -31,7 +31,7 @@ import dsu.progressbar.ProgressBar
  * @param distanceError 多少bp以内，可以认为两个位点其实是同一个位点，这里是容错率
  */
 class GeneReadsCoupler(
-        private val Gene: Extractor,
+        private val reference: Extractor,
         private val Reads: BamExtractor,
         private val overlap: Double = 90.0,
         private val foldChange: Double = 1.5,
@@ -47,29 +47,31 @@ class GeneReadsCoupler(
 
     init {
         this.matchGeneReads()
+        this.buildTemplates()
     }
 
 
     /**
      * 内存足够，不需要分块读取
      */
-    private fun matchGeneReadsWithoutChunk(): MutableMap<Genes, MutableList<GeneRead>>  {
+    private fun matchGeneReadsWithoutChunk(): MutableMap<Int, MutableSet<GeneRead>>  {
         // 这个gap就是为了控制输出一个合适的进度条的
 
-        val tmpMatched = mutableMapOf<Genes, MutableList<GeneRead>>()
+        val tmpMatched = mutableMapOf<Int, MutableSet<GeneRead>>()
+        val tmpMatchedReads = mutableSetOf<Int>()
 
         var firstOverlap = true
         var readIndex = 0
-        this.Gene.sort()
+        this.reference.sort()
         this.Reads.sort()
-        var tmpGene = this.Gene.next()
+        var tmpGene = this.reference.next()
         var tmpRead = this.Reads.next()
 
         // 统计所有的配对信息
-        val pb = ProgressBar(this.Gene.totalLine.toLong(), "Gene Reads matching")
+        val pb = ProgressBar(this.reference.totalLine.toLong(), "Gene Reads matching")
         while ( tmpGene != null && tmpRead != null ) {
 
-            pb.stepTo(this.Gene.index.toLong())
+            pb.stepTo(this.reference.index.toLong())
 
             when {
                 /*
@@ -77,7 +79,7 @@ class GeneReadsCoupler(
                  添加了3bp的误差空间，如果距离在3bp内的都算是同一个点了
                  */
                 tmpGene.isUpStream(tmpRead, this.distanceError) -> {
-                    tmpGene = this.Gene.next()
+                    tmpGene = this.reference.next()
 
                     // rollback read index
                     this.Reads.index = readIndex
@@ -86,7 +88,7 @@ class GeneReadsCoupler(
                 }
                 // 基因在read下游，读一个read
                 tmpGene.isDownStream(tmpRead, this.distanceError) -> {
-                    if (!tmpMatched.containsKey(tmpRead)) {
+                    if ( !tmpMatchedReads.contains(tmpRead.hashCode()) ) {
                         this.novelReads.add(tmpRead)
                     }
 
@@ -106,19 +108,21 @@ class GeneReadsCoupler(
                         2018.07.04
                         修正，使用基因和reads外显子的覆盖度作为基因和read匹配评判的标准
 
-                        2018.09.04
-                        发现之前只用了外显子的标准，添加一个reads本身覆盖程度的判断
+                        2018.09.05
+                        这里仅用一个外显子的匹配进行配对
+                        主要是为了保证能够有尽可能多的reads与reference配对，
+                        在组建templates时会进行进一步的检查，保证没有错配
                          */
                         if (
-                                tmpGeneRead.overlapPercent > this.overlap &&
                                 tmpGeneRead.isGeneReadsExonsOverlapQualified(this.overlap)
                         ) {
                             // 判断是否临时的匹配中是否含有该条read了
-                            if (tmpMatched.containsKey(tmpRead)) {
-                                tmpMatched[tmpRead]!!.add(tmpGeneRead)
+                            if (tmpMatched.containsKey(tmpGene.hashCode())) {
+                                tmpMatched[tmpGene.hashCode()]!!.add(tmpGeneRead)
                             } else {
-                                tmpMatched[tmpRead] = mutableListOf(tmpGeneRead)
+                                tmpMatched[tmpGene.hashCode()] = mutableSetOf(tmpGeneRead)
                             }
+                            tmpMatchedReads.add(tmpRead.hashCode())
                         }
                     }
 
@@ -140,21 +144,24 @@ class GeneReadsCoupler(
 
         // 添加重合程度判断，相较于两者中短的区域，覆盖程度要大于90%
         for (v in tmpMatched.values) {
+
             when {
                 v.size > 1 -> {
                     val tmpV = v.sortedBy { it.overlap.dec() }
                     val overlapFC = tmpV[0].overlap / tmpV[1].overlap.toDouble()
 
                     if ( overlapFC > this.foldChange ) {
-                        if (tmpV[0].overlapPercent > this.overlap) this.matchedGeneRead.add(tmpV[0])
+                        if (tmpV[0].overlapPercent > this.overlap) {
+                            this.matchedGeneRead.add(tmpV[0])
+                        }
                     } else {
                         this.fusionReads.addAll(tmpV)
                     }
                 }
 
                 v.size == 1 -> {
-                    if (v[0].overlapPercent > this.overlap) {
-                        this.matchedGeneRead.add(v[0])
+                    if (v.toList()[0].overlapPercent > this.overlap) {
+                        this.matchedGeneRead.add(v.toList()[0])
                     }
                 }
             }
@@ -164,8 +171,6 @@ class GeneReadsCoupler(
         this.novelReads.sort()
 
         this.fusionReads.sortWith(compareBy({it.reads}, {it.gene}))
-
-        this.buildTemplates()
     }
 
 
