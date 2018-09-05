@@ -8,12 +8,10 @@ import org.apache.log4j.Logger
 
 import dsu.carrier.Genes
 
-open class Extractor(private val silent: Boolean = false) {
+open class Extractor(private val silent: Boolean = false): Iterator<Genes?> {
     private val logger = Logger.getLogger(Extractor::class.java)
     var data = mutableListOf<Genes>().toList()
-    get() {
-        return field.sorted()
-    }
+
     var totalLine = 0
     get() {
         if (field != this.data.size) {
@@ -64,10 +62,22 @@ open class Extractor(private val silent: Boolean = false) {
      * 遍历内部data时，判断还有没有后续数据
      * @return Boolean, true表明还有后续数据，false表明没有
      */
-    fun hasNext(): Boolean {
-        return this.index < this.totalLine
+    override fun hasNext(): Boolean {
+        return this.index < this.totalLine - 1
     }
 
+
+    /**
+     * 返回类内部index的下一个数据
+     * @return Genes, 若没有下一条，返回null
+     */
+    override fun next(): Genes? {
+        if ( this.index < this.totalLine ) {
+            this.index ++
+            return this.data[this.index-1]
+        }
+        return null
+    }
 
     /**
      * 根据index，获取指定位置的数据
@@ -80,34 +90,16 @@ open class Extractor(private val silent: Boolean = false) {
             false -> index
         }
 
-        if (tmpIndex < this.totalLine) {
+        if ( tmpIndex < this.totalLine ) {
             return this.data[tmpIndex]
         }
         return null
     }
 
     /**
-     * 返回类内部index的下一个数据
-     * @return Genes, 若没有下一条，返回null
+     * 对extractor的数据进行排序
      */
-    fun next(): Genes? {
-        if (this.index in 0..(this.totalLine-1)) {
-            this.index ++
-            return this.data[this.index-1]
-        }
-        return null
-    }
-
-    /**
-     * 返回该条数据的上一条
-     * @return Genes, 若没有前一条，返回null
-     */
-    fun prev(): Genes? {
-        this.index--
-        if (this.index in 0..(this.totalLine-1)) {
-            return this.data[this.index]
-        }
-        return null
-
+    fun sort() {
+        this.data = this.data.sorted()
     }
 }

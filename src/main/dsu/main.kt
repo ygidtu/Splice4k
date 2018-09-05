@@ -1,186 +1,122 @@
 package dsu
 
-import dsu.third.template.SJFinder
+import com.github.ajalt.clikt.core.*
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.validate
+import com.github.ajalt.clikt.parameters.types.double
+import com.github.ajalt.clikt.parameters.types.file
+import com.github.ajalt.clikt.parameters.types.int
+
+
+import dsu.second.index.BamIndex
 import dsu.third.extractor.BamExtractor
 import dsu.third.extractor.Extractor
 import dsu.third.extractor.GffExtractor
 import dsu.third.extractor.GtfExtractor
-import java.io.File
-import java.io.IOException
-
-import kotlin.system.exitProcess
-
-import org.apache.commons.cli.Options
-import org.apache.commons.cli.DefaultParser
-import org.apache.commons.cli.HelpFormatter
-import org.apache.commons.cli.ParseException
-
+import dsu.third.template.GeneReadsCoupler
+import dsu.third.template.SJFinder
 import org.apache.log4j.FileAppender
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.PatternLayout
-
-import dsu.third.template.*
-
-
-/**
- * @author zhangyiming
- * @since 2018.07.01
- * @version 20180903
- *
- * command line parameters
- */
-
-const val version = "20180903"
+import java.io.File
+import kotlin.system.exitProcess
 
 
 
-/**
- * 为log添加文件appender
- * @param logFile log文件的地址
- */
-fun addFileAppender(logFile: String) {
-    val fa = FileAppender()
-    fa.name = "FileLogger"
-    fa.file = File(logFile).absolutePath
-    fa.layout = PatternLayout("[%d{yyyy-MM-dd HH:mm:ss}] [%-5p] [%c{1}:%L] - %m%n")
-    fa.threshold = Level.DEBUG
-    fa.append = true
-    fa.activateOptions()
+class Parameters: CliktCommand() {
+    private val version by option("--version", "-v", help = "version").flag(default = false)
 
-    Logger.getRootLogger().addAppender(fa)
+    override fun run() {
+        if ( this.version ) {
+            exitProcess(0)
+        }
+    }
 }
 
 
-/**
- * 设定命令行参数
- */
-fun setOptions(): Options {
-    val options = Options()
+class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
+    private val input by argument("-i", help = "Path to input Bam/Sam file").file(exists = true)
+    private val output by argument("-o", help = "Path to output file").file()
 
-    options.addOption(
-            "b",
-            "bam",
-            true,
-            "input [bam|sam] file"
-    )
-    options.addOption(
-            "r",
-            true,
-            "reference file [gff3|gtf|bam|sam]"
-    )
-    options.addOption(
-            "o",
-            "output",
-            true,
-            "output directory"
-    )
-    options.addOption(
-            "h",
-            "help",
-            false,
-            "print help message"
-    )
-    options.addOption(
-            "v",
-            "verbose",
-            false,
-            "suppress output message"
-    )
-    options.addOption(
-            null,
-            "log",
-            false,
-            "write log to file under output directory"
-    )
-    options.addOption(
-            null,
-            "fold-change",
-            true,
-            "Minimal fold change to identify the best match between multiple genes with same reads [default: 1.5]"
-    )
-    options.addOption(
-            null,
-            "min-ref-read",
-            true,
-            "Minimal overlap level to match ref and reads [default: 90.0]"
-    )
-    options.addOption(
-            null,
-            "min-AS-length",
-            true,
-            "Minimal gap between two sites that used to identify alternative splicing [default: 3]"
-    )
-    options.addOption(
-            null,
-            "min-exon-intron",
-            true,
-            "Minimal overlap level to identify the intron retention [default: 90.0]"
-    )
-
-    options.addOption(
-            "v",
-            "version",
-            false,
-            "display version [current: $version]"
-    )
-
-    return options
+    override fun run() {
+        BamIndex(this.input.toString()).writeTo(this.output)
+    }
 }
 
-fun main(args: Array<String>) {
-    val logger = Logger.getLogger("main")
 
-    val options = setOptions()
+class PacBio: CliktCommand(help = "Find AS from PacBio data") {
 
-    val parser = DefaultParser()
-    val help = HelpFormatter()
+    private val input by argument("-i", help = "Path to input Bam/Sam file").file(exists = true)
+    private val reference by argument("-r", help = "Path to reference file [gtf|gff3]").file(exists = true)
+    private val output by argument("-o", help = "Path to output directory").file()
 
-    if (args.isEmpty()) {
-        help.printHelp("usage message", options)
-        exitProcess(0)
+    private val error by option(
+            "-e",
+            help = "Chromosome coordinate error"
+    ).int().default(3).validate {
+        require( it >= 0 ) {"this value must be positive"}
+    }
+
+    private val foldChange by option(
+            "--fold-change",
+            "-fc",
+            help = "Minimal fold change required to match genes with same reads [default: 1.5]"
+    ).double().default(1.5).validate {
+        require( it > 0 ) {"this value must be positive"}
+    }
+
+    private val overlapOfRefReads by option(
+            "--overlap-ref-reads",
+            help = "Minimal overlap level to match reference with reads"
+    ).double().default(90.0).validate {
+        require( it > 0 && it <= 100 ) {"this value must between 0 and 100"}
+    }
+
+    private val overlapOfExonIntron by option(
+            "--overlap-exon-intron",
+            help = "Minimal overlap level between exon with intron required for intron retention identification"
+    ).double().default(90.0).validate {
+        require( it > 0 && it <= 100 ) {"this value must between 0 and 100"}
+    }
+
+    private val silent by option("--show", "-s", help = "Enable detailed messages").flag(default = false)
+    private val log: String? by option(help = "Path to the log file")
+
+
+    /**
+     * 为log添加文件appender
+     * @param logFile log文件的地址
+     */
+    private fun addFileAppender(logFile: String) {
+        val fa = FileAppender()
+        fa.name = "FileLogger"
+        fa.file = File(logFile).absolutePath
+        fa.layout = PatternLayout("[%d{yyyy-MM-dd HH:mm:ss}] [%-5p] [%c{1}:%L] - %m%n")
+        fa.threshold = Level.DEBUG
+        fa.append = true
+        fa.activateOptions()
+
+        Logger.getRootLogger().addAppender(fa)
     }
 
 
-    try{
-        
-        val parm = parser.parse(options, args)
-
-        // add file appender to log
-        if (parm.hasOption("log")) {
-            addFileAppender(
-                    parm.getOptionValue(
-                            "log",
-                            File(
-                                    parm.getOptionValue("output"),
-                                    "Splice4k.log"
-                            ).toString()
-                    )
-            )
-
+    override fun run() {
+        if ( this.log != null ) {
+            this.addFileAppender(log.toString())
         }
 
-        var silent = true
-        when {
-            parm.hasOption("help") -> {
-                help.printHelp("usage message", options)
-                exitProcess(0)
-            }
-
-            parm.hasOption("version") -> {
-                println("Current version: $version")
-                exitProcess(0)
-            }
-
-            parm.hasOption("verbose") -> silent = false
-        }
+        val logger = Logger.getLogger(PacBio::class.java)
 
         // 生成各种文件路径
-        val outDir = File(parm.getOptionValue("output")).absoluteFile
+        val outDir = this.output.absoluteFile
 
         if (!outDir.exists()) outDir.parentFile.mkdirs()
 
-        val bamFile = File(parm.getOptionValue("bam")).absoluteFile
+        val bamFile = this.input.absoluteFile
         val bamTsv = File(outDir, bamFile.name.split(".")[0] + ".tsv")
 
         logger.info("Start to read $bamFile")
@@ -190,35 +126,28 @@ fun main(args: Array<String>) {
 
         val ref : Extractor
 
-        logger.info("Start to read ${parm.getOptionValue("r")}")
+        logger.info("Start to read ${this.reference}")
+        val refFile = this.reference.absoluteFile
+        val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
         when {
 
-             Regex(".*\\.gff3?$").matches(
-                     parm.getOptionValue("r").toLowerCase()
-             ) -> {
-                val refFile = File(parm.getOptionValue("r")).absoluteFile
-                val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
-
+            Regex(".*\\.gff3?$").matches(
+                    this.reference.toString().toLowerCase()
+            ) -> {
                 ref = GffExtractor(refFile.toString(), silent)
                 ref.saveTo(refTsv.toString())
             }
 
             Regex(".*\\.gtf$").matches(
-                    parm.getOptionValue("r").toLowerCase()
+                    this.reference.toString().toLowerCase()
             ) -> {
-                val refFile = File(parm.getOptionValue("r")).absoluteFile
-                val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
-
                 ref = GtfExtractor(refFile.toString(), silent)
                 ref.saveTo(refTsv.toString())
             }
 
             Regex(".*\\.(bam|sam)$").matches(
-                    parm.getOptionValue("r").toLowerCase()
+                    this.reference.toString().toLowerCase()
             ) -> {
-                val refFile = File(parm.getOptionValue("r")).absoluteFile
-                val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
-
                 ref = GtfExtractor(refFile.toString(), silent)
                 ref.saveTo(refTsv.toString())
             }
@@ -233,9 +162,9 @@ fun main(args: Array<String>) {
         logger.info("Start to compare ref and reads")
         val matched = GeneReadsCoupler(
                 ref, bam,
-                overlap = parm.getOptionValue("min-ref-read", "90.0").toDouble(),
-                foldChange = parm.getOptionValue("fold-change", "1.5").toDouble(),
-                distanceError = parm.getOptionValue("min-AS-length", "3").toInt()
+                overlap = this.overlapOfRefReads,
+                foldChange = this.foldChange,
+                distanceError = this.error
         )
 
         matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
@@ -246,24 +175,31 @@ fun main(args: Array<String>) {
         logger.info("Start to identify splice events")
         SJFinder(
                 matched,
-                distance = parm.getOptionValue("min-AS-length", "3").toInt(),
-                overlap = parm.getOptionValue("min-exon-intron", "90.0").toDouble()
+                distance = this.error,
+                overlap = this.overlapOfExonIntron
         ).saveTo(File(outDir, "final.tsv").toString())
+    }
+}
 
 
-    } catch (err: ParseException) {
-        println("Parameter error: $err ")
-        help.printHelp("usage message", options)
-
-    } catch (err: IOException) {
-        println(err)
-    } catch (err: Exception) {
-        logger.error(err.message)
-
-        for (i in err.stackTrace) {
-            logger.error(i)
+fun main(args: Array<String>) {
+    val logger = Logger.getLogger("main")
+    val cmd = Parameters().subcommands(Extract()).subcommands(PacBio())
+    if (args.size <= 1) {
+        val help = when {
+            args.isEmpty() -> cmd.getFormattedHelp()
+            args[0] == "pacbio" -> PacBio().getFormattedHelp()
+            args[0] == "extract" -> Extract().getFormattedHelp()
+            else -> cmd.getFormattedHelp()
         }
+        println(help)
+        exitProcess(0)
     }
 
-
+    try {
+        cmd.parse(args)
+    } catch (e: CliktError) {
+        logger.error(e.localizedMessage)
+        println(cmd.getFormattedHelp())
+    }
 }

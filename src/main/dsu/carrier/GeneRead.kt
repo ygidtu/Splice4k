@@ -14,11 +14,8 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
     var overlap: Int = this.gene.getOverlap(this.reads) ?: 0
 
     // 比例改为相对于较短的那一个来算
-    var overlapPercent: Double =
-            this.overlap /
-                    kotlin.math.min(this.gene.length, this.reads.length).toDouble() *
-                    100.0
-    private var count: Int = 1
+    var overlapPercent: Double = this.gene.overlapPercent(this.reads)
+
 
     /**
      * 判断基因和reads的exon的重合程度是否符合90%的要求
@@ -27,20 +24,22 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      */
     fun isGeneReadsExonsOverlapQualified(overlapStandard: Double = 90.0): Boolean {
         var i = 0; var j = 0
+        val geneExons = this.gene.exons.sorted()
+        val readsExons = this.reads.exons.sorted()
 
-        while (i < this.gene.exons.size && j < this.reads.exons.size ) {
-            val tmpGene = this.gene.exons[i]
-            val tmpRead = this.reads.exons[j]
+        while (i < geneExons.size && j < readsExons.size ) {
+            val tmpGene = geneExons[i]
+            val tmpRead = readsExons[j]
 
-            if (tmpGene.isUpStream(tmpRead)) {
-                i++
-            } else if (tmpGene.isDownStream(tmpRead)) {
-                j++
-            } else {
-                if (tmpGene.overlapPercent(tmpRead, true) >= overlapStandard) {
-                    return true
+            when {
+                tmpGene.isUpStream(tmpRead) -> i++
+                tmpGene.isDownStream(tmpRead) -> j++
+                else -> {
+                    if (tmpGene.overlapPercent(tmpRead, true) >= overlapStandard) {
+                        return true
+                    }
+                    j++
                 }
-                j++
             }
         }
         return false

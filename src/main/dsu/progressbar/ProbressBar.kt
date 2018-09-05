@@ -5,7 +5,7 @@ package dsu.progressbar
  * @version 20180902
  * @since 2018.09.02
  *
- *
+ * 自定义的进度条
  */
 
 class ProgressBar(private val total: Long? = null, private val message: String = "") {
@@ -19,9 +19,9 @@ class ProgressBar(private val total: Long? = null, private val message: String =
     private fun millisToTime( millis: Long): String {
         val seconds = millis / 1000
 
-        val minutes = seconds.div(60).toInt()
-        val hours = seconds.div(3600).toInt()
-        return "$hours:$minutes:${seconds % 60}"
+        val minutes = seconds.div(60)
+        val hours = minutes.div(24)
+        return "${hours % 24}:${String.format("%02d", minutes % 60)}:${String.format("%02d", seconds % 60)}"
     }
 
     fun step() {
@@ -50,7 +50,6 @@ class ProgressBar(private val total: Long? = null, private val message: String =
         }
         this.current++
     }
-
 
     fun stepTo( step: Long ) {
         this.current = step
