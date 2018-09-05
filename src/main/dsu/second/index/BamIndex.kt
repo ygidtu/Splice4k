@@ -5,9 +5,11 @@ import htsjdk.samtools.SAMRecord
 import java.io.File
 import org.apache.log4j.Logger
 
-import dsu.carrier.GenomicLoci
+import dsu.carrier.Exons
 import dsu.progressbar.ProgressBar
-
+import java.io.IOException
+import java.io.PrintWriter
+import java.util.*
 
 
 /**
@@ -24,10 +26,12 @@ class BamIndex(bam: String) {
             .makeDefault()
             .open(File(bam))
 
-    val data: Map<GenomicLoci, Int>
+    val data = mutableMapOf<Exons, Int>()
+    val sameStart = mutableMapOf<Int, MutableList<Exons>>()
+    val sameEnd = mutableMapOf<Int, MutableList<Exons>>()
 
     init {
-        data = this.getAllSJ()
+        this.getAllSJ()
     }
 
     /**
@@ -68,14 +72,19 @@ class BamIndex(bam: String) {
         return results
     }
 
+    private fun getSite(loci: Exons, start: Boolean = true): Int {
+        return when(start) {
+            true -> Objects.hash(loci.chromosome, loci.start, loci.strand)
+            false -> Objects.hash(loci.chromosome, loci.end, loci.strand)
+        }
+    }
+
     /**
      * 获取bam文件中的所有SJ及其freq数值
      * @return Map<GenomicLoci, Int>
      */
-    private fun getAllSJ(): Map<GenomicLoci, Int> {
+    private fun getAllSJ() {
         val tmpReader = this.reader.iterator()
-
-        val results = mutableMapOf<GenomicLoci, Int>()
 
         logger.info("Star Reading Splice Junctions from Bam")
         val pb = ProgressBar(message = "Reading SJ from Bam")
@@ -86,20 +95,58 @@ class BamIndex(bam: String) {
             val spliceSites = this.extractSpliceFromCigar(record)
 
             for ( i in 0..spliceSites.size step 2) {
-                val tmpLoci = GenomicLoci(
+                val tmpLoci = Exons(
                         chromosome = record.referenceName,
                         start = spliceSites[i],
-                        end = spliceSites[i + 1]
+                        end = spliceSites[i + 1],
+                        strand = when (record.readNegativeStrandFlag) {
+                            true -> '-'
+                            else -> '+'
+                        }
                 )
 
                 when {
-                    results.containsKey(tmpLoci) -> results[tmpLoci] = results[tmpLoci]!! + 1
-                    else -> results[tmpLoci] = 0
+                    this.data.containsKey(tmpLoci) -> this.data[tmpLoci] = this.data[tmpLoci]!! + 1
+                    else -> this.data[tmpLoci] = 0
+                }
+
+                val start = getSite(tmpLoci, true)
+                val end = getSite(tmpLoci, false)
+                when (this.sameStart.containsKey(start)) {
+                    true -> this.sameStart[start]!!.add(tmpLoci)
+                    false -> this.sameStart[start] = mutableListOf(tmpLoci)
+                }
+
+                when (this.sameEnd.containsKey(end)) {
+                    true -> this.sameEnd[end]!!.add(tmpLoci)
+                    false -> this.sameEnd[end] = mutableListOf(tmpLoci)
                 }
             }
         }
+    }
 
-        return results
+
+    /**
+     * 将提取到的Junctions输出到文件
+     * @param output 输入文件
+     */
+    fun writeTo(output: File) {
+
+        try{
+            if (!output.parentFile.exists()) output.parentFile.mkdirs()
+
+            val writer = PrintWriter(output)
+
+            for ( (k, v) in this.data.iterator() ) {
+                writer.println("$k\t$v")
+            }
+            writer.close()
+        } catch (err: IOException) {
+            logger.error(err.message)
+            for (i in err.stackTrace) {
+                logger.error(i)
+            }
+        }
     }
 
  }

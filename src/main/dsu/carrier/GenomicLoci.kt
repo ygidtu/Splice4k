@@ -90,7 +90,7 @@ open class GenomicLoci: Comparable<GenomicLoci> {
             return this.chromosome < other.chromosome
         }
 
-        return this.end - other.start < abs(distanceError)
+        return other.start - this.end >= abs(distanceError)
     }
 
 
@@ -104,7 +104,7 @@ open class GenomicLoci: Comparable<GenomicLoci> {
             return this.chromosome > other.chromosome
         }
 
-        return other.end - this.start < abs(distanceError)
+        return this.start - other.end >= abs(distanceError)
     }
 
 
@@ -146,7 +146,7 @@ open class GenomicLoci: Comparable<GenomicLoci> {
         }
 
         val region = when (all) {
-            true ->  (this.end - this.start).toDouble()
+            false ->  (this.end - this.start).toDouble()
             else -> (max(this.end, other.end) - min(this.start, other.start)).toDouble()
         }
 
