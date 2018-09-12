@@ -11,7 +11,8 @@ import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 
 
-import dsu.second.index.BamIndex
+import dsu.second.identifier.IdentifyAS
+import dsu.second.index.*
 import dsu.third.extractor.BamExtractor
 import dsu.third.extractor.Extractor
 import dsu.third.extractor.GffExtractor
@@ -41,8 +42,8 @@ class Parameters: CliktCommand(invokeWithoutSubcommand = true) {
 
 
 class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
-    private val input by argument("-i", help = "Path to input Bam/Sam file").file(exists = true)
-    private val output by argument("-o", help = "Path to output file").file()
+    private val input by argument(help = "Path to input Bam/Sam file").file(exists = true)
+    private val output by argument(help = "Path to output file").file()
 
     override fun run() {
         BamIndex(this.input.toString()).writeTo(this.output)
@@ -194,14 +195,68 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
 }
 
 
+class Short: CliktCommand(help = "Find AS from NGS") {
+    val input by option("-i", "--input", help = "Path to input Bam file").file(exists = true)
+    val reference by option("-r", "--reference", help = "Path to reference file")
+    val spliceJunction by option("-j", "-junctions", help = "Path to extracted Spolice junctions file").file(exists = true)
+    val output by option("-o", "--output", help = "Path to output file").file()
+
+    override fun run() {
+        if (
+                this.input == null && this.spliceJunction == null ||
+                this.output == null ||
+                this.reference == null
+        ) {
+            throw FileNotFoundException("Please set input file or output directory")
+        }
+
+        if ( this.output == null ) {
+            throw CliktError("-o not added")
+        }
+
+        val sj: SJIndex
+        when {
+            this.spliceJunction != null -> {
+                sj = SJIndex(this.spliceJunction.toString())
+            }
+            else -> {
+                sj = BamIndex(this.input.toString())
+                sj.writeTo(File(this.output, "splice_junctions.txt"))
+            }
+        }
+
+        val ref = when {
+            this.reference!!.endsWith(".gtf") -> {
+                GtfIndex(this.reference!!)
+            }
+            this.reference!!.endsWith(".gff") -> {
+                GffIndex(this.reference!!)
+            }
+            else -> {
+                exitProcess(0)
+            }
+        }
+
+        val events = IdentifyAS(
+                reference = ref,
+                junctions = sj
+        )
+
+        events.writeTo(this.output!!)
+
+    }
+}
+
+
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
-    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Long())
+    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Long()).subcommands(dsu.Short())
     if (args.size <= 1) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
             args[0] == "long" -> dsu.Long().getFormattedHelp()
             args[0] == "extract" -> Extract().getFormattedHelp()
+            args[0] == "short" -> dsu.Short().getFormattedHelp()
             else -> cmd.getFormattedHelp()
         }
         println(help)
@@ -210,6 +265,7 @@ fun main(args: Array<String>) {
 
     try{
         cmd.parse(args)
+        logger.info("Done")
     } catch (e: CliktError) {
         logger.error(e.localizedMessage)
         println(cmd.getFormattedHelp())

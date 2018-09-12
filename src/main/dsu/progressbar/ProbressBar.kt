@@ -14,6 +14,7 @@ class ProgressBar(private val total: Long? = null, private val message: String =
     private val animationChars = charArrayOf('|', '/', '-', '\\')
     private var current = 0.toLong()
     private var last = this.begin
+    private var gap = 0.toLong()
 
 
     private fun millisToTime( millis: Long): String {
@@ -31,27 +32,36 @@ class ProgressBar(private val total: Long? = null, private val message: String =
             else -> (tmpTime - this.last).toDouble() / 1000
         }
 
-        this.last = tmpTime
-        val timeUsage = millisToTime(tmpTime - this.begin)
-        if ( total == null ) {
-            val speed = this.current.div(timeGap).toInt()
-            print("[$timeUsage] ${this.message} - ${animationChars[(this.current % 4).toInt()]} Current: ${this.current} - ${speed}it/s \r")
-        } else {
-            val progress = (this.current.toDouble() / this.total * 100).toInt()
-            val speed = progress.div(timeGap).toInt()
-            val eta = millisToTime(((100 - progress) * speed * 1000).toLong())
-
-            var times = progress / 5
-            if (times > 20) {
-                times = 20
+        if (timeGap > 1 ) {
+            if (this.last > this.begin) {
+                print("\\033[2K");
             }
 
-            print("${this.message} - $progress% |${"=".repeat(times)}${" ".repeat(20-times)} | ${speed}it/s [$timeUsage ETA:$eta] \r")
+            this.last = tmpTime
+            val timeUsage = millisToTime(tmpTime - this.begin)
+            this.gap = this.current - this.gap
+            val speed = this.gap.div(timeGap).toInt()
+            if ( total == null ) {
+                print("[$timeUsage] ${this.message} - ${animationChars[(this.current % 4).toInt()]} Current: ${this.current} - ${speed}it/s \r")
+            } else {
+                val progress = (this.current.toDouble() / this.total * 100).toInt()
+                val eta = millisToTime(((100 - progress) * speed * 1000).toLong())
+
+                var times = progress / 5
+                if (times > 20) {
+                    times = 20
+                }
+
+                print("${this.message} - $progress% |${"=".repeat(times)}${" ".repeat(20-times)} | ${speed}it/s [$timeUsage ETA:$eta] \r")
+            }
         }
+
         this.current++
+
     }
 
     fun stepTo( step: Long ) {
+        this.gap = step - this.current
         this.current = step
 
         this.step()

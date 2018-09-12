@@ -50,8 +50,14 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
 
             while (reader.hasNext()) {
                 val line = reader.nextLine()
+
+                if ( line.startsWith("#") ) {
+                    continue
+                }
+
                 val lines = line.split("\\s+".toRegex())
                 pb.step()
+
                 if (lines[2] == "exon") {
                     val tmpExon = Exons(
                             chromosome = lines[0],
@@ -61,7 +67,7 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
                             source = this.getSource(lines.subList(8, lines.size))["Parent"]!!
                     )
                     this.data.add(tmpExon)
-                } else if (lines[2].toLowerCase().matches("(.*rna|.*transcript)".toRegex())) {
+                } else if (lines[2].matches("(.*rna|.*transcript)".toRegex(RegexOption.IGNORE_CASE))) {
                     val tmpGene = Genes(
                             chromosome = lines[0],
                             start = lines[3].toInt(),

@@ -45,6 +45,10 @@ class GtfIndex(infile: String) : AnnotationIndex (infile) {
                 val line = reader.nextLine()
                 val lines = line.split("\\s+".toRegex())
                 pb.step()
+
+                if ( line.startsWith("#") ) {
+                    continue
+                }
                 if (lines[2] == "exon") {
                     val tmpExon = Exons(
                             chromosome = lines[0],
