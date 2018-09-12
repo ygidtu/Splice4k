@@ -30,6 +30,11 @@ open class GenomicLoci: Comparable<GenomicLoci> {
             else throw ChromosomeException("End ($value) < start ${this.start} or $value < 0")
         }
 
+    val length: Int
+    get() {
+        return this.end - this.start
+    }
+
     /**
      * 构造器
      * @param start 起始位点

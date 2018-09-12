@@ -67,16 +67,13 @@ class GtfExtractor(
         val transcripts: MutableList<Genes> = mutableListOf()
         val exons: MutableMap<String, List<Exons>> = mutableMapOf()
 
-        var reader = Scanner(System.`in`)
         val pb = ProgressBar(message = "Reading Gtf")
         try {
-            reader = Scanner(File(this.gtf))
+            val reader = Scanner(File(this.gtf))
 
             while (reader.hasNext()) {
 
-
                 pb.step()
-
                 val line = reader.nextLine()
 
                 if (line.startsWith("#")) continue // skip annotations
@@ -92,15 +89,19 @@ class GtfExtractor(
 
                 if (lines[2] == "transcript") {
                     transcripts.add(tmpGene)
-                } else if (lines[2] == "exon") {
+                } else if ( lines[2] == "exon" ) {
                     val tmp = mutableListOf(Exons(tmpGene.start, tmpGene.end))
 
-                    if (exons.containsKey(tmpGene.geneId)) {
-                        tmp.addAll(exons[tmpGene.geneId]!!)
+                    if (exons.containsKey(tmpGene.transcriptId)) {
+                        tmp.addAll(exons[tmpGene.transcriptId]!!)
                     }
-                    exons[tmpGene.geneId] = tmp
+                    exons[tmpGene.transcriptId] = tmp
+                } else {
+                    continue
                 }
             }
+
+            reader.close()
         } catch (err: IOException) {
             this.logger.error(err.message)
 
@@ -110,12 +111,12 @@ class GtfExtractor(
 
             exitProcess(1)
         } finally {
-            reader.close()
+
         }
 
         for (i in transcripts) {
-            if (exons.containsKey(i.geneId)) {
-                i.exons = exons[i.geneId]!!.toMutableList()
+            if (exons.containsKey(i.transcriptId)) {
+                i.exons = exons[i.transcriptId]!!.toMutableList()
             }
         }
 
@@ -125,11 +126,9 @@ class GtfExtractor(
 }
 
 
-/*
+
 fun main(args: Array<String>) {
-    val test = GtfExtractor("/home/zhang/genome/gencode.v19.annotation.gtf")
-    test.saveTo("/home/zhang/genome/test/hsa_gtf.txt")
-
-
+    val test = GtfExtractor("//Volumes/WD/PacBio二代/SMRT/Third/gmap/AS_test/Mus_musculus.GRCm38.91.gtf")
+    test.saveTo("/Volumes/WD/PacBio二代/SMRT/Third/gmap/AS_test/test.txt")
 }
-*/
+

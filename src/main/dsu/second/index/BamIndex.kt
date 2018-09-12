@@ -3,13 +3,11 @@ package dsu.second.index
 import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMRecord
 import java.io.File
-import org.apache.log4j.Logger
 
 import dsu.carrier.Exons
 import dsu.progressbar.ProgressBar
 import java.io.IOException
 import java.io.PrintWriter
-import java.util.*
 
 
 /**
@@ -20,19 +18,7 @@ import java.util.*
   */
 
 
-class BamIndex(bam: String) {
-    private val logger: Logger = Logger.getLogger(BamIndex::class.java)
-    private val reader = SamReaderFactory
-            .makeDefault()
-            .open(File(bam))
-
-    val data = mutableMapOf<Exons, Int>()
-    val sameStart = mutableMapOf<Int, MutableList<Exons>>()
-    val sameEnd = mutableMapOf<Int, MutableList<Exons>>()
-
-    init {
-        this.getAllSJ()
-    }
+class BamIndex(bam: String): SJIndex(bam) {
 
     /**
      * private function
@@ -72,19 +58,16 @@ class BamIndex(bam: String) {
         return results
     }
 
-    private fun getSite(loci: Exons, start: Boolean = true): Int {
-        return when(start) {
-            true -> Objects.hash(loci.chromosome, loci.start, loci.strand)
-            false -> Objects.hash(loci.chromosome, loci.end, loci.strand)
-        }
-    }
 
     /**
      * 获取bam文件中的所有SJ及其freq数值
      * @return Map<GenomicLoci, Int>
      */
-    private fun getAllSJ() {
-        val tmpReader = this.reader.iterator()
+    override fun getAllSJ() {
+        val tmpReader =  SamReaderFactory
+                .makeDefault()
+                .open(File(this.infile))
+                .iterator()
 
         logger.info("Star Reading Splice Junctions from Bam")
         val pb = ProgressBar(message = "Reading SJ from Bam")
@@ -94,7 +77,11 @@ class BamIndex(bam: String) {
 
             val spliceSites = this.extractSpliceFromCigar(record)
 
-            for ( i in 0..spliceSites.size step 2) {
+            if (spliceSites.isEmpty()) {
+                continue
+            }
+
+            for ( i in 0..(spliceSites.size - 1) step 2) {
                 val tmpLoci = Exons(
                         chromosome = record.referenceName,
                         start = spliceSites[i],
@@ -110,8 +97,8 @@ class BamIndex(bam: String) {
                     else -> this.data[tmpLoci] = 0
                 }
 
-                val start = getSite(tmpLoci, true)
-                val end = getSite(tmpLoci, false)
+                val start = tmpLoci.getSiteHash(true)
+                val end = tmpLoci.getSiteHash(false)
                 when (this.sameStart.containsKey(start)) {
                     true -> this.sameStart[start]!!.add(tmpLoci)
                     false -> this.sameStart[start] = mutableListOf(tmpLoci)
@@ -133,7 +120,7 @@ class BamIndex(bam: String) {
     fun writeTo(output: File) {
 
         try{
-            if (!output.parentFile.exists()) output.parentFile.mkdirs()
+            if (!output.absoluteFile.parentFile.exists()) output.absoluteFile.parentFile.mkdirs()
 
             val writer = PrintWriter(output)
 

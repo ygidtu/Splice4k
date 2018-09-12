@@ -6,9 +6,11 @@ import java.io.IOException
 import java.io.PrintWriter
 import java.util.Objects
 import dsu.carrier.Exons
-import dsu.carrier.SpliceJunction
+import dsu.carrier.GenomicLoci
+import dsu.errors.ChromosomeException
 import dsu.progressbar.ProgressBar
-
+import dsu.third.carrier.SpliceJunction
+import kotlin.system.exitProcess
 
 
 /**
@@ -98,7 +100,28 @@ class SJFinder(
                      这种情况下，它还没有任何重合的reads，就必定是skipping了
                       */
                     if (Objects.hash(tmpRef) !in spliced) {
-                        splice.addEvent("exon_skipping", tmpRef.start, tmpRef.end)
+                        try{
+                            splice.addEvent(
+                                name = "SE",
+                                chromosome = splice.gene.chromosome,
+                                sites = listOf(
+                                        when (i) {
+                                            0 -> 0
+                                            else -> reference[i - 1].end + 1
+                                        },
+                                        tmpRef.start - 1,
+                                        tmpRef.end + 1,
+                                        when {
+                                            i + 1 >= reference.size -> tmpRef.end + 1
+                                            else -> reference[i + 1].start - 1
+                                        }
+                                )
+                            )
+                        } catch (e: IndexOutOfBoundsException) {
+                            println("$i\t${reference.size}")
+                            exitProcess(0)
+                        }
+
                         spliced.add(Objects.hash(tmpRef))
                     }
 
@@ -113,7 +136,16 @@ class SJFinder(
                             tmpRead.start > tmpRef.end &&
                             tmpRead.end < reference[i+1].start
                     ) {
-                        splice.addEvent("exon_inclusion", tmpRead.start, tmpRead.end)
+                        splice.addEvent(
+                            name = "EI",
+                            chromosome = splice.gene.chromosome,
+                            sites = listOf(
+                                tmpRead.start - 1,
+                                tmpRef.end + 1,
+                                tmpRead.end + 1,
+                                reference[i+1].start - 1
+                            )
+                        )
                         spliced.add(Objects.hash(tmpRef))
                     }
 
@@ -136,7 +168,16 @@ class SJFinder(
                                     Exons(tmpRef.end, reference[i+1].start)
                             ) > this.overlap
                     ) {
-                        splice.addEvent("intron_retention", tmpRef.end, reference[i+1].start)
+                        splice.addEvent(
+                            name = "IR",
+                            chromosome = splice.gene.chromosome,
+                            sites = listOf(
+                                tmpRef.end + 1,
+                                reference[i + 1].start - 1,
+                                tmpRead.start - 1,
+                                tmpRead.end + 1
+                            )
+                        )
 
                         /*
                         由于intron retention
@@ -160,29 +201,49 @@ class SJFinder(
                     }
 
 
+                    try{
+                        if (  // intron in exon
+                                j < reads.size - 1 &&
+                                GenomicLoci(
+                                    tmpRef.start,
+                                    tmpRef.end
+                                ).overlapPercent(
+                                    GenomicLoci(
+                                        tmpRead.end,
+                                        reads[j + 1].start
+                                    )
+                                ) > this.overlap
+                        ) {
+                            splice.addEvent(
+                                name = "IE",
+                                chromosome = splice.gene.chromosome,
+                                sites = listOf(
+                                    tmpRef.start - 1,
+                                    tmpRef.end + 1,
+                                    tmpRead.end + 1,
+                                    reads[j + 1].start - 1
+                                )
+                            )
 
-                    if (  // intron in exon
-                        j < reads.size - 1 &&
-                                tmpRead.end > tmpRef.start &&
-                                reads[j + 1].start < tmpRef.end
-                    ) {
-                        splice.addEvent("intron_in_exon", tmpRead.end, reads[j + 1].start)
+                            /*
+                            intron in exon就表明，
+                            基因的外显子会横跨多个reads的外显子
 
-                        /*
-                        intron in exon就表明，
-                        基因的外显子会横跨多个reads的外显子
-
-                        因此，同上，通过循环找出横跨的最后一个reads外显子的index
-                         */
-                        var k = j
-                        while (k < reads.size && tmpRef.end > reads[k].start) {
-                            k++
+                            因此，同上，通过循环找出横跨的最后一个reads外显子的index
+                             */
+                            var k = j
+                            while (k < reads.size && tmpRef.end > reads[k].start) {
+                                k++
+                            }
+                            k--
+                            skipped = true
+                            j = k + 1
+                            tmpRead.end = reads[k].end
                         }
-                        k--
-                        skipped = true
-                        j = k + 1
-                        tmpRead.end = reads[k].end
+                    } catch (e: ChromosomeException ) {
+
                     }
+
 
                     if (j != 0 && j != reads.size - 1) {
                         // 在不同情形下，确定了不同的基因和reads外显子范围，用来比对donor/acceptor
@@ -190,25 +251,46 @@ class SJFinder(
                             !this.isSameRegion(tmpRef.start, tmpRead.start) &&
                                     !this.isSameRegion(tmpRef.end, tmpRead.end) ->
                                 splice.addEvent(
-                                        "donor/acceptor",
-                                        tmpRead.start,
-                                        tmpRead.end
+                                    name = "A5/A3",
+                                    chromosome = splice.gene.chromosome,
+                                    sites = listOf(
+                                        tmpRef.start - 1,
+                                        tmpRead.start - 1,
+                                        tmpRef.end + 1,
+                                        tmpRead.end + 1
+                                    )
                                 )
 
                             !this.isSameRegion(tmpRef.start, tmpRead.start) &&
                                     this.isSameRegion(tmpRef.end, tmpRead.end) ->
                                 splice.addEvent(
-                                        "donor",
-                                        kotlin.math.min(tmpRef.start, tmpRead.start),
-                                        kotlin.math.max(tmpRef.start, tmpRead.start)
+                                    name = when (splice.gene.strand) {
+                                        '+' -> "A5SS"
+                                        else -> "A3SS"
+                                    },
+                                    chromosome = splice.gene.chromosome,
+                                    sites = listOf(
+                                        tmpRef.start - 1,
+                                        tmpRead.start - 1,
+                                        tmpRef.end + 1,
+                                        tmpRead.end + 1
+                                    )
                                 )
 
                             this.isSameRegion(tmpRef.start, tmpRead.start) &&
                                     !this.isSameRegion(tmpRef.end, tmpRead.end) ->
                                 splice.addEvent(
-                                        "acceptor",
-                                        kotlin.math.min(tmpRef.end, tmpRead.end),
-                                        kotlin.math.max(tmpRef.end, tmpRead.end)
+                                    name = when (splice.gene.strand) {
+                                        '+' -> "A3SS"
+                                        else -> "A5SS"
+                                    },
+                                    chromosome = splice.gene.chromosome,
+                                    sites = listOf(
+                                        tmpRef.start - 1,
+                                        tmpRead.start - 1,
+                                        tmpRef.end + 1,
+                                        tmpRead.end + 1
+                                    )
                                 )
                         }
                     }
@@ -240,13 +322,13 @@ class SJFinder(
 
             writer = PrintWriter(outFile)
 
-            for (i in this.results) {
-                var line = i.next()
+            for ( i in this.results ) {
+                val line = i.toString()
 
-                while (line != null) {
-                    writer.println(line)
-                    line = i.next()
+                if (line == "") {
+                    continue
                 }
+                writer.print(line)
             }
 
         } catch (err: IOException) {

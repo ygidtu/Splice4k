@@ -83,7 +83,10 @@ class GffExtractor(
 
                 val lines = line.split("\\s+".toRegex())
 
-                if ( line.startsWith("#") || !lines[2].toLowerCase().matches("(.*(rna|transcript)(.*)?|exon)".toRegex()) ) {
+                if (
+                        line.startsWith("#") ||
+                        !lines[2].matches("(.*(rna|transcript)(.*)?|exon)".toRegex(RegexOption.IGNORE_CASE))
+                ) {
                     continue
                 }
 
@@ -96,7 +99,7 @@ class GffExtractor(
                 )
 
                 // 分别判断是否为转录本和exon
-                if ( lines[2].toLowerCase().matches("(.*rna|transcript)(.*)?".toRegex()) ) {
+                if ( lines[2].matches("(.*rna|transcript)(.*)?".toRegex(RegexOption.IGNORE_CASE)) ) {
                     transcripts.add(tmpGene)
                 } else if ( lines[2] == "exon" ) {
                     // 外显子收集的这个写法比Python复杂些，但是功能是一样的

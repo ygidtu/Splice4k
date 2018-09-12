@@ -1,7 +1,9 @@
-package dsu.carrier
+package dsu.third.carrier
 
 
+import dsu.carrier.Genes
 import java.util.Objects
+
 
 /**
  * @author zhangyiming
@@ -44,7 +46,7 @@ class Template(
      * equals重载
      */
     override fun equals(other: Any?): Boolean {
-        if (other != null) {
+        if (other != null || other is Template) {
             return this.hashCode() == other.hashCode()
         }
         return false

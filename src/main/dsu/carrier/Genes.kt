@@ -55,11 +55,6 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
         }
     }
 
-    val length: Int
-    get() {
-        return this.end - this.start
-    }
-
 
     /**
      * constructors
