@@ -18,7 +18,7 @@ import dsu.progressbar.ProgressBar
 /**
  * @author Zhangyiming
  * @since 2018.06.20
- * @version 20180903
+ * @version 20180918
  * 将基因与reads匹配到一起
  */
 
@@ -42,7 +42,6 @@ class GeneReadsCoupler(
 
     val matchedGeneRead = mutableListOf<GeneRead>()
     val novelReads = mutableListOf<Genes>()
-    val fusionReads = mutableListOf<GeneRead>()
 
     lateinit var templates : MutableList<Template>
 
@@ -97,7 +96,7 @@ class GeneReadsCoupler(
                 }
 
                 else -> {
-                    if (tmpGene.strand == tmpRead.strand) {
+                    if ( tmpGene.strand == tmpRead.strand ) {
                         // log read index
                         if (firstOverlap) {
                             readIndex = this.Reads.index
@@ -145,23 +144,23 @@ class GeneReadsCoupler(
 
         // 添加重合程度判断，相较于两者中短的区域，覆盖程度要大于90%
         for (v in tmpMatched.values) {
+            this.matchedGeneRead.addAll(v.toList())
 
             when {
                 v.size > 1 -> {
                     val tmpV = v.sortedBy { it.overlap.dec() }
-                    val overlapFC = tmpV[0].overlap / tmpV[1].overlap.toDouble()
 
-                    if ( overlapFC > this.foldChange ) {
-                        if (tmpV[0].overlapPercent > this.overlap) {
-                            this.matchedGeneRead.add(tmpV[0])
+                    for ( tmp in tmpV ) {
+                        if ( tmp.overlapPercent > this.overlap ) {
+                            this.matchedGeneRead.add(tmp)
+                        } else {
+                            break
                         }
-                    } else {
-                        this.fusionReads.addAll(tmpV)
                     }
                 }
 
                 v.size == 1 -> {
-                    if (v.toList()[0].overlapPercent > this.overlap) {
+                    if ( v.toList()[0].overlapPercent > this.overlap ) {
                         this.matchedGeneRead.add(v.toList()[0])
                     }
                 }
@@ -170,8 +169,6 @@ class GeneReadsCoupler(
 
         this.matchedGeneRead.sort()
         this.novelReads.sort()
-
-        this.fusionReads.sortWith(compareBy({it.reads}, {it.gene}))
     }
 
 
@@ -197,13 +194,26 @@ class GeneReadsCoupler(
         }
 
         val templates = mutableListOf<Template>()
-        for ((k, v) in geneReads) {
-            when (v.size) {
-                1 -> {
-                    templates.add(Template(k, v[0]))
-                }
+        for ( (k, v) in geneReads ) {
+
+            when ( v.size ) {
+                1 -> templates.add(Template(k, v) )
                 else -> {
-                    templates.add(Template(k, this.mergeReads(v)))
+                    /*
+                    2018.09.18
+                    应当是组建好template，
+                    然后将各个transcripts与template进行比对，
+                    最终挑选出合格的可变剪接事件
+                     */
+                    val tmp = v.sorted().toMutableList()
+                    tmp.add(k)
+                    val temp = this.mergeReads(tmp)
+
+                    temp.transcriptId = k.transcriptId
+                    temp.geneId = k.geneId
+                    temp.geneName = k.geneName
+
+                    templates.add(Template(temp, v.sorted()))
                 }
             }
         }
@@ -385,34 +395,6 @@ class GeneReadsCoupler(
 
             for (i in this.templates) {
                 writer.println(i)
-            }
-
-        } catch (err: IOException) {
-            logger.error(err.message)
-            for (i in err.stackTrace) {
-                logger.error(i)
-            }
-        } finally {
-            writer.close()
-        }
-    }
-
-
-    /**
-     * 保存可能的融合基因
-     * @param outfile 输出文件路径
-     */
-    fun savePotentialFusion(outfile: String) {
-        val outFile = File(outfile).absoluteFile
-
-        var writer = PrintWriter(System.out)
-        try{
-            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
-
-            writer = PrintWriter(outFile)
-
-            for (i in this.fusionReads) {
-                writer.println(i.toStringReverse())
             }
 
         } catch (err: IOException) {

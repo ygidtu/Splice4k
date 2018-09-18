@@ -57,13 +57,9 @@ class SpliceJunction(val gene: Genes) {
      * @return 所有事件构成的字符串，可以直接写到文件，每行一个事件
      */
     override fun toString(): String {
-        val tmp = mutableListOf<String>()
-
-        this.events.forEach { tmp.add(it.toString()) }
-
         var output = ""
 
-        for ( i in this.events ) {
+        for ( i in this.events.distinct() ) {
             output += "${this.gene.chromosome}:${this.gene.start}-${this.gene.end}\t${this.gene.geneId}\t${this.gene.transcriptId}\t$i\n"
         }
 
@@ -77,6 +73,17 @@ class SpliceJunction(val gene: Genes) {
             chromosome = chromosome,
             sites = sites.sorted()
         ))
+    }
+
+    override fun hashCode(): Int {
+        return Objects.hash(this.toString())
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if ( other == null ) {
+            return false
+        }
+        return this.toString() == other.toString()
     }
 
 }

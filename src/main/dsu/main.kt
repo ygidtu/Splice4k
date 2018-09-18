@@ -34,7 +34,7 @@ class Parameters: CliktCommand(invokeWithoutSubcommand = true) {
 
     override fun run() {
         if ( this.version ) {
-            println("2080905")
+            println("20180918")
             exitProcess(0)
         }
     }
@@ -183,7 +183,6 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
         matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
         matched.saveTemplate(File(outDir, "templates.tsv").toString())
         matched.saveNovel(File(outDir, "novel.tsv").toString())
-        matched.savePotentialFusion(File(outDir, "potential_fusions.tsv").toString())
 
         logger.info("Start to identify splice events")
         SJFinder(

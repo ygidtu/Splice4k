@@ -6,6 +6,7 @@ import java.io.IOException
 import java.io.PrintWriter
 import java.util.Objects
 import dsu.carrier.Exons
+import dsu.carrier.Genes
 import dsu.carrier.GenomicLoci
 import dsu.errors.ChromosomeException
 import dsu.progressbar.ProgressBar
@@ -15,7 +16,7 @@ import kotlin.system.exitProcess
 
 /**
  * @since 2018.06.21
- * @version 20180903
+ * @version 20180918
  * @author Zhang Yiming
  *
  * 根据基因和Reads的配对情况，找出其中的可变剪接情况
@@ -23,12 +24,12 @@ import kotlin.system.exitProcess
 
 
 class SJFinder(
-        private val pair: GeneReadsCoupler,
+        private val template: GeneReadsCoupler,
         private val distance: Int = 3,
         private val overlap: Double = 90.0
 ) {
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
-    private val results = mutableListOf<SpliceJunction>()
+    private val results = hashSetOf<SpliceJunction>()
 
     init {
         this.identifySJ()
@@ -41,21 +42,22 @@ class SJFinder(
 
 
         // 这个gap就是为了控制输出一个合适的进度条的
-        val pb = ProgressBar(this.pair.templates.size.toLong(), "Splice events identifying at")
-        for (pair in this.pair.templates) {
+        val pb = ProgressBar(this.template.templates.size.toLong(), "Splice events identifying at")
+        for (pair in this.template.templates) {
 
             pb.step()
 
-            val splice = SpliceJunction(pair.reference)
+            val splice = SpliceJunction(pair.template)
 
             this.compareSites(
-                    reference = pair.geneExons,
-                    reads = pair.template.exons,
-                    splice = splice
+                template = pair.template.exons,
+                reads = pair.getReadsExons(),
+                splice = splice
             )
 
             this.results.add(splice)
         }
+        pb.close()
     }
 
     /**
@@ -74,7 +76,7 @@ class SJFinder(
      * @return SpliceJuntion 某基因上所有可变剪接的类型
      */
     private fun compareSites(
-            reference: List<Exons>,
+            template: List<Exons>,
             reads: List<Exons>,
             splice: SpliceJunction
     ) {
@@ -83,8 +85,8 @@ class SJFinder(
 
         val spliced = mutableSetOf<Int>()
 
-        while (i < reference.size && j < reads.size) {
-            val tmpRef = reference[i]
+        while (i < template.size && j < reads.size) {
+            val tmpRef = template[i]
             val tmpRead = reads[j]
 
             when {
@@ -107,18 +109,18 @@ class SJFinder(
                                 sites = listOf(
                                         when (i) {
                                             0 -> 0
-                                            else -> reference[i - 1].end + 1
+                                            else -> template[i - 1].end + 1
                                         },
                                         tmpRef.start - 1,
                                         tmpRef.end + 1,
                                         when {
-                                            i + 1 >= reference.size -> tmpRef.end + 1
-                                            else -> reference[i + 1].start - 1
+                                            i + 1 >= template.size -> tmpRef.end + 1
+                                            else -> template[i + 1].start - 1
                                         }
                                 )
                             )
                         } catch (e: IndexOutOfBoundsException) {
-                            println("$i\t${reference.size}")
+                            println("$i\t${template.size}")
                             exitProcess(0)
                         }
 
@@ -132,9 +134,9 @@ class SJFinder(
                     因此，
                      */
                     if (
-                            i < reference.size - 1 &&
+                            i < template.size - 1 &&
                             tmpRead.start > tmpRef.end &&
-                            tmpRead.end < reference[i+1].start
+                            tmpRead.end < template[i+1].start
                     ) {
                         splice.addEvent(
                             name = "EI",
@@ -143,7 +145,7 @@ class SJFinder(
                                 tmpRead.start - 1,
                                 tmpRef.end + 1,
                                 tmpRead.end + 1,
-                                reference[i+1].start - 1
+                                template[i+1].start - 1
                             )
                         )
                         spliced.add(Objects.hash(tmpRef))
@@ -162,10 +164,10 @@ class SJFinder(
                     spliced.add(Objects.hash(tmpRef))
 
                     if (  // intron retention   require 90% coverage
-                            i < reference.size -1 &&
-                            tmpRef.end < reference[i + 1].start &&
+                            i < template.size -1 &&
+                            tmpRef.end < template[i + 1].start &&
                             tmpRead.overlapPercent(
-                                    Exons(tmpRef.end, reference[i+1].start)
+                                    Exons(tmpRef.end, template[i+1].start)
                             ) > this.overlap
                     ) {
                         splice.addEvent(
@@ -173,7 +175,7 @@ class SJFinder(
                             chromosome = splice.gene.chromosome,
                             sites = listOf(
                                 tmpRef.end + 1,
-                                reference[i + 1].start - 1,
+                                template[i + 1].start - 1,
                                 tmpRead.start - 1,
                                 tmpRead.end + 1
                             )
@@ -191,13 +193,13 @@ class SJFinder(
                         再次基础上调整临时基因的范围，去判断是否存在donor/acceptor
                          */
                         var k = i
-                        while (k < reference.size && tmpRead.end > reference[k].start) {
+                        while (k < template.size && tmpRead.end > template[k].start) {
                             k++
                         }
                         k--
                         skipped = true
                         i = k + 1
-                        tmpRef.end = reference[k].end
+                        tmpRef.end = template[k].end
                     }
 
 
@@ -322,7 +324,7 @@ class SJFinder(
 
             writer = PrintWriter(outFile)
 
-            for ( i in this.results ) {
+            for ( i in this.results.distinct() ) {
                 val line = i.toString()
 
                 if (line == "") {

@@ -1,6 +1,7 @@
 package dsu.third.carrier
 
 
+import dsu.carrier.Exons
 import dsu.carrier.Genes
 import java.util.Objects
 
@@ -8,17 +9,25 @@ import java.util.Objects
 /**
  * @author zhangyiming
  * @since 2018.06.20
- * @version 20180903
+ * @version 20180918
  * 基因与Reads的配对
  */
 
 class Template(
-        val reference: Genes,
-        val template: Genes
+        val template: Genes,
+        val reads: List<Genes>
 ): Comparable<Template> {
-    var geneExons = this.reference.exons.sorted().toMutableList()
-    get() {
-        return field.sorted().toMutableList()
+
+    /**
+     * 获取这个组装好的模板对应的所有reads的exons
+     * @return sorted list of exons
+     */
+    fun getReadsExons(): List<Exons> {
+        val res = mutableListOf<Exons>()
+
+        reads.forEach { res.addAll(it.exons) }
+
+        return res.sorted()
     }
 
 
@@ -32,14 +41,14 @@ class Template(
             exonString += "$i,"
         }
 
-        return "${this.template.chromosome}\t${this.template.start}\t${this.template.end}\t${this.reference.transcriptId}\t${this.reference.geneName}\t$exonString"
+        return "${this.template.chromosome}\t${this.template.start}\t${this.template.end}\t${this.template.transcriptId}\t${this.template.geneName}\t$exonString"
     }
 
     /**
      * hashCode重载
      */
     override fun hashCode(): Int {
-        return Objects.hash(this.reference.transcriptId, this.template.transcriptId)
+        return Objects.hash(this.template.transcriptId, this.template.transcriptId)
     }
 
     /**
@@ -61,8 +70,8 @@ class Template(
      */
     override fun compareTo(other: Template): Int {
         return when {
-            this.reference > other.reference -> 1
-            this.reference < other.reference -> -1
+            this.template > other.template -> 1
+            this.template < other.template -> -1
             else -> {
                 when {
                     this.template > other.template -> 1
