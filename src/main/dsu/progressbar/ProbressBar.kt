@@ -39,8 +39,9 @@ class ProgressBar(private val total: Long? = null, private val message: String =
 
             this.last = tmpTime
             val timeUsage = millisToTime(tmpTime - this.begin)
-            this.gap = this.current - this.gap
-            val speed = this.gap.div(timeGap).toInt()
+            val speed = (this.current - this.gap).div(timeGap).toInt()
+            this.gap = this.current
+
             if ( total == null ) {
                 print("[$timeUsage] ${this.message} - ${animationChars[(this.current % 4).toInt()]} Current: ${this.current} - ${speed}it/s \r")
             } else {

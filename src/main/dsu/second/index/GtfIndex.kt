@@ -55,22 +55,28 @@ class GtfIndex(infile: String) : AnnotationIndex (infile) {
                             start = lines[3].toInt(),
                             end = lines[4].toInt(),
                             strand = lines[6].toCharArray()[0],
-                            source = this.getSource(lines.subList(8, lines.size))["trancript_id"]!!
-                    )
-                    this.data.add(tmpExon)
-                } else if (lines[2] == "transcript") {
-                    val tmpGene = Genes(
-                            chromosome = lines[0],
-                            start = lines[3].toInt(),
-                            end = lines[4].toInt(),
-                            strand = lines[6].toCharArray()[0],
-                            information = this.getSource(lines.subList(8, lines.size))
+                            source = this.getSource(lines.subList(8, lines.size))["transcript_id"]!!
                     )
 
-                    this.transcripts[tmpGene.transcriptId] = tmpGene
+                    val tmp = mutableListOf(tmpExon)
+                    val key = "${lines[0]}${lines[6]}"
+                    if ( this.data.containsKey(key) ) {
+                        this.data[key]!!.addAll(tmp)
+                    } else {
+                        this.data[key] = tmp
+                    }
                 }
-
-
+//                } else if (lines[2] == "transcript") {
+//                    val tmpGene = Genes(
+//                            chromosome = lines[0],
+//                            start = lines[3].toInt(),
+//                            end = lines[4].toInt(),
+//                            strand = lines[6].toCharArray()[0],
+//                            information = this.getSource(lines.subList(8, lines.size))
+//                    )
+//
+//                    this.transcripts[tmpGene.transcriptId] = tmpGene
+//                }
             }
 
             reader.close()

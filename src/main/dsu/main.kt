@@ -50,7 +50,7 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
     }
 }
 
-
+/*
 class Long: CliktCommand(help = "Find AS from PacBio data") {
 
     private val input by option("-i", "--input", help = "Path to input Bam/Sam file").file(exists = true)
@@ -192,6 +192,7 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
         ).saveTo(File(outDir, "final.tsv").toString())
     }
 }
+*/
 
 
 class Short: CliktCommand(help = "Find AS from NGS") {
@@ -213,14 +214,12 @@ class Short: CliktCommand(help = "Find AS from NGS") {
             throw CliktError("-o not added")
         }
 
-        val sj: SJIndex
-        when {
+        val sj = when {
             this.spliceJunction != null -> {
-                sj = SJIndex(this.spliceJunction.toString())
+                SJIndex(this.spliceJunction.toString())
             }
             else -> {
-                sj = BamIndex(this.input.toString())
-                sj.writeTo(File(this.output, "splice_junctions.txt"))
+                BamIndex(this.input.toString())
             }
         }
 
@@ -236,12 +235,7 @@ class Short: CliktCommand(help = "Find AS from NGS") {
             }
         }
 
-        val events = IdentifyAS(
-                reference = ref,
-                junctions = sj
-        )
-
-        events.writeTo(this.output!!)
+        IdentifyAS(sj, ref).writeTo(outfile = output!!)
 
     }
 }
@@ -249,11 +243,11 @@ class Short: CliktCommand(help = "Find AS from NGS") {
 
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
-    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Long()).subcommands(dsu.Short())
+    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Short()) //.subcommands(dsu.Long())
     if (args.size <= 1) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
-            args[0] == "long" -> dsu.Long().getFormattedHelp()
+//            args[0] == "long" -> dsu.Long().getFormattedHelp()
             args[0] == "extract" -> Extract().getFormattedHelp()
             args[0] == "short" -> dsu.Short().getFormattedHelp()
             else -> cmd.getFormattedHelp()
@@ -269,7 +263,7 @@ fun main(args: Array<String>) {
         logger.error(e.localizedMessage)
         println(cmd.getFormattedHelp())
         println()
-        println(dsu.Long().getFormattedHelp())
+        // println(dsu.Long().getFormattedHelp())
         println()
         println(Extract().getFormattedHelp())
     }

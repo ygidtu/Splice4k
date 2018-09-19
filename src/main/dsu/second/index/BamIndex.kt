@@ -4,8 +4,8 @@ import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMRecord
 import java.io.File
 
-import dsu.carrier.Exons
 import dsu.progressbar.ProgressBar
+import dsu.carrier.SpliceGraph
 import java.io.IOException
 import java.io.PrintWriter
 
@@ -69,7 +69,7 @@ class BamIndex(bam: String): SJIndex(bam) {
                 .open(File(this.infile))
                 .iterator()
 
-        logger.info("Star Reading Splice Junctions from Bam")
+        logger.info("Start Reading Splice Junctions from Bam")
         val pb = ProgressBar(message = "Reading SJ from Bam")
         for ( record in tmpReader) {
 
@@ -81,34 +81,21 @@ class BamIndex(bam: String): SJIndex(bam) {
                 continue
             }
 
-            for ( i in 0..(spliceSites.size - 1) step 2) {
-                val tmpLoci = Exons(
-                        chromosome = record.referenceName,
-                        start = spliceSites[i],
-                        end = spliceSites[i + 1],
-                        strand = when (record.readNegativeStrandFlag) {
-                            true -> '-'
-                            else -> '+'
-                        }
-                )
-
-                when {
-                    this.data.containsKey(tmpLoci) -> this.data[tmpLoci] = this.data[tmpLoci]!! + 1
-                    else -> this.data[tmpLoci] = 0
-                }
-
-                val start = tmpLoci.getSiteHash(true)
-                val end = tmpLoci.getSiteHash(false)
-                when (this.sameStart.containsKey(start)) {
-                    true -> this.sameStart[start]!!.add(tmpLoci)
-                    false -> this.sameStart[start] = mutableListOf(tmpLoci)
-                }
-
-                when (this.sameEnd.containsKey(end)) {
-                    true -> this.sameEnd[end]!!.add(tmpLoci)
-                    false -> this.sameEnd[end] = mutableListOf(tmpLoci)
-                }
+            val strand = when(record.readNegativeStrandFlag) {
+                true -> '-'
+                false -> '+'
             }
+
+            val tmpGraph = when( this.data.containsKey("${record.referenceName}$strand")  ) {
+                true -> this.data["${record.referenceName}$strand"]!!
+                else -> SpliceGraph(record.referenceName, strand)
+            }
+
+            for ( i in 0..(spliceSites.size - 1) step 2) {
+                tmpGraph.addEdge(start = spliceSites[i] - 1, end = spliceSites[i + 1] + 1)
+            }
+
+            this.data["${record.referenceName}$strand"] = tmpGraph
         }
     }
 

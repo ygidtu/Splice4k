@@ -13,8 +13,8 @@ import org.apache.log4j.Logger
 abstract class AnnotationIndex(val infile: String) {
     val logger = Logger.getLogger(AnnotationIndex::class.java)
 
-    val data = mutableListOf<Exons>()
-    val transcripts = mutableMapOf<String, Genes>()
+    val data = mutableMapOf<String, MutableList<Exons>>()
+//    val transcripts = mutableMapOf<String, Genes>()
 
     init {
         this.readExon()

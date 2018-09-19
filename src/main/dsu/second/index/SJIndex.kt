@@ -4,12 +4,13 @@ import java.util.Scanner
 import java.io.File
 
 import dsu.carrier.Exons
+import dsu.carrier.SpliceGraph
 import org.apache.log4j.Logger
 
 open class SJIndex(val infile: String) {
     val logger = Logger.getLogger(SJIndex::class.java)
 
-    val data = mutableMapOf<Exons, Int>()
+    val data = mutableMapOf<String, SpliceGraph>()
     val sameStart = mutableMapOf<Int, MutableList<Exons>>()
     val sameEnd = mutableMapOf<Int, MutableList<Exons>>()
 
@@ -29,27 +30,15 @@ open class SJIndex(val infile: String) {
             try{
                 val (chromosome, tmpStart, tmpEnd, strand, count) = pattern.find(line)!!.destructured
 
-                val tmpExon = Exons(
-                        chromosome = chromosome,
-                        start = tmpStart.toInt(),
-                        end = tmpEnd.toInt(),
-                        strand = strand.toCharArray()[0]
-                )
+                val key = "$chromosome$strand"
 
-                this.data[tmpExon] = count.toInt()
-
-                val start = tmpExon.getSiteHash(true)
-                val end = tmpExon.getSiteHash(false)
-                when (this.sameStart.containsKey(start)) {
-                    true -> this.sameStart[start]!!.add(tmpExon)
-                    false -> this.sameStart[start] = mutableListOf(tmpExon)
+                val tmpGraph = when ( this.data.containsKey(key) ) {
+                    true -> this.data[key]!!
+                    else -> SpliceGraph(chromosome=chromosome, strand = strand.toCharArray().first())
                 }
 
-                when (this.sameEnd.containsKey(end)) {
-                    true -> this.sameEnd[end]!!.add(tmpExon)
-                    false -> this.sameEnd[end] = mutableListOf(tmpExon)
-                }
-                
+                tmpGraph.addEdge(tmpStart.toInt(), tmpEnd.toInt(), count.toInt(), count.toInt())
+
             } catch ( e: NullPointerException ) {
                 continue
             }
