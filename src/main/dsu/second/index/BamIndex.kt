@@ -49,7 +49,7 @@ class BamIndex(bam: String): SJIndex(bam) {
                             position - tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
                     )
 
-                    results.add(position)
+                    results.add(position - 1)
                 }
                 tmp.clear()
             }
@@ -92,11 +92,12 @@ class BamIndex(bam: String): SJIndex(bam) {
             }
 
             for ( i in 0..(spliceSites.size - 1) step 2) {
-                tmpGraph.addEdge(start = spliceSites[i] - 1, end = spliceSites[i + 1] + 1)
+                tmpGraph.addEdge(start = spliceSites[i], end = spliceSites[i + 1])
             }
 
             this.data["${record.referenceName}$strand"] = tmpGraph
         }
+        pb.close()
     }
 
 
@@ -111,8 +112,8 @@ class BamIndex(bam: String): SJIndex(bam) {
 
             val writer = PrintWriter(output)
 
-            for ( (k, v) in this.data.iterator() ) {
-                writer.println("$k\t$v")
+            for ( v in this.data.values ) {
+                writer.print(v.toString())
             }
             writer.close()
         } catch (err: IOException) {

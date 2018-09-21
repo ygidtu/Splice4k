@@ -7,7 +7,6 @@ import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
 import dsu.carrier.Genes
-import dsu.carrier.Exons
 import dsu.progressbar.ProgressBar
 
 
@@ -71,7 +70,7 @@ class GffExtractor(
      */
     private fun gffReader(): List<Genes> {
         val transcripts: MutableList<Genes> = mutableListOf()
-        val exons: MutableMap<String, List<Exons>> = mutableMapOf()
+        val exons: MutableMap<String, List<Int>> = mutableMapOf()
 
         val pb = ProgressBar(message = "Reading Gff")
         var reader = Scanner(System.`in`)
@@ -103,7 +102,7 @@ class GffExtractor(
                     transcripts.add(tmpGene)
                 } else if ( lines[2] == "exon" ) {
                     // 外显子收集的这个写法比Python复杂些，但是功能是一样的
-                    val tmp = mutableListOf(Exons(tmpGene.start, tmpGene.end))
+                    val tmp = mutableListOf(tmpGene.start, tmpGene.end)
 
                     if (exons.containsKey(tmpGene.parent)) {
                         tmp.addAll(exons[tmpGene.parent]!!)
@@ -126,18 +125,10 @@ class GffExtractor(
         // 为转录本指定外显子
         for (i in transcripts) {
             if (exons.containsKey(i.transcriptId)) {
-                i.exons = exons[i.transcriptId]!!.toMutableList()
+                i.exons.addAll(exons[i.transcriptId]!!)
             }
         }
 
         return transcripts
     }
 }
-
-/*
-fun main(args: Array<String>) {
-    val test = GffExtractor("/home/zhang/genome/Homo_sapiens.GRCh38.91.gff3")
-
-    test.saveTo("/home/zhang/genome/test/hsa_gff.txt")
-}
-*/

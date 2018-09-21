@@ -1,7 +1,7 @@
 package dsu.carrier
 
 import java.util.*
-import kotlin.math.*
+
 /**
  * @author zhangyiming
  * @since 2018.07.04
@@ -24,10 +24,10 @@ class Exons( start: Int, end: Int): GenomicLoci(start, end) {
      * @param source 来源，比如transcript Id
      */
     constructor(
-        chromosome: String,
-        start: Int,
-        end: Int,
-        source: String
+            chromosome: String,
+            start: Int,
+            end: Int,
+            source: String
     ): this(start, end) {
         this.chromosome = chromosome
         this.source = source
@@ -61,11 +61,11 @@ class Exons( start: Int, end: Int): GenomicLoci(start, end) {
      * @param strand 正负链
      */
     constructor(
-        chromosome: String,
-        start: Int,
-        end: Int,
-        source: String,
-        strand: Char
+            chromosome: String,
+            start: Int,
+            end: Int,
+            source: String,
+            strand: Char
     ): this(chromosome, start, end, source) {
         this.strand = strand
     }

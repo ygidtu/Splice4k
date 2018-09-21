@@ -1,6 +1,5 @@
 package dsu.third.carrier
 
-
 import dsu.carrier.Exons
 import dsu.carrier.Genes
 import java.util.Objects
@@ -15,19 +14,19 @@ import java.util.Objects
 
 class Template(
         val template: Genes,
-        val reads: List<Genes>
+        val reads: MutableList<Genes>
 ): Comparable<Template> {
 
     /**
      * 获取这个组装好的模板对应的所有reads的exons
      * @return sorted list of exons
      */
-    fun getReadsExons(): List<Exons> {
-        val res = mutableListOf<Exons>()
+    fun getReadsExons(): List<List<Int>> {
+        val res = mutableListOf<List<Int>>()
 
-        reads.forEach { res.addAll(it.exons) }
+        reads.forEach { res.add(it.exons) }
 
-        return res.sorted()
+        return res
     }
 
 
@@ -55,10 +54,7 @@ class Template(
      * equals重载
      */
     override fun equals(other: Any?): Boolean {
-        if (other != null || other is Template) {
-            return this.hashCode() == other.hashCode()
-        }
-        return false
+        return this.hashCode() == other?.hashCode()
     }
 
     /**

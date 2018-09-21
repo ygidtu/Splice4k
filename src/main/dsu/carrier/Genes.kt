@@ -42,10 +42,7 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
         }
     }
 
-    var exons: MutableList<Exons> = mutableListOf()
-    get() {
-        return field.sorted().toMutableList()
-    }
+    val exons: MutableList<Int> = mutableListOf()
 
     var parent: String = ""
     get() {
@@ -183,16 +180,3 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
         )
     }
 }
-
-/*
-fun main(args: Array<String>) {
-    val test = Genes(
-            "chr1", 1, 100,
-            "test"
-    )
-
-    test.addExons(arrayOf(10, 20, 30))
-
-    println(test)
-}
-*/

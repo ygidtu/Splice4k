@@ -32,7 +32,7 @@ class ProgressBar(private val total: Long? = null, private val message: String =
             else -> (tmpTime - this.last).toDouble() / 1000
         }
 
-        if (timeGap > 0.3 ) {
+        if (timeGap > 0.12 ) {
             if (this.last > this.begin) {
                 print("\r");
             }

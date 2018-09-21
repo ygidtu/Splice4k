@@ -1,11 +1,9 @@
 package dsu.second.identifier
 
-
 import dsu.carrier.Exons
 import dsu.carrier.GenomicLoci
 import dsu.second.index.AnnotationIndex
 import dsu.second.index.SJIndex
-import dsu.progressbar.ProgressBar
 import dsu.carrier.SpliceEvent
 import org.apache.log4j.Logger
 import java.io.File
@@ -44,7 +42,7 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
     /**
      * 将获取到的剪接时间与基因挂钩
      */
-    fun matchEventsWithRefSingleChromosome(
+    private fun matchEventsWithRefSingleChromosome(
             events: List<SpliceEvent>,
             annotation: List<Exons>
     ): Map<SpliceEvent, String> {
@@ -65,17 +63,23 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
                 }
                 currentEvent.isDownStream( currentEvent, distanceError = 3 ) -> j++
                 else -> {
-                    if ( currentEvent.strand == currentExon.strand ) {
-                        matched[currentEvent] = currentExon.source
+
+                    for ( k in currentEvent.sliceSites ) {
+                        if ( kotlin.math.abs(k - currentExon.start) <= 3 ||
+                                kotlin.math.abs(k - currentExon.end) <= 3 ) {
+                            matched[currentEvent] = currentExon.source
+                            break
+                        }
                     }
+
                     j++
                 }
 
             }
 
             if (
-                    i < this.events.size - 1 &&
-                    j < this.annotation.size &&
+                    i < events.size - 1 &&
+                    j < annotation.size - 1 &&
                     currentExon.source == annotation[j + 1].source
             ) {
                 try{
@@ -90,7 +94,7 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
                             start = currentExon.end,
                             end = annotation[j + 1].start
                     )
-                    if ( tmp1.overlapPercent(tmp2) > 90.0 ) {
+                    if ( tmp2.overlapPercent(tmp1, all = true) > 90.0 ) {
                         val tmp = SpliceEvent(
                                 event = "IR",
                                 chromosome = currentEvent.chromosome,
@@ -118,9 +122,34 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
     }
 
 
-    fun matchEventsWithRef(): Map<SpliceEvent, String> {
+    private fun matchEventsWithRef(): Map<SpliceEvent, String> {
         val res = HashMap<SpliceEvent, String>()
         for ( (k, v) in this.events ) {
+
+
+            if ( k.endsWith(".") ) {
+
+                if ( this.annotation.containsKey(k.replace("\\.$".toRegex(), "+")) ) {
+                    res.putAll(
+                            this.matchEventsWithRefSingleChromosome(
+                                    v,
+                                    // 我是不是傻！！！顶上都换key了。下班怎么就不换呢
+                                    this.annotation[k.replace("\\.$".toRegex(), "+")]!!
+                            )
+                    )
+                }
+
+                if ( this.annotation.containsKey(k.replace("\\.$".toRegex(), "-")) ) {
+                    res.putAll(
+                            this.matchEventsWithRefSingleChromosome(
+                                    v,
+                                    this.annotation[k.replace("\\.$".toRegex(), "-")]!!
+                            )
+                    )
+                }
+            }
+
+
             if ( this.annotation.containsKey(k) ) {
                 res.putAll(this.matchEventsWithRefSingleChromosome(v, this.annotation[k]!!))
             }

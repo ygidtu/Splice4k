@@ -22,20 +22,19 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      * 任意一对符合要求即可
      * @return Boolean  true符合；false不符合
      */
-    fun isGeneReadsExonsOverlapQualified(overlapStandard: Double = 90.0): Boolean {
-        var i = 0; var j = 0
-        val geneExons = this.gene.exons.sorted()
-        val readsExons = this.reads.exons.sorted()
+    fun isGeneReadsExonsOverlapQualified(error: Int = 3): Boolean {
+        val geneExons = this.gene.exons.asSequence().distinct().sorted().toList()
+        val readsExons = this.reads.exons.asSequence().distinct().sorted().toList()
 
-        while (i < geneExons.size && j < readsExons.size ) {
-            val tmpGene = geneExons[i]
-            val tmpRead = readsExons[j]
-
-            when {
-                tmpGene.isUpStream(tmpRead) -> i++
-                tmpGene.isDownStream(tmpRead) -> j++
+        var i = 0; var j = 0; var match = 0
+        while (i < geneExons.size && j < readsExons.size) {
+            when  {
+                geneExons[i] < readsExons[j] - error -> i ++
+                geneExons[i] > readsExons[j] + error -> j ++
                 else -> {
-                    if (tmpGene.overlapPercent(tmpRead, true) >= overlapStandard) {
+                    match ++
+
+                    if (match >= 2) {
                         return true
                     }
                     j++

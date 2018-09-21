@@ -23,7 +23,7 @@ class SpliceJunction(val gene: Genes) {
          * @return 名称，start和end以tab分割
          */
         override fun toString(): String {
-            return "${this.name}\t${this.chromosome}:${this.sites.sorted().joinToString(separator = "-", prefix = "", postfix = "")}"
+            return "${this.name}\t${this.chromosome}:${this.sites.asSequence().sorted().joinToString(separator = "-", prefix = "", postfix = "")}"
         }
 
 

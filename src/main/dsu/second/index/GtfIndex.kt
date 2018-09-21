@@ -2,9 +2,7 @@ package dsu.second.index
 
 import java.io.File
 import java.util.Scanner
-
 import dsu.carrier.Exons
-import dsu.carrier.Genes
 import dsu.progressbar.ProgressBar
 import java.io.IOException
 

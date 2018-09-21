@@ -8,7 +8,6 @@ import kotlin.system.exitProcess
 import org.apache.log4j.Logger
 
 import dsu.carrier.Genes
-import dsu.carrier.Exons
 import dsu.progressbar.ProgressBar
 
 
@@ -65,7 +64,7 @@ class GtfExtractor(
      */
     private fun gtfReader(): List<Genes> {
         val transcripts: MutableList<Genes> = mutableListOf()
-        val exons: MutableMap<String, List<Exons>> = mutableMapOf()
+        val exons: MutableMap<String, List<Int>> = mutableMapOf()
 
         val pb = ProgressBar(message = "Reading Gtf")
         try {
@@ -90,7 +89,7 @@ class GtfExtractor(
                 if (lines[2] == "transcript") {
                     transcripts.add(tmpGene)
                 } else if ( lines[2] == "exon" ) {
-                    val tmp = mutableListOf(Exons(tmpGene.start, tmpGene.end))
+                    val tmp = mutableListOf(tmpGene.start, tmpGene.end)
 
                     if (exons.containsKey(tmpGene.transcriptId)) {
                         tmp.addAll(exons[tmpGene.transcriptId]!!)
@@ -116,19 +115,12 @@ class GtfExtractor(
 
         for (i in transcripts) {
             if (exons.containsKey(i.transcriptId)) {
-                i.exons = exons[i.transcriptId]!!.toMutableList()
+                i.exons.addAll(exons[i.transcriptId]!!)
             }
         }
 
         return transcripts
     }
 
-}
-
-
-
-fun main(args: Array<String>) {
-    val test = GtfExtractor("//Volumes/WD/PacBio二代/SMRT/Third/gmap/AS_test/Mus_musculus.GRCm38.91.gtf")
-    test.saveTo("/Volumes/WD/PacBio二代/SMRT/Third/gmap/AS_test/test.txt")
 }
 

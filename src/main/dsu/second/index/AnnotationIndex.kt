@@ -1,7 +1,6 @@
 package dsu.second.index
 
 import dsu.carrier.Exons
-import dsu.carrier.Genes
 import org.apache.log4j.Logger
 
 

@@ -50,7 +50,7 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
     }
 }
 
-/*
+
 class Long: CliktCommand(help = "Find AS from PacBio data") {
 
     private val input by option("-i", "--input", help = "Path to input Bam/Sam file").file(exists = true)
@@ -180,19 +180,15 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
                 distanceError = this.error
         )
 
-        matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
-        matched.saveTemplate(File(outDir, "templates.tsv").toString())
-        matched.saveNovel(File(outDir, "novel.tsv").toString())
+//        matched.saveTo(File(outDir, "gene_reads_pairs.tsv").toString())
+//        matched.saveTemplate(File(outDir, "templates.tsv").toString())
+//        matched.saveNovel(File(outDir, "novel.tsv").toString())
 
         logger.info("Start to identify splice events")
-        SJFinder(
-                matched,
-                distance = this.error,
-                overlap = this.overlapOfExonIntron
-        ).saveTo(File(outDir, "final.tsv").toString())
+        SJFinder( matched ).saveTo(File(outDir, "final.tsv").toString())
     }
 }
-*/
+
 
 
 class Short: CliktCommand(help = "Find AS from NGS") {
@@ -243,11 +239,11 @@ class Short: CliktCommand(help = "Find AS from NGS") {
 
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
-    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Short()) //.subcommands(dsu.Long())
+    val cmd = Parameters().subcommands(Extract()).subcommands(dsu.Short()).subcommands(dsu.Long())
     if (args.size <= 1) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
-//            args[0] == "long" -> dsu.Long().getFormattedHelp()
+            args[0] == "long" -> dsu.Long().getFormattedHelp()
             args[0] == "extract" -> Extract().getFormattedHelp()
             args[0] == "short" -> dsu.Short().getFormattedHelp()
             else -> cmd.getFormattedHelp()

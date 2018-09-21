@@ -3,6 +3,7 @@ package dsu.carrier
 
 import java.lang.NullPointerException
 import org.apache.log4j.Logger
+import kotlin.math.sign
 
 /**
  * @since 2018.09.19
@@ -19,117 +20,40 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
     val ends = mutableMapOf<Int, Sites>()
 
     // 记录具有A3和A5的位点，便于最后寻找MXE
-    val assSites = mapOf<String, HashSet<Int>>(
+    private val assSites = mapOf<String, HashSet<Int>>(
             "start" to hashSetOf(),
             "end" to hashSetOf()
     )
 
-
-
-    /**
-     * 内部类，记录所有位点信息
-     */
-    class Sites( val node: Int ): Comparable<Sites>, Iterator<Int> {
-        val pos = mutableMapOf<Int, Int>()
-
-        var current = 0
-        var size = this.pos.size
-        get() {
-           return this.pos.size
-        }
-
-        /**
-         * 添加同start或者同end的位点
-         * @param site int 位点
-         */
-        fun addSite( site: Int, freq: Int? = null ) {
-            if ( freq != null ) {
-                this.pos[site] = freq
-                return
-            }
-
-            try{
-                this.pos[site] = this.pos[site]!! + 1
-            } catch ( e: NullPointerException ) {
-                this.pos[site] = 1
-            }
-        }
-
-
-        /**
-         * 获取离node最近的点
-         */
-        fun getClosestSite(): Int {
-            val tmp = this.pos.keys.sorted()
-
-            return when(
-                kotlin.math.abs(tmp.first() - this.node) <
-                        kotlin.math.abs(tmp.last() - this.node)
-                ) {
-                true -> tmp.first()
-                else -> tmp.last()
-            }
-        }
-
-
-        /**
-        * 获取最长的那个位点，即距离node最远的位点
-         */
-        fun getExtremeSite(): Int {
-            val tmp = this.pos.keys.sorted()
-
-            return when(
-                    kotlin.math.abs(tmp.first() - this.node) >
-                            kotlin.math.abs(tmp.last() - this.node)
-                    ) {
-                true -> tmp.first()
-                else -> tmp.last()
-            }
-        }
-
-        /**
-         * 重载
-         * 便于对starts和ends进行排序
-         */
-        override fun compareTo(other: Sites): Int {
-            return this.node - other.node
-        }
-
-        /**
-         * 重载
-         * 便于对Sites进行遍历
-         */
-        override fun next(): Int {
-            this.current += 1
-            return this.pos.keys.sorted()[current - 1]
-        }
-
-        override fun hasNext(): Boolean {
-            return this.current < this.pos.size
-        }
-
-
-        fun first(): Int {
-            return this.pos.keys.last()
-        }
-
-        fun last(): Int {
-            return this.pos.keys.last()
-        }
-
-    }
 
     /**
      * 二分法进行插入
      * 保证序列有序，以及算法高效
      * @param list 包含Sites的
      */
-    private fun insertSites(list: MutableMap<Int, Sites>, index: Int, site: Int, freq: Int?=null) {
+    private fun insertSites(
+            list: MutableMap<Int, Sites>,
+            index: Int,
+            site: Int,
+            freq: Int?=null,
+            transcript: String? = null,
+            gene: String? = null
+    ) {
         if ( list.containsKey(index) ) {
-            list[index]!!.addSite(site, freq)
+            list[index]!!.addSite(
+                    site = site,
+                    freq = freq,
+                    transcript = transcript,
+                    gene = gene
+            )
         } else {
             val tmp = Sites(index)
-            tmp.addSite(site, freq)
+            tmp.addSite(
+                    site = site,
+                    freq = freq,
+                    transcript = transcript,
+                    gene = gene
+            )
             list[index] = tmp
         }
     }
@@ -141,9 +65,30 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
      * @param startFreq start出现的次数
      * @param endFreq end出现的次数
      */
-    fun addEdge(start: Int, end: Int, startFreq: Int?=null, endFreq: Int?= null) {
-        insertSites(list = this.starts, index = start, site = end, freq = endFreq)
-        insertSites(list = this.ends, index = end, site = start, freq = startFreq)
+    fun addEdge(
+            start: Int,
+            end: Int,
+            startFreq: Int?=null,
+            endFreq: Int?= null,
+            transcript: String? = null,
+            gene: String? = null
+    ) {
+        insertSites(
+                list = this.starts,
+                index = start,
+                site = end,
+                freq = endFreq,
+                transcript = transcript,
+                gene = gene
+        )
+        insertSites(
+                list = this.ends,
+                index = end,
+                site = start,
+                freq = startFreq,
+                transcript = transcript,
+                gene = gene
+        )
     }
 
 
@@ -157,13 +102,13 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
     ) {
 
         val aS = when (this.strand) {
-            '+' -> "A3"
-            else -> "A5"
+            '-' -> "A5"
+            else -> "A3"
         }
 
         val aE = when (this.strand) {
-            '-' -> "A5"
-            else -> "A3"
+            '-' -> "A3"
+            else -> "A5"
         }
 
         val start: Int
@@ -185,8 +130,7 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
                                 sliceSites = listOf(starts.node, i, j, ends.node)
                         ))
 
-                        skippedExons.add(i)
-                        skippedExons.add(j)
+                        skippedExons.addAll(listOf(starts.node, ends.node, i, j))
 
                         this.assSites["start"]!!.add(starts.node)
                         this.assSites["end"]!!.add(ends.node)
@@ -202,7 +146,6 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
             starts!!.current = 0
             start = starts.getClosestSite()
             for ( i in starts ) {
-                //
                 if ( start != i && i !in skippedExons ) {
                     res.add(SpliceEvent(
                             event = aS,
@@ -245,6 +188,11 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
     }
 
 
+    /**
+     * 判断一个列表是否已经排好序
+     * @param list input list
+     * @return bool true -> sorted; false -> not
+     */
     private fun isOrdered(list: List<Int>): Boolean {
         for ( i in 1..(list.size - 1)) {
             if ( list[i] < list[i - 1] ) {
@@ -258,9 +206,12 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
      * 找出同一条染色体上，同一条链上所有的可变剪接事件
      * @return list of SpliceEvent
      */
-    fun identifyAS(): List<SpliceEvent> {
+    fun identifyAS(silent: Boolean = false): List<SpliceEvent> {
 
-        this.logger.info("Finding Alternative splicing events of ${this.chromosome}${this.strand}")
+        if (!silent) {
+            this.logger.info("Finding Alternative splicing events of ${this.chromosome}${this.strand}")
+        }
+
         val res = mutableListOf<SpliceEvent>()
 
         val loggedEnds = HashSet<Sites>()
@@ -321,8 +272,8 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
                     continue
                 }
 
-                val currentStart = this.starts[assStarts[i]]!!.pos.keys.toList()
-                val currentEnd = this.ends[assEnds[j]]!!.pos.keys.toList()
+                val currentStart = this.starts[assStarts[i]]!!.getSites()
+                val currentEnd = this.ends[assEnds[j]]!!.getSites()
 
                 for ( e1 in 0..(currentStart.size - 1) ) {
                     for ( e2 in (e1 + 1)..(currentStart.size - 1) ) {
@@ -330,16 +281,16 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
                             for ( s2 in (s1 + 1)..(currentEnd.size - 1) ) {
                                 val mxeSites = listOf(
                                         assStarts[i],
-                                        currentStart[e1],
-                                        currentEnd[s1],
-                                        currentStart[e2],
-                                        currentEnd[s2],
+                                        currentStart[e1].site,
+                                        currentEnd[s1].site,
+                                        currentStart[e2].site,
+                                        currentEnd[s2].site,
                                         assEnds[j]
                                 )
 
                                 if (
                                         this.isOrdered(mxeSites) &&
-                                        sites.indexOf(currentStart[e2]) - sites.indexOf(currentEnd[s1]) == 1
+                                        sites.indexOf(currentStart[e2].site) - sites.indexOf(currentEnd[s1].site) == 1
                                 ) {
                                     res.add(SpliceEvent(
                                             event = "MXE",
@@ -364,5 +315,26 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
         }
 
         return res
+    }
+
+
+    override fun toString(): String {
+        var output = ""
+        for ( (start, value) in this.starts ) {
+            for ( end in value.getSites()) {
+                var tmp = "${this.chromosome}:$start-${end.site}${this.strand}\t${end.count}"
+
+                if ( !end.source["gene"]!!.isEmpty() ) {
+                    tmp = "$tmp\t${end.source["gene"]!!.joinToString(prefix = "", postfix = "", separator = ",")}"
+                }
+
+                if ( !end.source["transcript"]!!.isEmpty() ) {
+                    tmp = "$tmp\t${end.source["transcript"]!!.joinToString(prefix = "", postfix = "", separator = ",")}"
+                }
+
+                output += "$tmp\n"
+            }
+        }
+        return output
     }
 }

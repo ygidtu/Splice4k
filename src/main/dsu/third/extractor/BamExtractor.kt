@@ -8,7 +8,6 @@ import htsjdk.samtools.SAMRecord
 import org.apache.log4j.Logger
 
 import dsu.carrier.Genes
-import dsu.carrier.Exons
 import dsu.errors.ExonException
 
 import dsu.progressbar.ProgressBar
@@ -53,7 +52,7 @@ class BamExtractor(
      * @return 列表，记录了所有的intron的边界信息
      */
     private fun extractSpliceFromCigar(record: SAMRecord): List<Int> {
-        val results = mutableListOf(record.alignmentStart)
+        val results = mutableListOf<Int>()
         var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
 
@@ -75,12 +74,11 @@ class BamExtractor(
                             position - tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
                     )
 
-                    results.add(position)
+                    results.add(position - 1)
                 }
                 tmp.clear()
             }
         }
-        results.add(record.alignmentEnd)
         return results
     }
 
@@ -112,11 +110,6 @@ class BamExtractor(
                 continue
             }
 
-            // get all exons
-            val introns = this.extractSpliceFromCigar(record)
-
-            if (introns.size < 2) continue
-
             // init Genes
             val tmpGene = Genes(
                     chromosome = record.referenceName,
@@ -129,14 +122,7 @@ class BamExtractor(
                     }
             )
 
-            // add exons
-            val tmpExons = mutableListOf<Exons>()
-
-            for (i in 0..(introns.size - 1) step 2) {
-                if (introns[i] > introns[i + 1]) throw ExonException("start[${introns[i]}] > end[${introns[i+1]}]")
-                tmpExons.add(Exons(introns[i], introns[i + 1]))
-            }
-            tmpGene.exons = tmpExons
+            tmpGene.exons.addAll(this.extractSpliceFromCigar(record))
             results.add(tmpGene)
         }
 
@@ -148,14 +134,3 @@ class BamExtractor(
         return this.data
     }
 }
-
-/*
-fun main(args: Array<String>) {
-    /*
-    GT-AG规则
-    */
-    val test = BamExtractor("/home/zhang/splicehunter_test/test.bam")
-
-    test.saveTo("/home/zhang/splicehunter_test/bam_extracted.txt")
-}
-*/
