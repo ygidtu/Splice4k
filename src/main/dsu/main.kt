@@ -60,6 +60,14 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
     private val reference by option("-r", "--reference", help = "Path to reference file [gtf|gff3]").file(exists = true)
     private val output by option("-o", "--output", help = "Path to output file").file()
 
+    private val threads by option(
+            "-p",
+            "--process",
+            help = "Number of processes to use"
+    ).int().default(1).validate {
+        require( it > 0)
+    }
+
     private val error by option(
             "-e",
             help = "Chromosome coordinate error"
@@ -173,8 +181,8 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
                 bamIndex = bam,
                 refIndex = ref,
                 silent = !this.show,
-                error = this.error,
-                overlapOfExonIntron = this.overlapOfExonIntron
+                overlapOfExonIntron = this.overlapOfExonIntron,
+                threads = this.threads
         ).saveTo(this.output!!.absoluteFile.toString())
     }
 }
@@ -182,17 +190,23 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
 
 
 class Short: CliktCommand(help = "Find AS from NGS") {
-    val input by option("-i", "--input", help = "Path to input Bam file").file(exists = true)
+    private val input by option("-i", "--input", help = "Path to input Bam file").file(exists = true)
 
-    val reference by option("-r", "--reference", help = "Path to reference file").file(exists = true)
+    private val reference by option("-r", "--reference", help = "Path to reference file").file(exists = true)
 
-    val spliceJunction by option(
+    private val spliceJunction by option(
             "-j",
             "-junctions",
             help = "Path to extracted Spolice junctions file"
     ).file(exists = true)
 
-
+    private val threads by option(
+            "-p",
+            "--process",
+            help = "Number of processes to use"
+    ).int().default(1).validate {
+        require( it > 0)
+    }
 
     private val overlapOfExonIntron by option(
             "--overlap-exon-intron",
@@ -250,7 +264,11 @@ class Short: CliktCommand(help = "Find AS from NGS") {
 
         identifyAS.writeTo(
                 outfile = output!!,
-                results = identifyAS.matchEventsWithRef(event = sj, annotation = ref)
+                results = identifyAS.matchEventsWithRef(
+                        event = sj.data.values.toList(),
+                        annotations = ref.data,
+                        threads = this.threads
+                )
         )
 
     }

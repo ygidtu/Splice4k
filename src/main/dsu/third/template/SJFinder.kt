@@ -5,7 +5,6 @@ import dsu.carrier.GenomicLoci
 import dsu.carrier.SpliceEvent
 import dsu.carrier.SpliceGraph
 import dsu.errors.ChromosomeException
-import dsu.progressbar.ProgressBar
 import dsu.second.identifier.IdentifyAS
 import dsu.third.carrier.Template
 import dsu.third.extractor.BamExtractor
@@ -13,6 +12,7 @@ import dsu.third.extractor.Extractor
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
+import java.util.concurrent.Executors
 
 
 /**
@@ -30,12 +30,12 @@ class SJFinder(
         val refIndex: Extractor,
         val silent: Boolean,
         val overlapOfExonIntron: Double,
-        val error: Int
+        val threads: Int
 ) {
     private val template = template.templates
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
     private val results = hashMapOf<SpliceEvent, MutableList<String>>()
-    val identified = mutableSetOf<String>()
+    private val identified = mutableSetOf<String>()
 
 
     init {
@@ -48,8 +48,8 @@ class SJFinder(
      * @param template 配对好的模板
      * @return map of SpliceEvent and its corresponding gene, transcript
      */
-    private fun findIR(template: Template): Map<SpliceEvent, MutableList<String>> {
-        val res = mutableMapOf<SpliceEvent, MutableList<String>>()
+    private fun findIR(template: Template) {
+
         val exonSites = template.template.exons
         val exons = mutableListOf<GenomicLoci>()
         for ( i in 1..(exonSites.size - 2) step 2 ) {
@@ -94,15 +94,15 @@ class SJFinder(
                                 ),
                                 event = "IR"
                         )
-                        res[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\tNA")
+                        this.results[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\tNA")
                         this.identified.add("${tmp.event}_${tmp.sliceSites}")
                     }
                 }
             }
         }
 
-        return res
     }
+
 
     /**
      * 识别各种可变剪接类型
@@ -110,38 +110,56 @@ class SJFinder(
     private fun identifySJ() {
         this.logger.info("Finding Alternative Splicing events")
         // 这个gap就是为了控制输出一个合适的进度条的
-        val pb = ProgressBar(this.template.size.toLong(), "Splice events identifying at")
+        val executor = Executors.newFixedThreadPool(this.threads)
         for ( (gene, template) in this.template ) {
-            pb.step()
-            for ( pair in template ) {
-                val graph = SpliceGraph(
-                        chromosome = pair.template.chromosome,
-                        strand = pair.template.strand
-                )
 
-                for (i in pair.getReadsExons() ) {
-                    for ( j in 0..(i.size - 1) step 2 ) {
-                        graph.addEdge(start = i[j], end = i[j + 1])
+            val worker = Runnable {
+
+                for ( pair in template ) {
+                    val exons = pair.getReadsExons().iterator()
+                    val graph = SpliceGraph(
+                            chromosome = pair.template.chromosome,
+                            strand = pair.template.strand
+                    )
+
+                    for (i in exons) {
+                        for (j in 0..(i.size - 1) step 2) {
+                            graph.addEdge(start = i[j], end = i[j + 1])
+                        }
                     }
-                }
 
-                for ( i in  graph.identifyAS(this.silent)) {
-                    this.results[i] = mutableListOf("$gene\t${pair.template.transcriptId}\tNA")
-                    this.identified.add("${i.event}_${i.sliceSites}")
-                }
+                    for (i in graph.identifyAS(this.silent).iterator()) {
+                        this.results[i] = mutableListOf("$gene\t${pair.template.transcriptId}\tNA")
+                        this.identified.add("${i.event}_${i.sliceSites}")
+                    }
 
-                this.results.putAll(this.findIR(template = pair))
+                    this.findIR(template = pair)
+                }
             }
+
+            executor.execute(worker)
         }
-        pb.close()
+
+
+        executor.shutdown()
+
+        while (!executor.isTerminated) {}
 
         val identifyAS = IdentifyAS(
                 overlapOfExonIntron = this.overlapOfExonIntron,
                 silent = this.silent
         )
 
+        this.logger.info("Finding Alternative Splicing events by NGS")
         bamIndex?.let {
-            for ( (k, v) in identifyAS.matchEventsWithRef(bamIndex, refIndex) ) {
+            val tmp = identifyAS.matchEventsWithRef(
+                    event = bamIndex.graph.values.toList(),
+                    annotations = refIndex.index,
+                    threads = this.threads,
+                    show = false
+            )
+
+            for ( (k, v) in  tmp) {
                 if ( "${k.event}_${k.sliceSites}" !in this.identified ) {
                     for ( j in v ) {
                         this.results[k] = v.toMutableList()
@@ -149,21 +167,6 @@ class SJFinder(
                 }
             }
         }
-
-        /*
-        if ( bamIndex != null ) {
-            this.logger.info("Finding novel AS")
-
-            for (i in bamIndex.graph.values ) {
-                for ( j in i.identifyAS(silent) ) {
-                    if ( !this.results.containsKey(j) ) {
-                        this.results[j] = "NA\tNA"
-                    }
-                }
-            }
-        }
-        */
-
     }
 
 

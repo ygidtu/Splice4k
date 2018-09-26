@@ -8,7 +8,7 @@ import dsu.third.carrier.Template
 import dsu.third.extractor.BamExtractor
 import dsu.third.extractor.Extractor
 import org.apache.log4j.Logger
-import kotlin.system.exitProcess
+
 
 
 /**
@@ -24,7 +24,7 @@ import kotlin.system.exitProcess
 /**
  * 将基因与read匹配到一起的class
  * @param reference 参考基因组的Extractor
- * @param Reads 测序reads的BamExtractor
+ * @param reads 测序reads的BamExtractor
  * @param overlap 定义基因和read确实具是一对的重合程度的阈值
  * @param distanceError 多少bp以内，可以认为两个位点其实是同一个位点，这里是容错率
  */
@@ -56,8 +56,6 @@ class GeneReadsCoupler(
 
         val tmpMatched = mutableMapOf<Genes, Template>()
         val tmpMatchedReads = hashSetOf<Genes>()
-
-        val check = mutableSetOf<GeneRead>()
 
         var firstOverlap = true
         var readIndex = 0

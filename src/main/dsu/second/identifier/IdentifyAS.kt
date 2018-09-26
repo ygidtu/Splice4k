@@ -1,15 +1,14 @@
 package dsu.second.identifier
 
+import com.sun.org.apache.xpath.internal.operations.Bool
 import dsu.carrier.Exons
 import dsu.carrier.GenomicLoci
 import dsu.carrier.SpliceEvent
-import dsu.second.index.AnnotationIndex
-import dsu.second.index.SJIndex
-import dsu.third.extractor.BamExtractor
-import dsu.third.extractor.Extractor
+import dsu.carrier.SpliceGraph
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
+import java.util.concurrent.Executors
 
 
 /**
@@ -69,14 +68,14 @@ class IdentifyAS(
 
             if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
                 if (
-                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) == 1 &&
+                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) <= 1 &&
                                 currentEvent.sliceSites[3] in currentExon.start..currentExon.end
                 ) {
                     match ++
                 }
             } else if (currentEvent.sliceSites[2] == currentEvent.sliceSites[3]) {
                 if (
-                    kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) == 1 &&
+                    kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 1 &&
                             currentEvent.sliceSites[0] in currentExon.start..currentExon.end
                         ) {
                     match ++
@@ -149,16 +148,6 @@ class IdentifyAS(
                             else -> this.checkA35( currentEvent, annotation.subList(logged, j) )
                         }
 
-
-                        if ( currentEvent !in matched.keys ) {
-                            matched[currentEvent] = mutableListOf()
-                        }
-
-                        if ( currentEvent.sliceSites[1] ==  161036207 && currentEvent.sliceSites[2] == 161036245 && currentEvent.event == "SE") {
-                            println(qualfied)
-                            println(matched[currentEvent])
-                        }
-
                         when(qualfied) {
                             null -> matched[currentEvent]!!.add("NA\tNA\tNA")
                             else -> matched[currentEvent]!!.add("${qualfied.source["gene"]}\t${qualfied.source["transcript"]}\t${qualfied.exonId}")
@@ -229,104 +218,90 @@ class IdentifyAS(
 
     /**
      * 将事件与注释配对，找到事件的来源
-     * @param event SJIndex
-     * @param annotation Gtf或Gff注释文件index
+     * @param event List of SpliceGraph
+     * @param annotations Gtf或Gff注释文件提取的exon index， Map of gene, transcript and its corresponding exons
      * @return Map of SpliceEvents and its corresponding genes, transcripts and exons
      */
-    fun matchEventsWithRef( event: SJIndex, annotation: AnnotationIndex ): Map<SpliceEvent, List<String>> {
-        this.logger.info("Predicting Alternative Splicing events")
+    fun matchEventsWithRef(
+            event: List<SpliceGraph>,
+            annotations: Map<String, List<Exons>>,
+            threads: Int,
+            show: Boolean = true
+    ): Map<SpliceEvent, List<String>> {
 
-        val events = mutableMapOf<String, List<SpliceEvent>>()
-        val annotations = annotation.data
-
-        for ( i in event.data.values) {
-            events["${i.chromosome}${i.strand}"] = i.identifyAS(this.silent)
+        if ( show ) {
+            this.logger.info("Predicting Alternative Splicing events")
         }
 
-
-        this.logger.info("Matching AS events with Reference")
+        val events = mutableMapOf<String, List<SpliceEvent>>()
         val res = HashMap<SpliceEvent, MutableList<String>>()
+
+        var executor = Executors.newFixedThreadPool(threads)
+
+        for ( i in event) {
+            val worker = Runnable {
+                val tmpEvents = i.identifyAS(this.silent)
+                events["${i.chromosome}${i.strand}"] = tmpEvents
+
+                for ( j in tmpEvents ) {
+                    res[j] = mutableListOf()
+                }
+            }
+            executor.execute(worker)
+        }
+        executor.shutdown()
+        while (!executor.isTerminated) {
+
+        }
+
+        executor = Executors.newFixedThreadPool(threads)
+
+        if ( show ) {
+            this.logger.info("Matching AS events with Reference")
+        }
 
         for ( (k, v) in events ) {
 
             if ( k.endsWith(".") ) {
                 var tmpK = k.replace("\\.$", "-")
                 if ( annotations.containsKey(tmpK) ) {
-                    this.matchEventsWithRefSingleChromosome(
-                            v.asSequence().distinct().sorted().toList(),
-                            annotations[tmpK]?.sorted(),
-                            res
-                    )
+
+                    val worker = Runnable {
+                        this.matchEventsWithRefSingleChromosome(
+                                events = v.asSequence().distinct().sorted().toList(),
+                                annotation = annotations[tmpK]?.sorted(),
+                                matched = res
+                        )
+                    }
+                    executor.execute(worker)
                 }
 
                 tmpK = k.replace("\\.$", "+")
-                this.matchEventsWithRefSingleChromosome(
-                        v.asSequence().distinct().sorted().toList(),
-                        annotations[tmpK]?.sorted(),
-                        res
-                )
+                val worker = Runnable {
+                    this.matchEventsWithRefSingleChromosome(
+                            events = v.asSequence().distinct().sorted().toList(),
+                            annotation = annotations[tmpK]?.sorted(),
+                            matched = res
+                    )
+                }
+                executor.execute(worker)
 
             } else {
-                this.matchEventsWithRefSingleChromosome(
-                        v.asSequence().distinct().sorted().toList(),
-                        annotations[k]?.sorted(),
-                        res
-                )
+                val worker = Runnable {
+                    this.matchEventsWithRefSingleChromosome(
+                            events = v.asSequence().distinct().sorted().toList(),
+                            annotation = annotations[k]?.sorted(),
+                            matched = res
+                    )
+                }
+                executor.execute(worker)
 
             }
         }
 
-        return res
-    }
 
-
-    /**
-     * 将事件与注释配对，找到事件的来源
-     * @param event SJIndex
-     * @param annotation Gtf或Gff注释文件index
-     * @return Map of SpliceEvents and its corresponding genes, transcripts and exons
-     */
-    fun matchEventsWithRef( event: BamExtractor, annotation: Extractor ): Map<SpliceEvent, List<String>> {
-        this.logger.info("Predicting Alternative Splicing events")
-
-        val events = mutableMapOf<String, List<SpliceEvent>>()
-        val annotations = annotation.index
-
-        for ( i in event.graph.values) {
-            events["${i.chromosome}${i.strand}"] = i.identifyAS(this.silent)
-        }
-
-
-        this.logger.info("Matching AS events with Reference")
-        val res = HashMap<SpliceEvent, MutableList<String>>()
-
-        for ( (k, v) in events ) {
-
-            if ( k.endsWith(".") ) {
-                var tmpK = k.replace("\\.$", "-")
-                if ( annotations.containsKey(tmpK) ) {
-                    this.matchEventsWithRefSingleChromosome(
-                            v.sorted(),
-                            annotations[tmpK]?.sorted(),
-                            res
-                    )
-                }
-
-                tmpK = k.replace("\\.$", "+")
-                this.matchEventsWithRefSingleChromosome(
-                        v.sorted(),
-                        annotations[tmpK]?.sorted(),
-                        res
-                )
-
-            } else {
-                this.matchEventsWithRefSingleChromosome(
-                        v.sorted(),
-                        annotations[k]?.sorted(),
-                        res
-                )
-
-            }
+        executor.shutdown()
+        while (!executor.isTerminated) {
         }
 
         return res
