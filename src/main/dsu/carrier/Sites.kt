@@ -1,6 +1,7 @@
 package dsu.carrier
 
-import java.lang.NullPointerException
+import java.lang.IndexOutOfBoundsException
+
 
 /**
  * @since 2018.09.21
@@ -9,13 +10,13 @@ import java.lang.NullPointerException
  * 内部类，记录所有位点信息
  */
 class Sites( val node: Int ): Comparable<Sites>, Iterator<Int> {
-    val pos = mutableMapOf<Int, Site>()
+    private val pos = mutableMapOf<Int, Site>()
 
-    var current = 0
+    private var current = 0
     var size = this.pos.size
-        get() {
-            return this.pos.size
-        }
+    get() {
+        return this.pos.size
+    }
 
     /**
      * 添加同start或者同end的位点
@@ -35,9 +36,46 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Int> {
         this.pos[site] = tmp
     }
 
+    /**
+     * 按照index获取Sites中的位点
+     * @param target 获取某个index位置上的Site，输入的index
+     * @return Site？
+     */
+    fun getSite(target: Int): Site? {
+        try{
+            return this.pos[this.pos.keys.sorted()[target]]
+        } catch (e: IndexOutOfBoundsException) {
 
+        }
+        return null
+    }
+
+    /**
+     * 获取sites中记录的所有位点
+     */
     fun getSites(): List<Site> {
         return this.pos.values.toList()
+    }
+
+
+    /**
+     * 获取sites中记录的所有位点的count数，便于计算PSI
+     */
+    private fun getCounts(): Int {
+        return this.pos.values.sumBy { it.count }
+    }
+
+
+    /**
+     * 获取某个特定位点的PSI值
+     * @param target 所需PSI值的位点
+     * @return Double? null -> means site doesn't exists; double -> PSI value
+     */
+    fun getPsi(target: Int): Double? {
+        if ( this.pos.keys.contains(target) ) {
+            return this.pos[target]!!.count / this.getCounts().toDouble()
+        }
+        return null
     }
 
 

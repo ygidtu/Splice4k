@@ -1,21 +1,19 @@
 package dsu.third.extractor
 
-import java.io.File
-
-import htsjdk.samtools.SamReaderFactory
-import htsjdk.samtools.SAMRecord
-
-import org.apache.log4j.Logger
-
+import dsu.carrier.Exons
 import dsu.carrier.Genes
-import dsu.errors.ExonException
-
+import dsu.carrier.SpliceGraph
 import dsu.progressbar.ProgressBar
+import htsjdk.samtools.SAMRecord
+import htsjdk.samtools.SamReaderFactory
+import org.apache.log4j.Logger
+import java.io.File
+import kotlin.system.exitProcess
 
 
 /**
  * @since 2018.06.18
- * @version 20180903
+ * @version 20180926
  * @author zhangyiming
  *
  * 从bam/sam文件中提取所有的exon区域，并且统计其exon数目
@@ -37,6 +35,7 @@ class BamExtractor(
     private val reader = SamReaderFactory
             .makeDefault()
             .open(File(bam))
+    val graph = mutableMapOf<String, SpliceGraph>()
 
 
     init {
@@ -110,20 +109,38 @@ class BamExtractor(
                 continue
             }
 
+            val strand = when(record.readNegativeStrandFlag) {
+                true -> '-'
+                false -> '+'
+            }
+
+            val junctions = this.extractSpliceFromCigar(record)
             // init Genes
             val tmpGene = Genes(
                     chromosome = record.referenceName,
                     start = record.alignmentStart,
                     end = record.alignmentEnd,
                     geneName = record.readName,
-                    strand = when(record.readNegativeStrandFlag) {
-                        true -> '-'
-                        false -> '+'
-                    }
+                    strand = strand
             )
+            // construct exon to genes
+            tmpGene.exons.addAll(junctions)
 
-            tmpGene.exons.addAll(this.extractSpliceFromCigar(record))
             results.add(tmpGene)
+
+            val key = "${record.referenceName}$strand"
+            // construct splicing graph
+            val tmpGraph = when( this.graph.containsKey(key)  ) {
+                true -> this.graph[key]!!
+                else -> SpliceGraph(record.referenceName, strand)
+            }
+
+            for ( i in 0..(junctions.size - 1) step 2) {
+                tmpGraph.addEdge(start = junctions[i], end = junctions[i + 1])
+            }
+
+            this.graph[key] = tmpGraph
+
         }
 
         return results

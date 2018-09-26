@@ -1,25 +1,23 @@
 package dsu.third.template
 
-/*
-import java.io.File
-import java.io.PrintWriter
-import java.io.IOException
-*/
 
-
-import org.apache.log4j.Logger
-
-import dsu.carrier.*
-import dsu.third.extractor.*
-import dsu.third.carrier.*
+import dsu.carrier.Genes
 import dsu.progressbar.ProgressBar
+import dsu.third.carrier.GeneRead
+import dsu.third.carrier.Template
+import dsu.third.extractor.BamExtractor
+import dsu.third.extractor.Extractor
+import org.apache.log4j.Logger
+import kotlin.system.exitProcess
 
 
 /**
  * @author Zhang yiming
  * @since 2018.06.20
- * @version 20180920
+ * @version 20180925
  * 将基因与reads匹配到一起
+ *
+ * 20180925 尝试将重合比例1.5倍的阈值引入，失败
  */
 
 
@@ -28,49 +26,53 @@ import dsu.progressbar.ProgressBar
  * @param reference 参考基因组的Extractor
  * @param Reads 测序reads的BamExtractor
  * @param overlap 定义基因和read确实具是一对的重合程度的阈值
- * @param foldChange read与基因可能存在多对多的关系，其中重合程度最高的要大于第二多少，才将两者匹配在一起
  * @param distanceError 多少bp以内，可以认为两个位点其实是同一个位点，这里是容错率
  */
 class GeneReadsCoupler(
-        private val reference: Extractor,
-        private val Reads: BamExtractor,
-        private val overlap: Double = 90.0,
-        private val foldChange: Double = 1.5,
-        private val distanceError: Int = 3
+        reference: Extractor,
+        reads: BamExtractor,
+        private val overlap: Double,
+        private val distanceError: Int
         ) {
     private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
 
-    val novelReads = mutableListOf<Genes>()
+    private val novelReads = mutableListOf<Genes>()
 
-    val templates = mutableListOf<Template>()
+    val templates = mutableMapOf<String, MutableList<Template>>()
+
+    private val reference = reference.data.sorted()
+    private val reads = reads.data.sorted()
 
     init {
-        this.matchGeneReadsWithoutChunk()
+        this.matchGeneReads()
     }
 
 
     /**
      * 内存足够，不需要分块读取
      */
-    private fun matchGeneReadsWithoutChunk()  {
+    private fun matchGeneReads()  {
         // 这个gap就是为了控制输出一个合适的进度条的
 
         val tmpMatched = mutableMapOf<Genes, Template>()
         val tmpMatchedReads = hashSetOf<Genes>()
 
+        val check = mutableSetOf<GeneRead>()
+
         var firstOverlap = true
         var readIndex = 0
-        this.reference.sort()
-        this.Reads.sort()
-        var tmpGene = this.reference.next()
-        var tmpRead = this.Reads.next()
+
+        var i = 0; var j = 0
 
         this.logger.info("Start to matching genes and reads")
         // 统计所有的配对信息
-        val pb = ProgressBar(this.reference.totalLine.toLong(), "Gene Reads matching")
-        while ( tmpGene != null && tmpRead != null ) {
+        val pb = ProgressBar(this.reference.size.toLong(), "Gene Reads matching")
+        while ( i < this.reference.size && j < this.reads.size ) {
 
-            pb.stepTo(this.reference.index.toLong())
+            val tmpGene = this.reference[i]
+            val tmpRead = this.reads[j]
+
+            pb.stepTo(i.toLong())
 
             when {
                 /*
@@ -78,12 +80,13 @@ class GeneReadsCoupler(
                  添加了3bp的误差空间，如果距离在3bp内的都算是同一个点了
                  */
                 tmpGene.isUpStream(tmpRead, this.distanceError) -> {
-                    tmpGene = this.reference.next()
-
                     // rollback read index
-                    this.Reads.index = readIndex
-                    tmpRead = this.Reads.get(readIndex)
-                    firstOverlap = true
+                    if (!firstOverlap) {
+                        j = readIndex
+                        firstOverlap = true
+                    }
+
+                    i++
                 }
                 // 基因在read下游，读一个read
                 tmpGene.isDownStream(tmpRead, this.distanceError) -> {
@@ -92,14 +95,14 @@ class GeneReadsCoupler(
                         this.novelReads.add(tmpRead)
                     }
 
-                    tmpRead = this.Reads.next()
+                    j++
                 }
 
                 else -> {
                     if ( tmpGene.strand == tmpRead.strand ) {
                         // log read index
                         if (firstOverlap) {
-                            readIndex = this.Reads.index
+                            readIndex = j
                             firstOverlap = false
                         }
                         val tmpGeneRead = GeneRead(tmpGene, tmpRead)
@@ -113,10 +116,12 @@ class GeneReadsCoupler(
                         主要是为了保证能够有尽可能多的reads与reference配对，
                         在组建templates时会进行进一步的检查，保证没有错配
                          */
+
                         if (
                             tmpGeneRead.overlapPercent >= this.overlap &&
                             tmpGeneRead.isGeneReadsExonsOverlapQualified(this.distanceError)
                         ) {
+
                             // 判断是否临时的匹配中是否含有该条read了
                             if (!tmpMatched.containsKey(tmpGene)) {
                                 tmpMatched[tmpGene] = Template(tmpGene, mutableListOf(tmpRead))
@@ -127,105 +132,22 @@ class GeneReadsCoupler(
                         }
                     }
 
-                    tmpRead = this.Reads.next()
+                    j++
                 }
             }
         }
 
-        this.templates.addAll(tmpMatched.values)
-    }
+        pb.close()
 
-    /*
-    /**
-     * 保存基因与Reads匹配的样本和novel的read到文件
-     * @param outfile 输出文件路径
-     */
-    fun saveTo(outfile: String) {
-        val outFile = File(outfile).absoluteFile
-
-        var writer = PrintWriter(System.out)
-        try{
-            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
-
-            writer = PrintWriter(outFile)
-
-            for (i in this.matchedGeneRead) {
-                writer.println(i)
+        for ( (k, v) in tmpMatched ) {
+            val tmpTemplate = when ( this.templates.containsKey(k.parent) ) {
+                true -> this.templates[k.parent]!!
+                else -> mutableListOf()
             }
 
-            for (i in this.novelReads) {
-                writer.println("None|$i")
-            }
+            tmpTemplate.add(v)
 
-        } catch (err: IOException) {
-            logger.error(err.message)
-            for (i in err.stackTrace) {
-                logger.error(i)
-            }
-        } finally {
-            writer.close()
+            this.templates[k.parent] = tmpTemplate
         }
     }
-    */
-
-
-    /*
-    /**
-     * 保存novel的read到文件
-     * @param outfile 输出文件路径
-     */
-
-    fun saveNovel(outfile: String) {
-        val outFile = File(outfile).absoluteFile
-
-        var writer = PrintWriter(System.out)
-        try{
-            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
-
-            writer = PrintWriter(outFile)
-
-            for (i in this.novelReads) {
-                writer.println("None|$i")
-            }
-
-        } catch (err: IOException) {
-            logger.error(err.message)
-            for (i in err.stackTrace) {
-                logger.error(i)
-            }
-        } finally {
-            writer.close()
-        }
-    }
-    */
-
-
-    /*
-     /**
-      * 保存构件好的基因的template
-      * @param outfile 输出文件路径
-      */
-     fun saveTemplate(outfile: String) {
-         val outFile = File(outfile).absoluteFile
-
-         var writer = PrintWriter(System.out)
-         try{
-             if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
-
-             writer = PrintWriter(outFile)
-
-             for (i in this.templates) {
-                 writer.println(i)
-             }
-
-         } catch (err: IOException) {
-             logger.error(err.message)
-             for (i in err.stackTrace) {
-                 logger.error(i)
-             }
-         } finally {
-             writer.close()
-         }
-     }
-     */
 }

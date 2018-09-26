@@ -1,10 +1,10 @@
 package dsu.second.index
 
-import java.util.Scanner
-import java.io.File
 import dsu.carrier.SpliceGraph
-import org.apache.log4j.Logger
 import dsu.progressbar.ProgressBar
+import org.apache.log4j.Logger
+import java.io.File
+import java.util.*
 
 open class SJIndex(val infile: String) {
     val logger = Logger.getLogger(SJIndex::class.java)
@@ -17,7 +17,7 @@ open class SJIndex(val infile: String) {
 
     open fun getAllSJ() {
         logger.info("Reading Splice Junctions")
-        val pattern = "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()
+        val pattern = "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.])\t(\\d+)$".toRegex()
 
         val reader = Scanner(File(this.infile))
 
@@ -29,12 +29,11 @@ open class SJIndex(val infile: String) {
             try{
                 var (chromosome, tmpStart, tmpEnd, strand, count) = pattern.find(line)!!.destructured
 
-                if ( strand == "" ) {
+                if (strand == "") {
                     strand = "."
                 }
 
                 val key = "$chromosome$strand"
-
                 val tmpGraph = when ( this.data.containsKey(key) ) {
                     true -> this.data[key]!!
                     else -> SpliceGraph(chromosome = chromosome, strand = strand.toCharArray().first())
@@ -42,7 +41,7 @@ open class SJIndex(val infile: String) {
 
                 tmpGraph.addEdge(tmpStart.toInt(), tmpEnd.toInt(), count.toInt(), count.toInt())
 
-                this.data["$chromosome$strand"] = tmpGraph
+                this.data[key] = tmpGraph
             } catch ( e: NullPointerException ) {
                 continue
             }

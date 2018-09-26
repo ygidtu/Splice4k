@@ -1,21 +1,27 @@
 package dsu.third.carrier
 
-import dsu.carrier.Exons
+import dsu.carrier.GenomicLoci
 import dsu.carrier.Genes
-import java.util.Objects
+import dsu.carrier.SpliceEvent
+import java.util.*
 
 
 /**
- * @author zhangyiming
+ * @author zhang yiming
  * @since 2018.06.20
- * @version 20180918
+ * @version 20180926
  * 基因与Reads的配对
  */
 
 class Template(
         val template: Genes,
-        val reads: MutableList<Genes>
+        reads: MutableList<Genes>
 ): Comparable<Template> {
+    val reads = reads
+    get() {
+        field.sort()
+        return field
+    }
 
     /**
      * 获取这个组装好的模板对应的所有reads的exons
@@ -24,7 +30,9 @@ class Template(
     fun getReadsExons(): List<List<Int>> {
         val res = mutableListOf<List<Int>>()
 
-        reads.forEach { res.add(it.exons) }
+        for ( i in this.reads.distinct() ) {
+            res.add(i.exons)
+        }
 
         return res
     }

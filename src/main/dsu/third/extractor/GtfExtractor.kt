@@ -1,20 +1,20 @@
 package dsu.third.extractor
 
-import java.io.File
-import java.io.IOException
-import java.util.Scanner
 
-import kotlin.system.exitProcess
-import org.apache.log4j.Logger
-
+import dsu.carrier.Exons
 import dsu.carrier.Genes
 import dsu.progressbar.ProgressBar
+import org.apache.log4j.Logger
+import java.io.File
+import java.io.IOException
+import java.util.*
+import kotlin.system.exitProcess
 
 
 /**
  * @since 2018.06.14
- * @version 20180903
- * @author zhangyiming
+ * @version 20180926
+ * @author Zhang yiming
  * 从gtf格式中提取所需信息
  */
 
@@ -43,7 +43,14 @@ class GtfExtractor(
     private fun extractTagInformation(info: List<String>): Map<String, String> {
         val results: MutableMap<String, String> = mutableMapOf()
 
-        val msgWeNeed = arrayOf("gene_name", "gene_id", "transcript_name", "transcript_id")
+        val msgWeNeed = arrayOf(
+                "gene_name",
+                "gene_id",
+                "transcript_name",
+                "transcript_id",
+                "exon_id",
+                "exon_name"
+        )
 
         for (i in 0..(info.size - 1) step 2) {
             if (info[i] !in msgWeNeed) {
@@ -64,7 +71,7 @@ class GtfExtractor(
      */
     private fun gtfReader(): List<Genes> {
         val transcripts: MutableList<Genes> = mutableListOf()
-        val exons: MutableMap<String, List<Int>> = mutableMapOf()
+        val exons: MutableMap<String, MutableList<Int>> = mutableMapOf()
 
         val pb = ProgressBar(message = "Reading Gtf")
         try {
@@ -78,23 +85,47 @@ class GtfExtractor(
                 if (line.startsWith("#")) continue // skip annotations
 
                 val lines = line.split("\\s+".toRegex())
+
+                val info = this.extractTagInformation(lines.subList(8, lines.size))
                 val tmpGene = Genes(
                         chromosome = lines[0],
                         start = lines[3].toInt(),
                         end = lines[4].toInt(),
                         strand = lines[6].toCharArray()[0],
-                        information = this.extractTagInformation(lines.subList(8, lines.size))
+                        information = info
                 )
 
                 if (lines[2] == "transcript") {
                     transcripts.add(tmpGene)
                 } else if ( lines[2] == "exon" ) {
+
                     val tmp = mutableListOf(tmpGene.start, tmpGene.end)
 
                     if (exons.containsKey(tmpGene.transcriptId)) {
                         tmp.addAll(exons[tmpGene.transcriptId]!!)
                     }
                     exons[tmpGene.transcriptId] = tmp
+
+
+                    val tmpExon = Exons(
+                            chromosome = lines[0],
+                            start = lines[3].toInt(),
+                            end = lines[4].toInt(),
+                            strand = lines[6].toCharArray()[0],
+                            exonId = info["exon_id"]!!
+                    )
+
+                    tmpExon.source["transcript"] = info["transcript_id"]!!
+                    tmpExon.source["gene"] = info["gene_id"]!!
+
+                    val tmpIndex = mutableListOf(tmpExon)
+                    val key = "${lines[0]}${lines[6]}"
+                    if ( this.index.containsKey(key) ) {
+                        this.index[key]!!.addAll(tmpIndex)
+                    } else {
+                        this.index[key] = mutableListOf(tmpExon)
+                    }
+
                 } else {
                     continue
                 }

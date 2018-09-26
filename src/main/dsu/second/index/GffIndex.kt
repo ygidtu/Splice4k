@@ -23,16 +23,8 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
         for (inf in info[0].split(";")) {
             val tmp = inf.split("=")
 
-            if (tmp[0] == "Parent") {
-                results["ParentType"] = when {
-                    ":" in tmp[1] -> tmp[1].split(":")[0]
-                    else -> tmp[1]
-                }
-
-                results["Parent"] = when {
-                    ":" in tmp[1] -> tmp[1].split(":")[1]
-                    else -> tmp[1]
-                }
+            if ( ":" in tmp[1] ) {
+                results[tmp[0]] = tmp[1].split(":")[1]
             } else {
                 results[tmp[0]] = tmp[1]
             }
@@ -57,15 +49,19 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
 
                 val lines = line.split("\\s+".toRegex())
                 pb.step()
-
+                val geneTranscript = mutableMapOf<String, String>()
+                val sources = this.getSource(lines.subList(8, lines.size))
                 if (lines[2] == "exon") {
                     val tmpExon = Exons(
                             chromosome = lines[0],
                             start = lines[3].toInt(),
                             end = lines[4].toInt(),
                             strand = lines[6].toCharArray()[0],
-                            source = this.getSource(lines.subList(8, lines.size))["Parent"]!!
+                            exonId = sources["exon_id"]!!
                     )
+
+                    tmpExon.source["transcript"] = sources["Parent"]!!
+                    tmpExon.source["gene"] = geneTranscript[sources["Parent"]]!!
 
                     val tmp = mutableListOf(tmpExon)
                     val key = "${lines[0]}${lines[6]}"
@@ -74,23 +70,13 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
                     } else {
                         this.data[key] = tmp
                     }
+                } else if ( "transcript_id" in sources.keys ) {
+                    geneTranscript[sources["ID"]!!] = sources["Parent"]!!
                 }
-//                } else if (lines[2].matches("(.*rna|.*transcript)".toRegex(RegexOption.IGNORE_CASE))) {
-//                    val tmpGene = Genes(
-//                            chromosome = lines[0],
-//                            start = lines[3].toInt(),
-//                            end = lines[4].toInt(),
-//                            strand = lines[6].toCharArray()[0],
-//                            information = this.getSource(lines.subList(8, lines.size))
-//                    )
-//
-//                    this.transcripts[tmpGene.transcriptId] = tmpGene
-//                }
-
-
             }
 
             reader.close()
+            pb.close()
         }catch (e: IOException) {
             this.logger.error(e.toString())
         }

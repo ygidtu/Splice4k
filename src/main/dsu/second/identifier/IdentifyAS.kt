@@ -2,13 +2,15 @@ package dsu.second.identifier
 
 import dsu.carrier.Exons
 import dsu.carrier.GenomicLoci
+import dsu.carrier.SpliceEvent
 import dsu.second.index.AnnotationIndex
 import dsu.second.index.SJIndex
-import dsu.carrier.SpliceEvent
+import dsu.third.extractor.BamExtractor
+import dsu.third.extractor.Extractor
 import org.apache.log4j.Logger
 import java.io.File
-import java.io.IOException
 import java.io.PrintWriter
+
 
 /**
  * @author Zhangyiming
@@ -28,53 +30,154 @@ import java.io.PrintWriter
  */
 
 
-class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
+class IdentifyAS(
+        val overlapOfExonIntron: Double,
+        val distanceError: Int,
+        val silent: Boolean
+) {
     private val logger = Logger.getLogger(IdentifyAS::class.java)
-    private val events = mutableMapOf<String, List<SpliceEvent>>()
-    private val annotation = annotation.data
 
-    init {
-        for ( i in event.data.values) {
-            this.events["${i.chromosome}${i.strand}"] = i.identifyAS()
+
+    /**
+     * 检查SE是否真实存在，即是否确实在注释中存在这么个外显子
+     * @param currentEvent 事件
+     * @param exonList 事件范围内的外显子
+     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
+     */
+    private fun checkSE( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
+
+        for ( currentExon in exonList ) {
+            if ( currentEvent.sliceSites[1] <= currentExon.start &&
+                    currentEvent.sliceSites[2] >= currentExon.end ) {
+                return currentExon
+            }
         }
+        return null
     }
+
+    /**
+     * 检查A3/A5是否真实存在，即确定是否发生在某个外显子上
+     * @param currentEvent 事件
+     * @param exonList 事件范围内的外显子
+     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
+     */
+    private fun checkA35( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
+        var match = 0
+
+        for ( currentExon in exonList ) {
+
+            if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
+                if (
+                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) <= this.distanceError &&
+                                currentEvent.sliceSites[3] in currentExon.start..currentExon.end
+                ) {
+                    match ++
+                }
+            } else if (currentEvent.sliceSites[2] == currentEvent.sliceSites[3]) {
+                if (
+                    kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= this.distanceError &&
+                            currentEvent.sliceSites[0] in currentExon.start..currentExon.end
+                        ) {
+                    match ++
+                }
+            }
+
+            if ( match > 0 ) {
+                return currentExon
+            }
+        }
+        return null
+    }
+
+    /**
+     * 检查MXE事件是否存在，即确定是否发生于至少两个外显子上
+     * @param currentEvent 事件
+     * @param exonList 事件范围内的外显子
+     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
+     */
+    private fun checkMXE( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
+        var matched = 0
+
+        for ( exon in exonList ) {
+            if ( currentEvent.sliceSites[1] <= exon.start && currentEvent.sliceSites[2] >= exon.end ) {
+                matched ++
+            }
+
+            if ( currentEvent.sliceSites[3] <= exon.start && currentEvent.sliceSites[4] >= exon.end ) {
+                matched ++
+            }
+
+            if ( matched >= 2 ) {
+                return exon
+            }
+        }
+
+        return null
+    }
+
 
     /**
      * 将获取到的剪接时间与基因挂钩
      */
     private fun matchEventsWithRefSingleChromosome(
             events: List<SpliceEvent>,
-            annotation: List<Exons>
-    ): Map<SpliceEvent, String> {
-        var i = 0
-        var j = 0
+            annotation: List<Exons>?
+    ): Map<SpliceEvent, HashSet<String>> {
+        val matched = mutableMapOf<SpliceEvent, HashSet<String>>()
 
-        val matched = mutableMapOf<SpliceEvent, String>()
+        if ( annotation == null ) {
+            for ( it in events ) {
+                matched[it] = hashSetOf("NA\tNA\tNA")
+            }
+            return matched
+        }
+
+        var i = 0; var j = 0; var logged = 0; var firstMatch = true
+
         while ( i < events.size && j < annotation.size) {
             val currentEvent = events[i]
             val currentExon = annotation[j]
 
             when{
-                currentEvent.isUpStream( currentExon, distanceError = 3 ) -> {
-                    if ( !matched.containsKey(currentEvent) ) {
-                        matched[currentEvent] = ""
-                    }
+                currentEvent.isUpStream( currentExon ) -> {
                     i ++
+
+                    val qualfied = when (currentEvent.event) {
+                        "SE" -> this.checkSE(currentEvent, annotation.subList(logged, j))
+
+                        "MXE" -> this.checkMXE( currentEvent, annotation.subList(logged, j) )
+
+                        else -> this.checkA35( currentEvent, annotation.subList(logged, j) )
+                    }
+
+                    val ids =  when(qualfied) {
+                        null -> "NA\tNA\tNA"
+                        else -> "${qualfied.source["gene"]}\t${qualfied.source["transcript"]}\t${qualfied.exonId}"
+                    }
+
+                    if ( matched.containsKey(currentEvent) ) {
+                        matched[currentEvent]!!.add(ids)
+                    } else {
+                        matched[currentEvent] = hashSetOf(ids)
+                    }
+
+                    if ( !firstMatch ) {
+                        j = logged
+                        firstMatch = true
+                    }
                 }
-                currentEvent.isDownStream( currentEvent, distanceError = 3 ) -> j++
+                currentEvent.isDownStream( currentExon ) -> {
+                    j++
+                }
                 else -> {
 
-                    for ( k in currentEvent.sliceSites ) {
-                        if ( kotlin.math.abs(k - currentExon.start) <= 3 ||
-                                kotlin.math.abs(k - currentExon.end) <= 3 ) {
-                            matched[currentEvent] = currentExon.source
-                            break
-                        }
+                    if ( firstMatch ) {
+                        logged = j
+                        firstMatch = false
                     }
 
                     j++
                 }
-
             }
 
             if (
@@ -94,7 +197,7 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
                             start = currentExon.end,
                             end = annotation[j + 1].start
                     )
-                    if ( tmp2.overlapPercent(tmp1, all = true) > 90.0 ) {
+                    if ( tmp2.overlapPercent(tmp1, all = true) > this.overlapOfExonIntron ) {
                         val tmp = SpliceEvent(
                                 event = "IR",
                                 chromosome = currentEvent.chromosome,
@@ -109,7 +212,7 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
                                 )
                         )
 
-                        matched[tmp] = currentExon.source
+                        matched[tmp] = hashSetOf("${currentExon.source["gene"]}\t${currentExon.source["transcript"]}\t${currentExon.exonId}")
                     }
                 } catch (e: dsu.errors.ChromosomeException) {
 
@@ -122,36 +225,40 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
     }
 
 
-    private fun matchEventsWithRef(): Map<SpliceEvent, String> {
-        val res = HashMap<SpliceEvent, String>()
-        for ( (k, v) in this.events ) {
+    /**
+     * 将事件与注释配对，找到事件的来源
+     * @param event SJIndex
+     * @param annotation Gtf或Gff注释文件index
+     * @return Map of SpliceEvents and its corresponding genes, transcripts and exons
+     */
+    fun matchEventsWithRef( event: SJIndex, annotation: AnnotationIndex ): Map<SpliceEvent, HashSet<String>> {
+        this.logger.info("Predicting Alternative Splicing events")
 
+        val events = mutableMapOf<String, List<SpliceEvent>>()
+        val annotations = annotation.data
+
+        for ( i in event.data.values) {
+            events["${i.chromosome}${i.strand}"] = i.identifyAS(this.silent)
+        }
+
+
+        this.logger.info("Matching AS events with Reference")
+        val res = HashMap<SpliceEvent, HashSet<String>>()
+
+        for ( (k, v) in events ) {
 
             if ( k.endsWith(".") ) {
-
-                if ( this.annotation.containsKey(k.replace("\\.$".toRegex(), "+")) ) {
-                    res.putAll(
-                            this.matchEventsWithRefSingleChromosome(
-                                    v,
-                                    // 我是不是傻！！！顶上都换key了。下班怎么就不换呢
-                                    this.annotation[k.replace("\\.$".toRegex(), "+")]!!
-                            )
-                    )
+                var tmpK = k.replace("\\.$", "-")
+                if ( annotations.containsKey(tmpK) ) {
+                    res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[tmpK]?.sorted()))
                 }
 
-                if ( this.annotation.containsKey(k.replace("\\.$".toRegex(), "-")) ) {
-                    res.putAll(
-                            this.matchEventsWithRefSingleChromosome(
-                                    v,
-                                    this.annotation[k.replace("\\.$".toRegex(), "-")]!!
-                            )
-                    )
-                }
-            }
+                tmpK = k.replace("\\.$", "+")
+                res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[tmpK]?.sorted()))
 
+            } else {
+                res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[k]?.sorted()))
 
-            if ( this.annotation.containsKey(k) ) {
-                res.putAll(this.matchEventsWithRefSingleChromosome(v, this.annotation[k]!!))
             }
         }
 
@@ -159,27 +266,65 @@ class IdentifyAS(event: SJIndex, annotation: AnnotationIndex) {
     }
 
 
-    fun writeTo(outfile: File) {
+    /**
+     * 将事件与注释配对，找到事件的来源
+     * @param event SJIndex
+     * @param annotation Gtf或Gff注释文件index
+     * @return Map of SpliceEvents and its corresponding genes, transcripts and exons
+     */
+    fun matchEventsWithRef( event: BamExtractor, annotation: Extractor ): Map<SpliceEvent, HashSet<String>> {
+        this.logger.info("Predicting Alternative Splicing events")
+
+        val events = mutableMapOf<String, List<SpliceEvent>>()
+        val annotations = annotation.index
+
+        for ( i in event.graph.values) {
+            events["${i.chromosome}${i.strand}"] = i.identifyAS(this.silent)
+        }
+
+
+        this.logger.info("Matching AS events with Reference")
+        val res = HashMap<SpliceEvent, HashSet<String>>()
+
+        for ( (k, v) in events ) {
+
+            if ( k.endsWith(".") ) {
+                var tmpK = k.replace("\\.$", "-")
+                if ( annotations.containsKey(tmpK) ) {
+                    res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[tmpK]?.sorted()))
+                }
+
+                tmpK = k.replace("\\.$", "+")
+                res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[tmpK]?.sorted()))
+
+            } else {
+                res.putAll(this.matchEventsWithRefSingleChromosome(v.sorted(), annotations[k]?.sorted()))
+
+            }
+        }
+
+        return res
+    }
+
+
+    fun writeTo(outfile: File, results: Map<SpliceEvent, HashSet<String>>) {
         val outFile = outfile.absoluteFile
 
-        var writer = PrintWriter(System.out)
+        if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
 
-        try{
-            if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
+        val writer = PrintWriter(outFile)
 
-            writer = PrintWriter(outFile)
+        for ( (k, v) in results) {
+            for ( j in v.distinct() ) {
 
-            for ( (k, v) in this.matchEventsWithRef()) {
-                writer.println("$k\t$v")
+                if (j != "NA\tNA\tNA") {
+                    writer.println("$k\t$j")
+                }
             }
-        } catch (err: IOException) {
-            logger.error(err.message)
-            for (i in err.stackTrace) {
-                logger.error(i)
-            }
-        } finally {
-            writer.close()
         }
+
+        writer.close()
+
     }
 }
 

@@ -1,17 +1,16 @@
-package dsu.carrier
+package dsu.third.carrier
 
-import java.util.Objects
+import dsu.carrier.Genes
+import java.util.*
 
 /**
- * @author zhangyiming
+ * @author Zhang yiming
  * @since 2018.06.20
- * @version 0.1
+ * @version 20180926
  * 基因与Reads的配对
  */
 
 class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
-
-    var overlap: Int = this.gene.getOverlap(this.reads) ?: 0
 
     // 比例改为相对于较短的那一个来算
     var overlapPercent: Double = this.gene.overlapPercent(this.reads)
@@ -23,8 +22,8 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      * @return Boolean  true符合；false不符合
      */
     fun isGeneReadsExonsOverlapQualified(error: Int = 3): Boolean {
-        val geneExons = this.gene.exons.asSequence().distinct().sorted().toList()
-        val readsExons = this.reads.exons.asSequence().distinct().sorted().toList()
+        val geneExons = this.gene.exons
+        val readsExons = this.reads.exons
 
         var i = 0; var j = 0; var match = 0
         while (i < geneExons.size && j < readsExons.size) {
@@ -59,7 +58,7 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
      * hashCode重载
      */
     override fun hashCode(): Int {
-        return Objects.hash(this.gene.transcriptId, this.reads.transcriptId)
+        return Objects.hash(this.gene.toString(), this.reads.toString())
     }
 
     /**
@@ -91,18 +90,5 @@ class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
                 }
             }
         }
-    }
-
-
-    /**
-     * toString是按照gene|reads的顺序构建
-     * 这个function反过来
-     * @return string
-     */
-    fun toStringReverse() : String {
-        if (this.gene.transcriptId == "." && this.gene.geneName == "." && this.gene.length <= 0 ) {
-            return "${this.reads}|None"
-        }
-        return "${this.reads}|${this.gene}"
     }
 }

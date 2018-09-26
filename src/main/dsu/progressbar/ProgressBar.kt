@@ -2,7 +2,7 @@ package dsu.progressbar
 
 /**
  * @author Zhangyiming
- * @version 20180902
+ * @version 20180926
  * @since 2018.09.02
  *
  * 自定义的进度条
@@ -34,7 +34,7 @@ class ProgressBar(private val total: Long? = null, private val message: String =
 
         if (timeGap > 0.12 ) {
             if (this.last > this.begin) {
-                print("\r");
+                print("\r")
             }
 
             this.last = tmpTime
@@ -69,6 +69,9 @@ class ProgressBar(private val total: Long? = null, private val message: String =
     }
 
     fun close() {
+        this.total?.let {
+            this.stepTo(this.total)
+        }
         println("\r")
     }
 }

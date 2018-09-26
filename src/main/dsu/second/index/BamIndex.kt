@@ -18,7 +18,7 @@ import java.io.PrintWriter
   */
 
 
-class BamIndex(bam: String): SJIndex(bam) {
+class BamIndex( bam: String ): SJIndex(bam) {
 
     /**
      * private function
@@ -26,7 +26,7 @@ class BamIndex(bam: String): SJIndex(bam) {
      * @param record 单条SAM/BAM的信息
      * @return 列表，记录了所有的intron的边界信息
      */
-    private fun extractSpliceFromCigar(record: SAMRecord): List<Int> {
+    private fun extractSpliceFromCigar( record: SAMRecord ): List<Int> {
         val results: MutableList<Int> = mutableListOf()
         var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
@@ -105,7 +105,7 @@ class BamIndex(bam: String): SJIndex(bam) {
      * 将提取到的Junctions输出到文件
      * @param output 输入文件
      */
-    fun writeTo(output: File) {
+    fun writeTo( output: File ) {
 
         try{
             if (!output.absoluteFile.parentFile.exists()) output.absoluteFile.parentFile.mkdirs()

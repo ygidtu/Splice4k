@@ -2,8 +2,8 @@ package dsu.carrier
 
 
 import java.lang.NullPointerException
+import java.util.Objects
 import org.apache.log4j.Logger
-import kotlin.math.sign
 
 /**
  * @since 2018.09.19
@@ -14,10 +14,14 @@ import kotlin.math.sign
  */
 
 
-class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
+class SpliceGraph(
+        val chromosome: String,
+        val strand: Char
+) {
+
     private val logger = Logger.getLogger(SpliceGraph::class.java)
-    val starts = mutableMapOf<Int, Sites>()
-    val ends = mutableMapOf<Int, Sites>()
+    private val starts = mutableMapOf<Int, Sites>()
+    private val ends = mutableMapOf<Int, Sites>()
 
     // 记录具有A3和A5的位点，便于最后寻找MXE
     private val assSites = mapOf<String, HashSet<Int>>(
@@ -100,21 +104,7 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
             ends: Sites?,
             res: MutableList<SpliceEvent>
     ) {
-
-        val aS = when (this.strand) {
-            '-' -> "A5"
-            else -> "A3"
-        }
-
-        val aE = when (this.strand) {
-            '-' -> "A3"
-            else -> "A5"
-        }
-
-        val start: Int
-        val end: Int
-
-        val skippedExons = hashSetOf<Int>()
+        val exonSkipped = hashSetOf<Int>()
         try {
             // finding potential SE
             for ( i in starts!! ) {
@@ -130,7 +120,8 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
                                 sliceSites = listOf(starts.node, i, j, ends.node)
                         ))
 
-                        skippedExons.addAll(listOf(starts.node, ends.node, i, j))
+                        exonSkipped.add(Objects.hash(listOf(starts.node, i, j).sorted()))
+                        exonSkipped.add(Objects.hash(listOf(i, j, ends.node)))
 
                         this.assSites["start"]!!.add(starts.node)
                         this.assSites["end"]!!.add(ends.node)
@@ -143,21 +134,35 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
 
         // finding A3/A5
         try {
-            starts!!.current = 0
-            start = starts.getClosestSite()
-            for ( i in starts ) {
-                if ( start != i && i !in skippedExons ) {
-                    res.add(SpliceEvent(
-                            event = aS,
-                            chromosome = this.chromosome,
-                            start = starts.node,
-                            end = i,
-                            strand = this.strand,
-                            sliceSites = listOf(starts.node, starts.node, start, i)
-                    ))
 
-                    this.assSites["start"]!!.add(starts.node)
+            for ( i in 0..(starts!!.size - 2) ) {
+                for ( j in (i + 1)..(starts.size - 1) ) {
+                    val sites = listOf(
+                            starts.node,
+                            starts.node,
+                            starts.getSite(i)!!.site,
+                            starts.getSite(j)!!.site
+                    )
+                    if (
+                            starts.getSite(i)!!.site != starts.getSite(j)!!.site &&
+                            Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
+                    ) {
+                        res.add(SpliceEvent(
+                                event = when(this.strand) {
+                                    '-' -> "A5"
+                                    else -> "A3"
+                                },
+                                chromosome = this.chromosome,
+                                start = sites.asSequence().sorted().first(),
+                                end = sites.asSequence().sorted().last(),
+                                strand = this.strand,
+                                sliceSites = sites
+                        ))
+
+                        this.assSites["start"]!!.add(starts.node)
+                    }
                 }
+
             }
         } catch (e: NullPointerException) {
 
@@ -165,22 +170,36 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
 
         // finding A3/A5
         try {
-            ends!!.current = 0
-            end = ends.getClosestSite()
-            for ( i in ends ) {
-                //
-                if ( end != i && i !in skippedExons ) {
-                    res.add(SpliceEvent(
-                            event = aE,
-                            chromosome = this.chromosome,
-                            start = i,
-                            end = ends.node,
-                            strand = this.strand,
-                            sliceSites = listOf(i, end, ends.node, ends.node )
-                    ))
+            for ( i in 0..(ends!!.size - 2) ) {
+                for ( j in (i + 1)..(ends.size - 1) ) {
 
-                    this.assSites["end"]!!.add(ends.node)
+                    val sites = listOf(
+                            ends.getSite(i)!!.site,
+                            ends.getSite(j)!!.site,
+                            ends.node,
+                            ends.node
+                    )
+
+                    if (
+                            ends.getSite(i)!!.site != ends.getSite(j)!!.site &&
+                            Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
+                    ) {
+                        res.add(SpliceEvent(
+                                event = when(this.strand) {
+                                    '-' -> "A3"
+                                    else -> "A5"
+                                },
+                                chromosome = this.chromosome,
+                                start = sites.asSequence().sorted().first(),
+                                end = sites.asSequence().sorted().last(),
+                                strand = this.strand,
+                                sliceSites = sites
+                        ))
+
+                        this.assSites["end"]!!.add(ends.node)
+                    }
                 }
+
             }
         } catch (e: NullPointerException) {
 
@@ -223,6 +242,7 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
             }
 
             val tmpEnds = this.ends[i.getExtremeSite()]
+
             identifyBetweenSameStartEnd(
                     starts = i,
                     ends = tmpEnds,
@@ -240,6 +260,7 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
             }
 
             if ( !loggedEnds.contains(i) ) {
+
                 identifyBetweenSameStartEnd(
                         starts = null,
                         ends = i,
@@ -322,7 +343,7 @@ class SpliceGraph( val chromosome: String, val strand: Char = '+' ) {
         var output = ""
         for ( (start, value) in this.starts ) {
             for ( end in value.getSites()) {
-                var tmp = "${this.chromosome}:$start-${end.site}${this.strand}\t${end.count}"
+                var tmp = "${this.chromosome}:$start-${end.site}\t${end.count}"
 
                 if ( !end.source["gene"]!!.isEmpty() ) {
                     tmp = "$tmp\t${end.source["gene"]!!.joinToString(prefix = "", postfix = "", separator = ",")}"

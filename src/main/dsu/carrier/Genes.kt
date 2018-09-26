@@ -8,11 +8,15 @@ import java.util.*
 /**
  * @since 2018.06.14
  * @author zhangyiming
- * @version 20180903
+ * @version 20180926
  * 基因信息载体
 */
 
-class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, start, end) {
+class Genes(
+        chromosome: String,
+        start: Int,
+        end: Int
+): GenomicLoci(chromosome, start, end) {
 
     var strand: Char = '.'
     set(value) {
@@ -43,14 +47,12 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
     }
 
     val exons: MutableList<Int> = mutableListOf()
+    get() {
+        field.sort()
+        return field
+    }
 
     var parent: String = ""
-    get() {
-        return when (field) {
-            "" -> this.geneId
-            else -> field
-        }
-    }
 
 
     /**
@@ -105,8 +107,14 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
     ) : this(chromosome, start, end) {
         for ((k, v) in information) {
             when (k) {
-                "gene_id" -> this.geneId = v
-                "Parent" -> this.geneId = v
+                "gene_id" -> {
+                    this.parent = v
+                    this.geneId = v
+                }
+                "Parent" -> {
+                    this.parent = v
+                    this.geneId = v
+                }
                 "gene_name" -> this.geneName = v
                 "Name" -> this.geneName = v
                 "transcript_id" -> this.transcriptId = v
@@ -157,6 +165,7 @@ class Genes(chromosome: String, start: Int, end: Int): GenomicLoci(chromosome, s
             else -> compareValuesBy(this, other, {it.chromosome}, {it.start}, {it.end})
         }
     }
+
 
     /**
      * 返回目前已有的数据

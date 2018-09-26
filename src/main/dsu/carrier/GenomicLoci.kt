@@ -7,9 +7,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * @author Zhangyiming
+ * @author Zhang yiming
  * @since 2018.09.03
- * @version 20180903
+ * @version 20180926
  *
  * 基础类，用来重新调整整个代码结构
  */
