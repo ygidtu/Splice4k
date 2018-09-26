@@ -86,7 +86,7 @@ class SJFinder(
                                 start = junctions[j].start,
                                 end = junctions[j].end,
                                 strand = template.template.strand,
-                                sliceSites = listOf(
+                                sliceSites = mutableListOf(
                                         exons[i].end,
                                         exons[i].start,
                                         junctions[j].start,

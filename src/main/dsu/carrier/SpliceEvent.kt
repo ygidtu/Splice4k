@@ -16,12 +16,13 @@ class SpliceEvent(
         start: Int,
         end: Int,
         val strand: Char,
-        sliceSites: List<Int>
+        sliceSites: MutableList<Int>
 ): GenomicLoci(chromosome, start, end) {
 
     val sliceSites = sliceSites
     get() {
-        return field.sorted()
+        field.sort()
+        return field
     }
 
 
@@ -34,7 +35,7 @@ class SpliceEvent(
     }
 
     override fun toString(): String {
-        return "${this.chromosome}:${this.start}-${this.end}${this.strand}\t${this.event}\t${this.chromosome}:${this.sliceSites.joinToString(prefix = "", postfix = "", separator = "-")}"
+        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}\t${this.event}\t${this.chromosome}:${this.sliceSites.joinToString(prefix = "", postfix = "", separator = "-")}"
     }
 
 }

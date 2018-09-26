@@ -9,10 +9,9 @@ import java.lang.IndexOutOfBoundsException
  * @author Zhang yiming
  * 内部类，记录所有位点信息
  */
-class Sites( val node: Int ): Comparable<Sites>, Iterator<Int> {
+class Sites( val node: Int ): Comparable<Sites> {
     private val pos = mutableMapOf<Int, Site>()
 
-    private var current = 0
     var size = this.pos.size
     get() {
         return this.pos.size
@@ -116,19 +115,6 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Int> {
      */
     override fun compareTo(other: Sites): Int {
         return this.node - other.node
-    }
-
-    /**
-     * 重载
-     * 便于对Sites进行遍历
-     */
-    override fun next(): Int {
-        this.current += 1
-        return this.pos.values.sorted()[current - 1].site
-    }
-
-    override fun hasNext(): Boolean {
-        return this.current < this.pos.size
     }
 
 }

@@ -105,23 +105,24 @@ class SpliceGraph(
             res: MutableList<SpliceEvent>
     ) {
         val exonSkipped = hashSetOf<Int>()
+
         try {
             // finding potential SE
-            for ( i in starts!! ) {
-                for ( j in ends!! ) {
+            for ( i in starts!!.getSites() ) {
+                for ( j in ends!!.getSites() ) {
 
                     if ( i < j ) {
                         res.add(SpliceEvent(
                                 event = "SE",
                                 chromosome = this.chromosome,
-                                start = starts.node,
-                                end = ends.node,
+                                start = i.site,
+                                end = j.site,
                                 strand = this.strand,
-                                sliceSites = listOf(starts.node, i, j, ends.node)
+                                sliceSites = mutableListOf(starts.node, i.site, j.site, ends.node)
                         ))
 
-                        exonSkipped.add(Objects.hash(listOf(starts.node, i, j).sorted()))
-                        exonSkipped.add(Objects.hash(listOf(i, j, ends.node)))
+                        exonSkipped.add(Objects.hash(listOf(starts.node, i.site, j.site).sorted()))
+                        exonSkipped.add(Objects.hash(listOf(i.site, j.site, ends.node)))
 
                         this.assSites["start"]!!.add(starts.node)
                         this.assSites["end"]!!.add(ends.node)
@@ -132,17 +133,18 @@ class SpliceGraph(
 
         }
 
-        // finding A3/A5
         try {
-
+            // finding A3/A5
             for ( i in 0..(starts!!.size - 2) ) {
                 for ( j in (i + 1)..(starts.size - 1) ) {
-                    val sites = listOf(
+                    val sites = mutableListOf(
                             starts.node,
                             starts.node,
                             starts.getSite(i)!!.site,
                             starts.getSite(j)!!.site
                     )
+
+                    sites.sort()
                     if (
                             starts.getSite(i)!!.site != starts.getSite(j)!!.site &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
@@ -153,8 +155,14 @@ class SpliceGraph(
                                     else -> "A3"
                                 },
                                 chromosome = this.chromosome,
-                                start = sites.asSequence().sorted().first(),
-                                end = sites.asSequence().sorted().last(),
+                                start = when ( sites[0] == sites[1] ) {
+                                    true -> sites[2]
+                                    else -> sites[0]
+                                },
+                                end = when ( sites[0] == sites[1] ) {
+                                    true -> sites[3]
+                                    else -> sites[1]
+                                },
                                 strand = this.strand,
                                 sliceSites = sites
                         ))
@@ -162,24 +170,23 @@ class SpliceGraph(
                         this.assSites["start"]!!.add(starts.node)
                     }
                 }
-
             }
         } catch (e: NullPointerException) {
 
         }
 
-        // finding A3/A5
-        try {
+        try{
+            // finding A3/A5
             for ( i in 0..(ends!!.size - 2) ) {
                 for ( j in (i + 1)..(ends.size - 1) ) {
 
-                    val sites = listOf(
+                    val sites = mutableListOf(
                             ends.getSite(i)!!.site,
                             ends.getSite(j)!!.site,
                             ends.node,
                             ends.node
                     )
-
+                    sites.sort()
                     if (
                             ends.getSite(i)!!.site != ends.getSite(j)!!.site &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
@@ -190,8 +197,14 @@ class SpliceGraph(
                                     else -> "A5"
                                 },
                                 chromosome = this.chromosome,
-                                start = sites.asSequence().sorted().first(),
-                                end = sites.asSequence().sorted().last(),
+                                start = when ( sites[0] == sites[1] ) {
+                                    true -> sites[2]
+                                    else -> sites[0]
+                                },
+                                end = when ( sites[0] == sites[1] ) {
+                                    true -> sites[3]
+                                    else -> sites[1]
+                                },
                                 strand = this.strand,
                                 sliceSites = sites
                         ))
@@ -199,11 +212,11 @@ class SpliceGraph(
                         this.assSites["end"]!!.add(ends.node)
                     }
                 }
-
             }
         } catch (e: NullPointerException) {
 
         }
+
     }
 
 
@@ -241,17 +254,23 @@ class SpliceGraph(
                 continue
             }
 
-            val tmpEnds = this.ends[i.getExtremeSite()]
+            for ( j in i.getSites() ) {
+                val tmpEnds = this.ends[j.site]
 
-            identifyBetweenSameStartEnd(
-                    starts = i,
-                    ends = tmpEnds,
-                    res = res
-            )
+                identifyBetweenSameStartEnd(
+                        starts = i,
+                        ends = tmpEnds,
+                        res = res
+                )
 
-            if ( tmpEnds != null ) {
-                loggedEnds.add(tmpEnds)
+                tmpEnds?.let {
+                    loggedEnds.add(tmpEnds)
+                }
+
+
             }
+
+
         }
 
         for ( i in this.ends.values.sorted() ) {
@@ -319,7 +338,7 @@ class SpliceGraph(
                                             start = assStarts[i],
                                             end = assEnds[j],
                                             strand = this.strand,
-                                            sliceSites = mxeSites
+                                            sliceSites = mxeSites.toMutableList()
                                     ))
                                 }
 

@@ -39,7 +39,7 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
             val reader = Scanner(File(this.infile))
 
             val pb = ProgressBar(message = "Reading exon from Gff")
-
+            val geneTranscript = mutableMapOf<String, String>()
             while (reader.hasNext()) {
                 val line = reader.nextLine()
 
@@ -49,9 +49,11 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
 
                 val lines = line.split("\\s+".toRegex())
                 pb.step()
-                val geneTranscript = mutableMapOf<String, String>()
+
                 val sources = this.getSource(lines.subList(8, lines.size))
-                if (lines[2] == "exon") {
+                if ( "transcript_id" in sources.keys ) {
+                    geneTranscript[sources["ID"]!!] = sources["Parent"]!!
+                } else if (lines[2] == "exon") {
                     val tmpExon = Exons(
                             chromosome = lines[0],
                             start = lines[3].toInt(),
@@ -70,8 +72,6 @@ class GffIndex(infile: String) : AnnotationIndex (infile) {
                     } else {
                         this.data[key] = tmp
                     }
-                } else if ( "transcript_id" in sources.keys ) {
-                    geneTranscript[sources["ID"]!!] = sources["Parent"]!!
                 }
             }
 

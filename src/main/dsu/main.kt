@@ -184,7 +184,7 @@ class Long: CliktCommand(help = "Find AS from PacBio data") {
 class Short: CliktCommand(help = "Find AS from NGS") {
     val input by option("-i", "--input", help = "Path to input Bam file").file(exists = true)
 
-    val reference by option("-r", "--reference", help = "Path to reference file")
+    val reference by option("-r", "--reference", help = "Path to reference file").file(exists = true)
 
     val spliceJunction by option(
             "-j",
@@ -201,16 +201,8 @@ class Short: CliktCommand(help = "Find AS from NGS") {
         require( it > 0 && it <= 100 ) {"this value must between 0 and 100"}
     }
 
-    private val error by option(
-            "-e",
-            help = "Chromosome coordinate error [default: 3]"
-    ).int().default(3).validate {
-        require( it >= 0 ) {"this value must be positive"}
-    }
-
-
     private val output by option("-o", "--output", help = "Path to output file").file()
-    private val show by option("--show", "-s", help = "Enable detailed messages").flag(default = false)
+    private val show by option("--show", "-s", help = "Enable detailed messages").flag(default = true)
 
     override fun run() {
         if (
@@ -235,11 +227,16 @@ class Short: CliktCommand(help = "Find AS from NGS") {
         }
 
         val ref = when {
-            this.reference!!.endsWith(".gtf") -> {
-                GtfIndex(this.reference!!)
+            Regex(".*\\.gtf$").matches(
+                    this.reference.toString().toLowerCase()
+            ) -> {
+                GtfIndex(this.reference.toString())
             }
-            this.reference!!.endsWith(".gff") -> {
-                GffIndex(this.reference!!)
+
+            Regex(".*\\.gff3?$").matches(
+                    this.reference.toString().toLowerCase()
+            ) -> {
+                GffIndex(this.reference.toString())
             }
             else -> {
                 exitProcess(0)
@@ -248,8 +245,7 @@ class Short: CliktCommand(help = "Find AS from NGS") {
 
         val identifyAS = IdentifyAS(
                 overlapOfExonIntron = this.overlapOfExonIntron,
-                silent = !this.show,
-                distanceError = this.error
+                silent = !this.show
         )
 
         identifyAS.writeTo(

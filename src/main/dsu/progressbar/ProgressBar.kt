@@ -70,7 +70,8 @@ class ProgressBar(private val total: Long? = null, private val message: String =
 
     fun close() {
         this.total?.let {
-            this.stepTo(this.total)
+            this.current = this.total
+            this.step()
         }
         println("\r")
     }
