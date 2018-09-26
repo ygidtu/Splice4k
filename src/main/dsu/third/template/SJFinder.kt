@@ -137,7 +137,6 @@ class SJFinder(
 
         val identifyAS = IdentifyAS(
                 overlapOfExonIntron = this.overlapOfExonIntron,
-                distanceError = this.error,
                 silent = this.silent
         )
 
