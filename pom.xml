@@ -18,6 +18,14 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>nexus-aliyun</id>
+            <name>Nexus aliyun</name>
+            <url>http://maven.aliyun.com/nexus/content/groups/public</url>
+        </repository>
+    </repositories>
+
     <!-- https://mvnrepository.com/artifact/com.github.samtools/htsjdk -->
     <dependencies>
         <dependency>
@@ -46,16 +54,16 @@
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
+            <artifactId>kotlin-maven-plugin</artifactId>
             <version>${kotlin.version}</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
 
     </dependencies>
 
     <build>
-        <sourceDirectory>src/main/dsu</sourceDirectory>
-        <testSourceDirectory>src/main/test/kotlin</testSourceDirectory>
+        <sourceDirectory>src/main/com</sourceDirectory>
+        <testSourceDirectory>src/main/test/kotlin/</testSourceDirectory>
 
         <resources>
             <resource>
@@ -94,7 +102,8 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>dsu.MainKt</mainClass>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.splice4k.MainKt</mainClass>
                         </manifest>
                         <manifestEntries>
                             <Class-Path>.</Class-Path>2
