@@ -5,8 +5,9 @@ import com.splice4k.base.Genes
 import com.splice4k.progressbar.ProgressBar
 import java.io.File
 import java.io.IOException
+import java.lang.NullPointerException
 import java.util.*
-
+import kotlin.system.exitProcess
 
 
 /**
@@ -57,12 +58,16 @@ class GffIndex(
                     continue
                 }
 
-                val lines = line.split("\\s+".toRegex())
+                val lines = line.replace("\n", "").split("\t".toRegex())
                 pb.step()
 
                 val sources = this.getSource(lines.subList(8, lines.size))
 
-                if ( "transcript_id" in sources.keys ) {
+                if (  // 两种标准，严防不标准的gff文件
+                    "transcript_id" in sources.keys ||
+                    (lines[2].matches(".*(rna|transcript).*".toRegex(RegexOption.IGNORE_CASE)) &&
+                                !lines[2].matches(".*gene.*".toRegex(RegexOption.IGNORE_CASE)))
+                ) {
 
                     geneTranscript[sources["ID"]!!] = sources["Parent"]!!
 
@@ -83,11 +88,18 @@ class GffIndex(
                             start = lines[3].toInt(),
                             end = lines[4].toInt(),
                             strand = lines[6].toCharArray()[0],
-                            exonId = sources["exon_id"]!!
+                            exonId = sources["exon_id"] ?: sources["ID"]!!
                     )
 
-                    tmp.source["transcript"] = sources["Parent"]!!
-                    tmp.source["gene"] = geneTranscript[sources["Parent"]]!!
+                    try{
+                        tmp.source["transcript"] = sources["Parent"]!!
+                        tmp.source["gene"] = geneTranscript[sources["Parent"]]!!
+                    } catch (e: NullPointerException) {
+                        println(line)
+                        println(sources)
+                        exitProcess(0)
+                    }
+
 
                     val tmpExons = mutableListOf(tmp)
                     val key = "${lines[0]}${lines[6]}"

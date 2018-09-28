@@ -109,7 +109,7 @@ class SJFinder(
      * 识别各种可变剪接类型
      */
     private fun identifySJ() {
-        this.logger.info("Finding Alternative Splicing events")
+        this.logger.info("Finding alternative splicing events")
         // 这个gap就是为了控制输出一个合适的进度条的
         val executor = Executors.newFixedThreadPool(this.threads)
         for ( (gene, template) in this.template ) {
@@ -148,7 +148,7 @@ class SJFinder(
 
         val identifyAS = IdentifyAS( overlapOfExonIntron = this.overlapOfExonIntron )
 
-        this.logger.info("Finding Alternative Splicing events by NGS")
+        this.logger.info("Finding alternative splicing events by another algorithm")
         bamIndex?.let {
             val tmp = identifyAS.matchEventsWithRef(
                     event = bamIndex.data.values.toList(),

@@ -6,7 +6,6 @@ import com.splice4k.base.SpliceGraph
 import com.splice4k.progressbar.ProgressBar
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SamReaderFactory
-import org.apache.log4j.Logger
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
@@ -155,7 +154,9 @@ class BamIndex(
     fun writeTo( output: File ) {
 
         try{
-            if (!output.absoluteFile.parentFile.exists()) output.absoluteFile.parentFile.mkdirs()
+            if (!output.absoluteFile.parentFile.exists()) {
+                output.absoluteFile.parentFile.mkdirs()
+            }
 
             val writer = PrintWriter(output)
 

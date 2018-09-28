@@ -384,7 +384,7 @@ class SpliceGraph(
         var output = ""
         for ( (start, value) in this.starts ) {
             for ( end in value.getSites()) {
-                var tmp = "${this.chromosome}:$start-${end.site}\t${end.count}"
+                var tmp = "${this.chromosome}:$start-${end.site}${this.strand}\t${end.count}"
 
                 if ( !end.source["gene"]!!.isEmpty() ) {
                     tmp = "$tmp\t${end.source["gene"]!!.joinToString(prefix = "", postfix = "", separator = ",")}"

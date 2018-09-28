@@ -17,6 +17,11 @@ import kotlin.math.min
 
 open class GenomicLoci: Comparable<GenomicLoci> {
     var chromosome: String = ""
+    set(value) {
+        if ( value.startsWith("chr") ) {
+            field = value.replace("chr", "")
+        }
+    }
 
     var start: Int = -1
         set(value) {

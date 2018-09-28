@@ -64,15 +64,15 @@ fun main(args: Array<String>) {
 
         println("=".repeat(40))
         when ( args[0].toLowerCase() ) {
-            "smrt" -> println(SMRT().getFormattedUsage())
-            "sgs" -> println(SGS().getFormattedUsage())
-            "extract" -> println(Extract().getFormattedUsage())
-            else -> println(cmd.getFormattedUsage())
+            "smrt" -> println(SMRT().getFormattedHelp())
+            "sgs" -> println(SGS().getFormattedHelp())
+            "extract" -> println(Extract().getFormattedHelp())
+            else -> println(cmd.getFormattedHelp())
         }
 
     } catch (e: Exception) {
 
-        logger.error(e.localizedMessage)
+        logger.error(e)
 
         e.stackTrace.forEach { logger.error(it) }
 

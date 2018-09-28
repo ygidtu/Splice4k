@@ -2,6 +2,7 @@ package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.*
+//import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
@@ -11,6 +12,8 @@ import com.splice4k.index.GtfIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
 import kotlin.system.exitProcess
+import com.splice4k.tools.FileValidator
+import org.apache.log4j.Logger
 
 
 /**
@@ -43,6 +46,13 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
     ).file().required()
 
 
+//    private val format by option(
+//            "-f",
+//            "--format",
+//            help = "Input file format [bam|sj|star].\nbam -> BAM/SAM file \nsj -> extracted splice junctions by this program.\nstar -> SJ.out.tab file from STAR"
+//    ).choice("bam", "sj", "star").default("bam")
+
+
     private val junctionsFilter by option(
             "-c",
             "--count",
@@ -58,20 +68,6 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
     ).int().default(3).validate {
         require( it >= 0 ) {"this value must be positive"}
     }
-
-
-    private val spliceJunction by option(
-            "-j",
-            "-junctions",
-            help = "Path to extracted Splice junctions file by Splice4k or STAR"
-    ).file(exists = true)
-
-
-    private val isStar by option (
-            "-s",
-            "--star",
-            help = "Is STAR SJ.out.tab file [Only work with -j|--junctions parameter]"
-    ).flag(default = false)
 
 
     private val threads by option(
@@ -95,40 +91,47 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             "-v",
             "-verbose",
             help = "Enable detailed messages"
-    ).flag(default = true)
+    ).flag(default = false)
 
 
     override fun run() {
 
-        val sj = when {
-            this.spliceJunction != null -> {
-                SJIndex(
-                        infile = this.spliceJunction!!.absolutePath.toString(),
-                        filter = this.junctionsFilter,
-                        star = this.isStar
-                )
-            }
+        val logger = Logger.getLogger(SGS::class.java)
+        val fileValidator = FileValidator()
+        var format = fileValidator.check(this.input)
+
+        val sj = when(format) {
+            "sj" -> SJIndex(
+                    infile = this.input.absolutePath.toString(),
+                    filter = this.junctionsFilter,
+                    star = false
+            )
+
+            "bam" -> BamIndex(
+                    infile = this.input.absolutePath.toString(),
+                    filter = this.junctionsFilter
+            )
+
+            "star" -> SJIndex(
+                    infile = this.input.absolutePath.toString(),
+                    filter = this.junctionsFilter,
+                    star = true
+            )
+
             else -> {
-                BamIndex(
-                        infile = this.input.absolutePath.toString(),
-                        filter = this.junctionsFilter
-                )
+                logger.info("Please check the input file format")
+                exitProcess(1)
             }
         }
 
-        val ref = when {
-            Regex(".*\\.gtf$").matches(
-                    this.reference.toString().toLowerCase()
-            ) -> {
-                GtfIndex(this.reference.toString())
-            }
+        format = fileValidator.check(this.reference)
+        val ref = when(format) {
+            "gtf" ->  GtfIndex(this.reference.absolutePath.toString())
 
-            Regex(".*\\.gff3?$").matches(
-                    this.reference.toString().toLowerCase()
-            ) -> {
-                GffIndex(this.reference.toString())
-            }
+            "gff" -> GffIndex(this.reference.absolutePath.toString())
+
             else -> {
+                logger.info("Please check reference file format")
                 exitProcess(0)
             }
         }
@@ -145,6 +148,5 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         show = this.show
                 )
         )
-
     }
 }

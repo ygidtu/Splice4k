@@ -81,11 +81,14 @@ class Sites( val node: Int ): Comparable<Sites> {
      * @param threshold 过滤的阈值
      */
     fun filter(threshold: Int) {
+        val filtered = mutableMapOf<Int, Site>()
         for ( (k, v) in this.pos ) {
             if ( v.count < threshold ) {
-                this.pos.remove(k, v)
+                filtered[k] = v
             }
         }
+
+        filtered.forEach { this.pos.remove(it.key, it.value) }
     }
 
 

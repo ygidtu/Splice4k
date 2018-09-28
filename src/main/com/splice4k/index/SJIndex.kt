@@ -83,5 +83,4 @@ open class SJIndex(
             exitProcess("format error".toInt())
         }
     }
-
 }

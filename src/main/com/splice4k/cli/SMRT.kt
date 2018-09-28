@@ -17,6 +17,7 @@ import org.apache.log4j.PatternLayout
 import java.io.File
 import java.io.FileNotFoundException
 import kotlin.system.exitProcess
+import com.splice4k.tools.FileValidator
 
 
 /**
@@ -70,8 +71,8 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
     private val junctionsFilter by option(
             "-c",
             "--count",
-            help = "Filter low abundance junctions [default: 10]"
-    ).int().default(10).validate {
+            help = "Filter low abundance junctions [default: 0]"
+    ).int().default(0).validate {
         it >= 0
     }
 
@@ -99,17 +100,17 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
     ).flag(default = false)
 
 
-    private val log: String? by option(help = "Path to the log file")
+    private val log by option(help = "Path to the log file").file()
 
 
     /**
      * 为log添加文件appender
      * @param logFile log文件的地址
      */
-    private fun addFileAppender(logFile: String) {
+    private fun addFileAppender(logFile: File) {
         val fa = FileAppender()
         fa.name = "FileLogger"
-        fa.file = File(logFile).absolutePath
+        fa.file = logFile.absolutePath
         fa.layout = PatternLayout("[%d{yyyy-MM-dd HH:mm:ss}] [%-5p] [%c{1}:%L] - %m%n")
         fa.threshold = Level.DEBUG
         fa.append = true
@@ -118,57 +119,45 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
         Logger.getRootLogger().addAppender(fa)
     }
 
-
-    private fun checkFile(infile: File?) {
-        if ( infile == null ) {
-            throw FileNotFoundException("Input could not be null")
-        }
-    }
-
     override fun run() {
-        if ( this.log != null ) {
-            this.addFileAppender(log.toString())
+        this.log?.let {
+            this.addFileAppender(it)
         }
 
-        this.checkFile(this.input)
-        this.checkFile(this.output)
-        this.checkFile(this.reference)
-
-        val logger = Logger.getLogger(Long::class.java)
+        val logger = Logger.getLogger(SMRT::class.java)
+        val fileValidator = FileValidator()
 
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
-        val bam = BamIndex(
-                infile = this.input.absoluteFile.toString(),
-                silent = !this.show,
-                smrt = true,
-                filter = this.junctionsFilter
-        )
+        val bam = when(fileValidator.check(this.input)) {
+            "bam" -> BamIndex(
+                    infile = this.input.absoluteFile.toString(),
+                    silent = !this.show,
+                    smrt = true,
+                    filter = this.junctionsFilter
+            )
+            else -> {
+                logger.info("Please check input file format")
+                exitProcess(2)
+            }
+        }
 
         // val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
-        val ref = when {
+        val ref = when(fileValidator.check(this.reference)) {
 
-            Regex(".*\\.gff3?$").matches(
-                    this.reference.toString().toLowerCase()
-            ) -> {
-                GffIndex(
+             "gff" -> GffIndex(
                         infile = this.reference.absoluteFile.toString(),
                         smrt = true
                 )
-            }
 
-            Regex(".*\\.gtf$").matches(
-                    this.reference.toString().toLowerCase()
-            ) -> {
-                GtfIndex(
+             "gtf" -> GtfIndex(
                         infile = this.reference.absoluteFile.toString(),
                         smrt = true
                 )
-            }
 
             else -> {
-                println("Input should be gtf or gff3 format")
+                logger.info("Please check reference file format")
                 exitProcess(2)
             }
 

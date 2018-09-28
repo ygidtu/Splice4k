@@ -5,7 +5,9 @@ import com.splice4k.base.Genes
 import com.splice4k.progressbar.ProgressBar
 import java.io.File
 import java.io.IOException
+import java.lang.NullPointerException
 import java.util.*
+import kotlin.system.exitProcess
 
 
 /**
@@ -46,13 +48,13 @@ class GtfIndex(
             val pb = ProgressBar(message = "Reading exon from Gtf")
 
             val exons: MutableMap<String, MutableList<Int>> = mutableMapOf()
-
+            var exonNumber = 1
             while (reader.hasNext()) {
                 val line = reader.nextLine()
                 val lines = line.split("\\s+".toRegex())
                 pb.step()
 
-                if ( line.startsWith("#") || lines[0] !in arrayOf("exon", "transcript") ) {
+                if ( line.startsWith("#") ) {
                     continue
                 }
 
@@ -66,16 +68,23 @@ class GtfIndex(
                             strand = lines[6].toCharArray()[0],
                             information = sources
                     ))
-                }
 
-                if (lines[2] == "exon") {
+                    exonNumber = 1
+                } else if (lines[2] == "exon") {
+
+                    var exonId = sources["exon_id"] ?: sources["ID"]
+
+                    if ( exonId == null ) {
+                        exonId = "${sources["transcript_id"]!!}$exonNumber"
+                        exonNumber++
+                    }
 
                     val tmp = Exons(
                             chromosome = lines[0],
                             start = lines[3].toInt(),
                             end = lines[4].toInt(),
                             strand = lines[6].toCharArray()[0],
-                            exonId = sources["exon_id"]!!
+                            exonId = exonId
                     )
 
                     tmp.source["transcript"] = sources["transcript_id"]!!
@@ -92,10 +101,10 @@ class GtfIndex(
                     if ( this.smrt ) {
                         val tmpExon = mutableListOf(tmp.start, tmp.end)
 
-                        if (exons.containsKey(sources["Parent"]!!)) {
-                            tmpExon.addAll(exons[sources["Parent"]!!]!!)
+                        if (exons.containsKey(sources["transcript_id"]!!)) {
+                            tmpExon.addAll(exons[sources["transcript_id"]!!]!!)
                         }
-                        exons[sources["Parent"]!!] = tmpExon
+                        exons[sources["transcript_id"]!!] = tmpExon
                     }
                 }
             }

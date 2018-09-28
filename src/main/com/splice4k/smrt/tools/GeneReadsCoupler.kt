@@ -63,13 +63,10 @@ class GeneReadsCoupler(
 
         this.logger.info("Start to matching genes and reads")
         // 统计所有的配对信息
-        val pb = ProgressBar(this.reference.size.toLong(), "Gene Reads matching")
         while ( i < this.reference.size && j < this.reads.size ) {
 
             val tmpGene = this.reference[i]
             val tmpRead = this.reads[j]
-
-            pb.stepTo(i.toLong())
 
             when {
                 /*
@@ -133,8 +130,6 @@ class GeneReadsCoupler(
                 }
             }
         }
-
-        pb.close()
 
         for ( (k, v) in tmpMatched ) {
             val tmpTemplate = when ( this.templates.containsKey(k.parent) ) {

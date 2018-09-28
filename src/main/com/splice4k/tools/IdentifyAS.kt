@@ -235,9 +235,7 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
             show: Boolean = true
     ): Map<SpliceEvent, List<String>> {
 
-        if ( show ) {
-            this.logger.info("Predicting Alternative Splicing events")
-        }
+        this.logger.info("Predicting Alternative Splicing events")
 
         val events = mutableMapOf<String, List<SpliceEvent>>()
         val res = HashMap<SpliceEvent, MutableList<String>>()
@@ -258,9 +256,7 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
 
         executor = Executors.newFixedThreadPool(threads)
 
-        if ( show ) {
-            this.logger.info("Matching AS events with Reference")
-        }
+        this.logger.info("Matching AS events with Reference")
 
         for ( (k, v) in events ) {
 

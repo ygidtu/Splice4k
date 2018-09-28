@@ -8,6 +8,9 @@ import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.splice4k.index.BamIndex
+import com.splice4k.tools.FileValidator
+import org.apache.log4j.Logger
+import kotlin.system.exitProcess
 
 /**
  * @author Zhang Yiming
@@ -39,9 +42,18 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
 
 
     override fun run() {
-        BamIndex(
-                infile = this.input.absoluteFile.toString(),
-                filter = this.junctionsFilter
-        ).writeTo(output = this.output.absoluteFile)
+        val logger = Logger.getLogger(Extract::class.java)
+        val fileValidator = FileValidator()
+
+        when(fileValidator.check(this.input)) {
+            "bam" -> BamIndex(
+                        infile = this.input.absoluteFile.toString(),
+                        filter = this.junctionsFilter
+                ).writeTo(output = this.output.absoluteFile)
+            else -> {
+                logger.info("Please check input file format")
+                exitProcess(2)
+            }
+        }
     }
 }
