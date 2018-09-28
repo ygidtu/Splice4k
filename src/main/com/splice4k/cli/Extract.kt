@@ -1,4 +1,4 @@
-package splice4k.cli
+package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.arguments.argument
@@ -7,12 +7,12 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import splice4k.index.BamIndex
+import com.splice4k.index.BamIndex
 
 /**
  * @author Zhang Yiming
  * @since 2018.09.27
- * @version 20180927
+ * @version 20180928
  */
 
 
@@ -22,8 +22,8 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
     private val junctionsFilter by option(
             "-c",
             "--count",
-            help = "Filter low abundance junctions [default: 10]"
-    ).int().default(10).validate {
+            help = "Filter low abundance junctions [default: 0]"
+    ).int().default(0).validate {
         it >= 0
     }
 

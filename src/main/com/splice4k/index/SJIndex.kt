@@ -1,8 +1,8 @@
-package splice4k.index
+package com.splice4k.index
 
 import org.apache.log4j.Logger
-import splice4k.base.SpliceGraph
-import splice4k.progressbar.ProgressBar
+import com.splice4k.base.SpliceGraph
+import com.splice4k.progressbar.ProgressBar
 import java.io.File
 import java.util.*
 import kotlin.system.exitProcess

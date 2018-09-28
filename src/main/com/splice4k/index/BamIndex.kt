@@ -1,12 +1,12 @@
-package splice4k.index
+package com.splice4k.index
 
 
+import com.splice4k.base.Genes
+import com.splice4k.base.SpliceGraph
+import com.splice4k.progressbar.ProgressBar
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SamReaderFactory
 import org.apache.log4j.Logger
-import splice4k.base.Genes
-import splice4k.base.SpliceGraph
-import splice4k.progressbar.ProgressBar
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter

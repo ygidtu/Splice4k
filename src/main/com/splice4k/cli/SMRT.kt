@@ -1,4 +1,4 @@
-package splice4k.cli
+package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
@@ -8,15 +8,15 @@ import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
+import com.splice4k.index.BamIndex
+import com.splice4k.index.GffIndex
+import com.splice4k.index.GtfIndex
+import com.splice4k.smrt.tools.GeneReadsCoupler
+import com.splice4k.smrt.tools.SJFinder
 import org.apache.log4j.FileAppender
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.PatternLayout
-import splice4k.index.BamIndex
-import splice4k.index.GffIndex
-import splice4k.index.GtfIndex
-import splice4k.smrt.tools.GeneReadsCoupler
-import splice4k.smrt.tools.SJFinder
 import java.io.File
 import java.io.FileNotFoundException
 import kotlin.system.exitProcess

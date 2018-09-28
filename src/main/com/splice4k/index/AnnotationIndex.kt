@@ -1,8 +1,8 @@
-package splice4k.index
+package com.splice4k.index
 
+import com.splice4k.base.Exons
+import com.splice4k.base.Genes
 import org.apache.log4j.Logger
-import splice4k.base.Exons
-import splice4k.base.Genes
 
 
 /**

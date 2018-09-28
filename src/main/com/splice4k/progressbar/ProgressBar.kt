@@ -1,4 +1,4 @@
-package splice4k.progressbar
+package com.splice4k.progressbar
 
 /**
  * @author Zhangyiming

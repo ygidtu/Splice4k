@@ -1,13 +1,13 @@
-package splice4k.smrt.tools
+package com.splice4k.smrt.tools
 
 
+import com.splice4k.base.Genes
+import com.splice4k.index.AnnotationIndex
+import com.splice4k.index.BamIndex
+import com.splice4k.progressbar.ProgressBar
+import com.splice4k.smrt.base.GeneRead
+import com.splice4k.smrt.base.Template
 import org.apache.log4j.Logger
-import splice4k.base.Genes
-import splice4k.index.AnnotationIndex
-import splice4k.index.BamIndex
-import splice4k.progressbar.ProgressBar
-import splice4k.smrt.base.GeneRead
-import splice4k.smrt.base.Template
 
 
 /**

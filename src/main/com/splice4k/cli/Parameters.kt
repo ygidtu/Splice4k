@@ -1,4 +1,4 @@
-package splice4k.cli
+package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.flag

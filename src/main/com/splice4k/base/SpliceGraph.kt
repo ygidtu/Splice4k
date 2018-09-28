@@ -1,26 +1,12 @@
-package splice4k.base
+package com.splice4k.base
 
 
 import org.apache.log4j.Logger
 import java.util.Objects
 import kotlin.collections.HashSet
-import kotlin.collections.List
-import kotlin.collections.MutableList
-import kotlin.collections.MutableMap
-import kotlin.collections.asSequence
 import kotlin.collections.component1
 import kotlin.collections.component2
-import kotlin.collections.hashSetOf
-import kotlin.collections.iterator
-import kotlin.collections.joinToString
-import kotlin.collections.listOf
-import kotlin.collections.mapOf
-import kotlin.collections.mutableListOf
-import kotlin.collections.mutableMapOf
 import kotlin.collections.set
-import kotlin.collections.sort
-import kotlin.collections.sorted
-import kotlin.collections.toMutableList
 import kotlin.math.abs
 
 

@@ -1,6 +1,6 @@
-package splice4k.smrt.base
+package com.splice4k.smrt.base
 
-import splice4k.base.Genes
+import com.splice4k.base.Genes
 import java.util.*
 
 /**

@@ -1,4 +1,4 @@
-package splice4k.cli
+package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.CliktError
@@ -9,11 +9,11 @@ import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import splice4k.index.BamIndex
-import splice4k.index.GffIndex
-import splice4k.index.GtfIndex
-import splice4k.index.SJIndex
-import splice4k.tools.IdentifyAS
+import com.splice4k.index.BamIndex
+import com.splice4k.index.GffIndex
+import com.splice4k.index.GtfIndex
+import com.splice4k.index.SJIndex
+import com.splice4k.tools.IdentifyAS
 import java.io.FileNotFoundException
 import kotlin.system.exitProcess
 

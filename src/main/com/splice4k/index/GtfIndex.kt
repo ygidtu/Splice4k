@@ -1,8 +1,8 @@
-package splice4k.index
+package com.splice4k.index
 
-import splice4k.base.Exons
-import splice4k.base.Genes
-import splice4k.progressbar.ProgressBar
+import com.splice4k.base.Exons
+import com.splice4k.base.Genes
+import com.splice4k.progressbar.ProgressBar
 import java.io.File
 import java.io.IOException
 import java.util.*

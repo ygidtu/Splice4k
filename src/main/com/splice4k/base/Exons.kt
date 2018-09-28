@@ -1,4 +1,4 @@
-package splice4k.base
+package com.splice4k.base
 
 
 /**

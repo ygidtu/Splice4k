@@ -1,6 +1,6 @@
-package splice4k.base
+package com.splice4k.base
 
-import splice4k.errors.ChromosomeException
+import com.splice4k.errors.ChromosomeException
 import java.util.*
 import kotlin.math.abs
 import kotlin.math.max

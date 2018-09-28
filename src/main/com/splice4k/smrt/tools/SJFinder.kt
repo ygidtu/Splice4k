@@ -1,15 +1,15 @@
-package splice4k.smrt.tools
+package com.splice4k.smrt.tools
 
 
+import com.splice4k.base.GenomicLoci
+import com.splice4k.base.SpliceEvent
+import com.splice4k.base.SpliceGraph
+import com.splice4k.errors.ChromosomeException
+import com.splice4k.index.AnnotationIndex
+import com.splice4k.index.BamIndex
+import com.splice4k.smrt.base.Template
+import com.splice4k.tools.IdentifyAS
 import org.apache.log4j.Logger
-import splice4k.base.GenomicLoci
-import splice4k.base.SpliceEvent
-import splice4k.base.SpliceGraph
-import splice4k.errors.ChromosomeException
-import splice4k.index.AnnotationIndex
-import splice4k.index.BamIndex
-import splice4k.smrt.base.Template
-import splice4k.tools.IdentifyAS
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors

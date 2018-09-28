@@ -1,12 +1,12 @@
-package splice4k
+package com.splice4k
 
 import com.github.ajalt.clikt.core.CliktError
 import com.github.ajalt.clikt.core.subcommands
 import org.apache.log4j.Logger
-import splice4k.cli.Extract
-import splice4k.cli.Parameters
-import splice4k.cli.SGS
-import splice4k.cli.SMRT
+import com.splice4k.cli.Extract
+import com.splice4k.cli.Parameters
+import com.splice4k.cli.SGS
+import com.splice4k.cli.SMRT
 import kotlin.system.exitProcess
 
 

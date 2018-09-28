@@ -1,11 +1,11 @@
-package splice4k.tools
+package com.splice4k.tools
 
+import com.splice4k.base.Exons
+import com.splice4k.base.GenomicLoci
+import com.splice4k.base.SpliceEvent
+import com.splice4k.base.SpliceGraph
+import com.splice4k.errors.ChromosomeException
 import org.apache.log4j.Logger
-import splice4k.base.Exons
-import splice4k.base.GenomicLoci
-import splice4k.base.SpliceEvent
-import splice4k.base.SpliceGraph
-import splice4k.errors.ChromosomeException
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
