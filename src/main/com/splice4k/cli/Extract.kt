@@ -1,9 +1,9 @@
 package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.arguments.argument
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.required
 import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
@@ -17,8 +17,18 @@ import com.splice4k.index.BamIndex
 
 
 class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
-    private val input by argument(help = "Path to input Bam/Sam file").file(exists = true)
-    private val output by argument(help = "Path to output file").file()
+    private val input by option(
+            "-i",
+            "--input",
+            help = "Path to input Bam/Sam file"
+    ).file(exists = true).required()
+
+    private val output by option(
+            "-o",
+            "--output",
+            help = "Path to output file"
+    ).file().required()
+
     private val junctionsFilter by option(
             "-c",
             "--count",
@@ -30,8 +40,8 @@ class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
 
     override fun run() {
         BamIndex(
-                infile = this.input.toString(),
+                infile = this.input.absoluteFile.toString(),
                 filter = this.junctionsFilter
-        ).writeTo(output = this.output)
+        ).writeTo(output = this.output.absoluteFile)
     }
 }

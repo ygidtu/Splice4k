@@ -1,10 +1,7 @@
 package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.validate
+import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
@@ -25,7 +22,7 @@ import kotlin.system.exitProcess
 /**
  * @author Zhang Yiming
  * @since 2018.09.27
- * @version 20180927
+ * @version 20180928
  */
 
 
@@ -36,21 +33,21 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
             "-i",
             "--input",
             help = "Path to input Bam/Sam file"
-    ).file(exists = true)
+    ).file(exists = true).required()
 
 
     private val reference by option(
             "-r",
             "--reference",
             help = "Path to reference file [gtf|gff3]"
-    ).file(exists = true)
+    ).file(exists = true).required()
 
 
     private val output by option(
             "-o",
             "--output",
             help = "Path to output file"
-    ).file()
+    ).file().required()
 
 
     private val threads by option(
@@ -140,20 +137,15 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
         val logger = Logger.getLogger(Long::class.java)
 
         // 生成各种文件路径
-        if (!this.output!!.absoluteFile.parentFile.exists()) this.output!!.absoluteFile.parentFile.mkdirs()
+        if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
-        val bamFile = this.input!!.absoluteFile
-
-        logger.info("Start to read $bamFile")
         val bam = BamIndex(
-                infile = bamFile.toString(),
+                infile = this.input.absoluteFile.toString(),
                 silent = !this.show,
                 smrt = true,
                 filter = this.junctionsFilter
         )
 
-        logger.info("Start to read ${this.reference}")
-        val refFile = this.reference!!.absoluteFile
         // val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
         val ref = when {
 
@@ -161,7 +153,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                     this.reference.toString().toLowerCase()
             ) -> {
                 GffIndex(
-                        infile = refFile.toString(),
+                        infile = this.reference.absoluteFile.toString(),
                         smrt = true
                 )
             }
@@ -170,7 +162,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                     this.reference.toString().toLowerCase()
             ) -> {
                 GtfIndex(
-                        infile = refFile.toString(),
+                        infile = this.reference.absoluteFile.toString(),
                         smrt = true
                 )
             }
@@ -199,6 +191,6 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                 overlapOfExonIntron = this.overlapOfExonIntron,
                 error = this.error,
                 threads = this.threads
-        ).saveTo(this.output!!.absoluteFile.toString())
+        ).saveTo(this.output.absoluteFile.toString())
     }
 }

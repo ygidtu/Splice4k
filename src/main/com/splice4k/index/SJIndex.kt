@@ -26,7 +26,7 @@ open class SJIndex(
         val filter: Int,
         val star: Boolean = false
 ) {
-    open val logger = Logger.getLogger(SJIndex::class.java)
+    val logger = Logger.getLogger(SJIndex::class.java)
 
     val data = mutableMapOf<String, SpliceGraph>()
 

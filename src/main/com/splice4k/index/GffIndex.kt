@@ -41,6 +41,7 @@ class GffIndex(
 
         try {
             val reader = Scanner(File(this.infile))
+
             this.logger.info("Reading from ${this.infile}")
             val pb = ProgressBar(message = "Reading exon from Gff")
 

@@ -26,8 +26,7 @@ class BamIndex(
         val unique: Int = 1,
         val smrt: Boolean = false,
         filter: Int
-): SJIndex(infile, filter) {
-    override val logger = Logger.getLogger(SJIndex::class.java)
+): SJIndex(infile = infile, filter = filter, star = false) {
     val transcripts = mutableListOf<Genes>()
 
     /**

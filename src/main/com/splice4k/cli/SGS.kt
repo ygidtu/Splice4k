@@ -1,11 +1,7 @@
 package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.CliktError
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.flag
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.validate
+import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
@@ -14,14 +10,13 @@ import com.splice4k.index.GffIndex
 import com.splice4k.index.GtfIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
-import java.io.FileNotFoundException
 import kotlin.system.exitProcess
 
 
 /**
  * @author Zhang Yiming
  * @since 2018.09.27
- * @version 20180927
+ * @version 20180928
  */
 
 
@@ -31,14 +26,21 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             "-i",
             "--input",
             help = "Path to input Bam file"
-    ).file(exists = true)
+    ).file(exists = true).required()
 
 
     private val reference by option(
             "-r",
             "--reference",
             help = "Path to reference file"
-    ).file(exists = true)
+    ).file(exists = true).required()
+
+
+    private val output by option(
+            "-o",
+            "--output",
+            help = "Path to output file"
+    ).file().required()
 
 
     private val junctionsFilter by option(
@@ -89,13 +91,6 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
     }
 
 
-    private val output by option(
-            "-o",
-            "--output",
-            help = "Path to output file"
-    ).file()
-
-
     private val show by option(
             "-v",
             "-verbose",
@@ -104,29 +99,18 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
 
 
     override fun run() {
-        if (
-                this.input == null && this.spliceJunction == null ||
-                this.output == null ||
-                this.reference == null
-        ) {
-            throw FileNotFoundException("Please set input file or output directory")
-        }
-
-        if ( this.output == null ) {
-            throw CliktError("-o not added")
-        }
 
         val sj = when {
             this.spliceJunction != null -> {
                 SJIndex(
-                        infile = this.spliceJunction.toString(),
+                        infile = this.spliceJunction!!.absolutePath.toString(),
                         filter = this.junctionsFilter,
                         star = this.isStar
                 )
             }
             else -> {
                 BamIndex(
-                        infile = this.input.toString(),
+                        infile = this.input.absolutePath.toString(),
                         filter = this.junctionsFilter
                 )
             }
@@ -152,7 +136,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
         val identifyAS = IdentifyAS( overlapOfExonIntron = this.overlapOfExonIntron )
 
         identifyAS.writeTo(
-                outfile = output!!,
+                outfile = this.output,
                 results = identifyAS.matchEventsWithRef(
                         event = sj.data.values.toList(),
                         annotations = ref.data,
