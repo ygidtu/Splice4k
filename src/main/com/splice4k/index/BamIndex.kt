@@ -141,7 +141,10 @@ class BamIndex(
         pb.close()
 
         // filtering
-        this.data.values.forEach{ it.filter(this.filter) }
+        if ( this.filter > 0 ) {
+            this.logger.info("Filtering splice junctions")
+            this.data.values.forEach{ it.filter(this.filter) }
+        }
     }
 
 
