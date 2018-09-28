@@ -62,7 +62,7 @@
     </dependencies>
 
     <build>
-        <sourceDirectory>src/main/com</sourceDirectory>
+        <sourceDirectory>src/main/</sourceDirectory>
         <testSourceDirectory>src/main/test/kotlin/</testSourceDirectory>
 
         <resources>
