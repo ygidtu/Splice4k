@@ -9,12 +9,14 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
+import com.splice4k.tools.PsiOfIR
+
 
 
 /**
  * @author Zhangyiming
  * @since 2018.09.05
- * @version 20180927
+ * @version 20180929
  *
  * 这里主要是根据二代测序的可变剪接识别方式进行AS的识别
  *
@@ -29,9 +31,15 @@ import java.util.concurrent.Executors
  */
 
 
-class IdentifyAS( val overlapOfExonIntron: Double ) {
+/**
+ * @param overlapOfExonIntron 识别IR所需的外显子与内含子的重合程度
+ */
+class IdentifyAS(
+        private val overlapOfExonIntron: Double,
+        private val bamFile: File?
+) {
     private val logger = Logger.getLogger(IdentifyAS::class.java)
-
+    private val psiOfIR = PsiOfIR()
 
     /**
      * 检查SE是否真实存在，即是否确实在注释中存在这么个外显子
@@ -93,19 +101,77 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
      * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
      */
     private fun checkMXE( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-        var matched = 0
+        val matched1 = mutableSetOf<Exons>()
+        val matched2 = mutableSetOf<Exons>()
+        val geneExons = mutableMapOf<String, MutableSet<Exons>>()
 
         for ( exon in exonList ) {
             if ( currentEvent.sliceSites[1] <= exon.start && currentEvent.sliceSites[2] >= exon.end ) {
-                matched ++
+                matched1.add(exon)
+
+                exon.source["gene"]!!.forEach {
+                    val tmp = mutableSetOf(exon)
+                    if ( geneExons.containsKey(it) ) {
+                        tmp.addAll(geneExons[it]!!)
+                    }
+                    geneExons[it] = tmp
+                }
             }
 
             if ( currentEvent.sliceSites[3] <= exon.start && currentEvent.sliceSites[4] >= exon.end ) {
-                matched ++
-            }
+                matched2.add(exon)
 
-            if ( matched >= 2 ) {
-                return exon
+                exon.source["gene"]!!.forEach {
+                    val tmp = mutableSetOf(exon)
+                    if ( geneExons.containsKey(it) ) {
+                        tmp.addAll(geneExons[it]!!)
+                    }
+                    geneExons[it] = tmp
+                }
+            }
+        }
+
+
+        /*
+         稍微写一下思路，有点复杂
+         已经在上边的遍历收集了所有的基因及其外现在
+         那么我们就来看，如果同一个基因有两个及以上的外显子，
+         且这两个外显子分别能够跟MXE的两个skipped区域对应，
+         那么就认为这个MXE来自这个基因
+          */
+        if ( matched1.isNotEmpty() && matched2.isNotEmpty() ) {
+
+            for ( ( k, values ) in geneExons ) {
+                if (values.size >= 2) {
+                    var match = 0
+                    val matched = mutableListOf<Exons>()
+                    for ( v in values.sorted()) {
+                        if ( v in matched1 ) {
+                            match ++
+                            matched.add(v)
+                        }
+
+                        if ( v in matched2 ) {
+                            match *= -1
+                            matched.add(v)
+                        }
+
+                        if ( match < 0 ) {
+                            val res = Exons(
+                                    chromosome = v.chromosome,
+                                    start = v.start,
+                                    end = v.end,
+                                    exonId = matched.asSequence().map { it.exonId }.joinToString(prefix = "", postfix = "", separator = ",")
+                            )
+
+                            res.source["gene"]!!.add(k)
+
+                            matched.forEach { res.source["transcript"]!!.addAll(it.source["transcript"]!!) }
+
+                            return res
+                        }
+                    }
+                }
             }
         }
 
@@ -119,7 +185,7 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
     private fun matchEventsWithRefSingleChromosome(
             events: List<SpliceEvent>,
             annotation: List<Exons>?,
-            matched: MutableMap<SpliceEvent, MutableList<String>>
+            matched: MutableMap<SpliceEvent, MutableList<Exons>>
     ) {
 
         if ( annotation != null ) {
@@ -142,9 +208,9 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
                         }?.let {
                             try {
                                 if ( matched.containsKey(currentEvent) ) {
-                                    matched[currentEvent]!!.add("${it.source["gene"]}\t${it.source["transcript"]}\t${it.exonId}")
+                                    matched[currentEvent]!!.add( it )
                                 } else {
-                                    matched[currentEvent] = mutableListOf("${it.source["gene"]}\t${it.source["transcript"]}\t${it.exonId}")
+                                    matched[currentEvent] = mutableListOf( it )
                                 }
 
                             } catch (error: kotlin.KotlinNullPointerException ) {
@@ -183,18 +249,23 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
                         currentExon.source == annotation[j + 1].source
                 ) {
                     try{
+                        // junction gap
                         val tmp1 = GenomicLoci(
                                 chromosome = currentEvent.chromosome,
                                 start = currentEvent.end,
                                 end = events[i + 1].start
                         )
 
+                        // exons gap
                         val tmp2 = GenomicLoci(
                                 chromosome = currentExon.chromosome,
                                 start = currentExon.end,
                                 end = annotation[j + 1].start
                         )
-                        if ( tmp2.overlapPercent(tmp1, all = true) > this.overlapOfExonIntron ) {
+                        if (
+
+                                tmp2.overlapPercent(tmp1, all = true) > this.overlapOfExonIntron
+                        ) {
                             val tmp = SpliceEvent(
                                     event = "IR",
                                     chromosome = currentEvent.chromosome,
@@ -209,7 +280,15 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
                                     )
                             )
 
-                            matched[tmp] = mutableListOf("${currentExon.source["gene"]}\t${currentExon.source["transcript"]}\t${currentExon.exonId}")
+                            this.bamFile?.let {
+                                tmp.psi = this.psiOfIR.getPsi(
+                                        chromosome = currentEvent.chromosome,
+                                        regionStart = currentExon.end,
+                                        regionEnd = annotation[j + 1].start,
+                                        bamFile = this.bamFile
+                                )
+                            }
+                            matched[tmp] = mutableListOf(currentExon)
                         }
                     } catch (e: ChromosomeException) {
 
@@ -233,12 +312,12 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
             threads: Int,
             error: Int,
             show: Boolean = true
-    ): Map<SpliceEvent, List<String>> {
+    ): Map<SpliceEvent, List<Exons>> {
 
         this.logger.info("Predicting Alternative Splicing events")
 
         val events = mutableMapOf<String, List<SpliceEvent>>()
-        val res = HashMap<SpliceEvent, MutableList<String>>()
+        val res = HashMap<SpliceEvent, MutableList<Exons>>()
 
         var executor = Executors.newFixedThreadPool(threads)
 
@@ -305,8 +384,7 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
         return res
     }
 
-
-    fun writeTo(outfile: File, results: Map<SpliceEvent, List<String>>) {
+    fun writeTo(outfile: File, results: Map<SpliceEvent, List<Exons>>) {
         val outFile = outfile.absoluteFile
 
         if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
@@ -315,10 +393,7 @@ class IdentifyAS( val overlapOfExonIntron: Double ) {
 
         for ( (k, v) in results) {
             for ( j in v.distinct() ) {
-
-                if (j != "NA\tNA\tNA") {
-                    writer.println("$k\t$j")
-                }
+                writer.println("$k\t$j\t${k.psi}")
             }
         }
 

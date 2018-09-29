@@ -10,6 +10,11 @@ import java.util.*
  * 基因与Reads的配对
  */
 
+
+/**
+ * @param gene 基因
+ * @param reads 与基因配对的reads
+ */
 class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
 
     // 比例改为相对于较短的那一个来算

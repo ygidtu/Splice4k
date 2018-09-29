@@ -1,14 +1,21 @@
 package com.splice4k.base
 
 
+import java.util.Objects
 /**
  * @since 2018.09.21
  * @version 20180921
  * @author Zhang yiming
  * 内部类，记录所有位点信息
  */
+
+/**
+ * @param node same start或者same end的核心（就是same的那个start或者end）
+ */
 class Sites( val node: Int ): Comparable<Sites> {
     private val pos = mutableMapOf<Int, Site>()
+
+    var total: Double = 0.toDouble()
 
     var size = this.pos.size
     get() {
@@ -30,6 +37,8 @@ class Sites( val node: Int ): Comparable<Sites> {
         tmp.addSource(transcript = transcript, gene = gene)
         tmp.addCount(freq)
 
+        this.total += freq ?: 1
+
         this.pos[site] = tmp
     }
 
@@ -49,17 +58,10 @@ class Sites( val node: Int ): Comparable<Sites> {
 
     /**
      * 获取sites中记录的所有位点
+     * @return 获取这个节点上对应的所有其他点
      */
     fun getSites(): List<Site> {
         return this.pos.values.toList()
-    }
-
-
-    /**
-     * 获取sites中记录的所有位点的count数，便于计算PSI
-     */
-    private fun getCounts(): Int {
-        return this.pos.values.sumBy { it.count }
     }
 
 
@@ -68,11 +70,10 @@ class Sites( val node: Int ): Comparable<Sites> {
      * @param target 所需PSI值的位点
      * @return Double? null -> means site doesn't exists; double -> PSI value
      */
-    fun getPsi(target: Int): Double? {
-        if ( this.pos.keys.contains(target) ) {
-            return this.pos[target]!!.count / this.getCounts().toDouble()
+    fun getPsi(target: Int): Double {
+        this.pos[target]!!.let {
+            return it.count / this.total
         }
-        return null
     }
 
 

@@ -3,7 +3,7 @@ package com.splice4k.smrt.tools
 
 import com.splice4k.base.Genes
 import com.splice4k.index.AnnotationIndex
-import com.splice4k.index.BamIndex
+import com.splice4k.index.SJIndex
 import com.splice4k.smrt.base.GeneRead
 import com.splice4k.smrt.base.Template
 import org.apache.log4j.Logger
@@ -28,7 +28,7 @@ import org.apache.log4j.Logger
  */
 class GeneReadsCoupler(
         reference: AnnotationIndex,
-        reads: BamIndex,
+        reads: SJIndex,
         private val overlap: Double,
         private val distanceError: Int
         ) {

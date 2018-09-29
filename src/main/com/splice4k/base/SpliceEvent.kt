@@ -6,10 +6,19 @@ import java.util.*
 /**
  * @author Zhangyiming
  * @since 2018.09.05
- * @version 20180905
+ * @version 20180929
  * 二代算法记录相应的可变剪接的事件信息的类
  */
 
+
+/**
+ * @param event 事件类型
+ * @param chromosome 染色体
+ * @param start 起始位点
+ * @param end 终止位点
+ * @param strand 链
+ * @param sliceSites 剪接位点
+ */
 class SpliceEvent(
         val event: String,
         chromosome: String,
@@ -24,6 +33,8 @@ class SpliceEvent(
         field.sort()
         return field
     }
+
+    var psi: Double? = null
 
 
     override fun hashCode(): Int {

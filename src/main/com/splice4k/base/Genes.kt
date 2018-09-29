@@ -12,6 +12,11 @@ import java.util.*
  * 基因信息载体
 */
 
+/**
+ * @param chromosome 染色体
+ * @param start 起始位点
+ * @param end 终止位点
+ */
 class Genes(
         chromosome: String,
         start: Int,

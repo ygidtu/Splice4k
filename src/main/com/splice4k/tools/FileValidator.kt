@@ -16,9 +16,9 @@ import java.io.IOException
 
 class FileValidator() {
 
-
     /**
      * 检查是否为BAM/SAM格式的文件
+     * @param infile 输入文件
      */
     private fun isBam(infile: File): Boolean {
         try{
@@ -40,6 +40,7 @@ class FileValidator() {
 
     /**
      * 检查是否为sj文件
+     * @param infile 输入文件
      */
     private fun isSJ(infile: File): Boolean {
         try{
@@ -70,6 +71,7 @@ class FileValidator() {
 
     /**
      * 检查是否为sj文件
+     * @param infile 输入文件
      */
     private fun isStar(infile: File): Boolean {
         try{
@@ -100,6 +102,7 @@ class FileValidator() {
 
     /**
      * 检查是否为gff文件
+     * @param infile 输入文件
      */
     private fun isGff(infile: File): Boolean {
         try{
@@ -132,6 +135,7 @@ class FileValidator() {
 
     /**
      * 检查是否为gff文件
+     * @param infile 输入文件
      */
     private fun isGtf(infile: File): Boolean {
         try{
@@ -161,6 +165,10 @@ class FileValidator() {
         return false
     }
 
+    /**
+     * 调用的api
+     * @param infile 输入文件
+     */
     fun check(infile: File): String {
         return when {
             this.isBam(infile) -> "bam"

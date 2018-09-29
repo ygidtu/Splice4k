@@ -9,6 +9,10 @@ package com.splice4k.base
  * 记录单个位点的位置，来源和数量信息
  */
 
+
+/**
+ * @param site 位点
+ */
 class Site(val site: Int): Comparable<Site> {
     var source = hashMapOf(
             "transcript" to mutableListOf<String>(),

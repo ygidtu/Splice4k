@@ -8,6 +8,11 @@ package com.splice4k.progressbar
  * 自定义的进度条
  */
 
+
+/**
+ * @param total 总循环数，可以为null
+ * @param message progressbar标识
+ */
 class ProgressBar(private val total: Long? = null, private val message: String = "") {
 
     private val begin = System.currentTimeMillis()

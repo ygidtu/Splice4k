@@ -5,19 +5,16 @@ import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import com.splice4k.index.BamIndex
-import com.splice4k.index.GffIndex
-import com.splice4k.index.GtfIndex
+import com.splice4k.index.AnnotationIndex
+import com.splice4k.index.SJIndex
 import com.splice4k.smrt.tools.GeneReadsCoupler
 import com.splice4k.smrt.tools.SJFinder
+import com.splice4k.tools.FileValidator
 import org.apache.log4j.FileAppender
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.PatternLayout
 import java.io.File
-import java.io.FileNotFoundException
-import kotlin.system.exitProcess
-import com.splice4k.tools.FileValidator
 
 
 /**
@@ -130,38 +127,20 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
-        val bam = when(fileValidator.check(this.input)) {
-            "bam" -> BamIndex(
-                    infile = this.input.absoluteFile.toString(),
-                    silent = !this.show,
-                    smrt = true,
-                    filter = this.junctionsFilter
-            )
-            else -> {
-                logger.info("Please check input file format")
-                exitProcess(2)
-            }
-        }
+        val bam =  SJIndex(
+                infile = this.input.absoluteFile,
+                silent = !this.show,
+                smrt = true,
+                filter = this.junctionsFilter
+        )
+
 
         // val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
-        val ref = when(fileValidator.check(this.reference)) {
-
-             "gff" -> GffIndex(
-                        infile = this.reference.absoluteFile.toString(),
+        val ref = AnnotationIndex(
+                        infile = this.reference.absoluteFile,
                         smrt = true
                 )
 
-             "gtf" -> GtfIndex(
-                        infile = this.reference.absoluteFile.toString(),
-                        smrt = true
-                )
-
-            else -> {
-                logger.info("Please check reference file format")
-                exitProcess(2)
-            }
-
-        }
 
         logger.info("Start to compare ref and reads")
         val matched = GeneReadsCoupler(
@@ -180,6 +159,6 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                 overlapOfExonIntron = this.overlapOfExonIntron,
                 error = this.error,
                 threads = this.threads
-        ).saveTo(this.output.absoluteFile.toString())
+        ).saveTo(this.output.absoluteFile)
     }
 }

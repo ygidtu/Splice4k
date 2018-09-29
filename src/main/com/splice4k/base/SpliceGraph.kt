@@ -12,13 +12,17 @@ import kotlin.math.abs
 
 /**
  * @since 2018.09.19
- * @version 20190919
+ * @version 20190929
  * @author Zhang yiming
  *
  * 构建小型的可变剪接图，基本上就是把对应的Same Start和Same end收集到一起
  */
 
 
+/**
+ * @param chromosome 染色体
+ * @param strand 链
+ */
 class SpliceGraph(
         val chromosome: String,
         val strand: Char
@@ -29,7 +33,7 @@ class SpliceGraph(
     private val ends = mutableMapOf<Int, Sites>()
 
     // 记录具有A3和A5的位点，便于最后寻找MXE
-    private val assSites = mapOf<String, HashSet<Int>>(
+    private val as35Sites = mapOf<String, HashSet<Int>>(
             "start" to hashSetOf(),
             "end" to hashSetOf()
     )
@@ -38,7 +42,12 @@ class SpliceGraph(
     /**
      * 二分法进行插入
      * 保证序列有序，以及算法高效
-     * @param list 包含Sites的
+     * @param list 包含Sites的list，主要为class内的starts和ends
+     * @param index 指每个same starts和same ends的node
+     * @param site 指每个same starts上对应的ends，与每个same ends上对应的starts
+     * @param freq 出现的频率，由于总是成对导入，因此一个freq就够了
+     * @param transcript 该starts或ends所在的转录本
+     * @param gene 该starts或ends所在的基因
      */
     private fun insertSites(
             list: MutableMap<Int, Sites>,
@@ -78,24 +87,23 @@ class SpliceGraph(
     fun addEdge(
             start: Int,
             end: Int,
-            startFreq: Int?=null,
-            endFreq: Int?= null,
+            freq: Int?=null,
             transcript: String? = null,
             gene: String? = null
     ) {
-        insertSites(
+        this.insertSites(
                 list = this.starts,
                 index = start,
                 site = end,
-                freq = endFreq,
+                freq = freq,
                 transcript = transcript,
                 gene = gene
         )
-        insertSites(
+        this.insertSites(
                 list = this.ends,
                 index = end,
                 site = start,
-                freq = startFreq,
+                freq = freq,
                 transcript = transcript,
                 gene = gene
         )
@@ -119,20 +127,25 @@ class SpliceGraph(
                 for ( j in ends!!.getSites() ) {
 
                     if ( i < j ) {
-                        res.add(SpliceEvent(
+
+                        val tmpEvent = SpliceEvent(
                                 event = "SE",
                                 chromosome = this.chromosome,
                                 start = i.site,
                                 end = j.site,
                                 strand = this.strand,
                                 sliceSites = mutableListOf(starts.node, i.site, j.site, ends.node)
-                        ))
+                        )
+
+                        tmpEvent.psi = (starts.getPsi(i.site)  + ends.getPsi(j.site)) / 2
+
+                        res.add(tmpEvent)
 
                         exonSkipped.add(Objects.hash(listOf(starts.node, i.site, j.site).sorted()))
                         exonSkipped.add(Objects.hash(listOf(i.site, j.site, ends.node)))
 
-                        this.assSites["start"]!!.add(starts.node)
-                        this.assSites["end"]!!.add(ends.node)
+                        this.as35Sites["start"]!!.add(starts.node)
+                        this.as35Sites["end"]!!.add(ends.node)
                     }
                 }
             }
@@ -156,25 +169,23 @@ class SpliceGraph(
                             abs(starts.getSite(i)!!.site - starts.getSite(j)!!.site) >= error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
-                        res.add(SpliceEvent(
+
+                        val tmpEvent = SpliceEvent(
                                 event = when(this.strand) {
                                     '-' -> "A5"
                                     else -> "A3"
                                 },
                                 chromosome = this.chromosome,
-                                start = when ( sites[0] == sites[1] ) {
-                                    true -> sites[2]
-                                    else -> sites[0]
-                                },
-                                end = when ( sites[0] == sites[1] ) {
-                                    true -> sites[3]
-                                    else -> sites[1]
-                                },
+                                start = sites[2],
+                                end = sites[3],
                                 strand = this.strand,
                                 sliceSites = sites
-                        ))
+                        )
 
-                        this.assSites["start"]!!.add(starts.node)
+                        tmpEvent.psi = starts.getPsi( target = sites[2] )
+                        res.add(tmpEvent)
+
+                        this.as35Sites["start"]!!.add(starts.node)
                     }
                 }
             }
@@ -198,25 +209,24 @@ class SpliceGraph(
                             abs(ends.getSite(i)!!.site - ends.getSite(j)!!.site) > error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
-                        res.add(SpliceEvent(
+
+                        val tmpEvent = SpliceEvent(
                                 event = when(this.strand) {
                                     '-' -> "A3"
                                     else -> "A5"
                                 },
                                 chromosome = this.chromosome,
-                                start = when ( sites[0] == sites[1] ) {
-                                    true -> sites[2]
-                                    else -> sites[0]
-                                },
-                                end = when ( sites[0] == sites[1] ) {
-                                    true -> sites[3]
-                                    else -> sites[1]
-                                },
+                                start = sites[0],
+                                end = sites[1],
                                 strand = this.strand,
                                 sliceSites = sites
-                        ))
+                        )
 
-                        this.assSites["end"]!!.add(ends.node)
+                        tmpEvent.psi = ends.getPsi( target = sites[1] )
+
+                        res.add(tmpEvent)
+
+                        this.as35Sites["end"]!!.add(ends.node)
                     }
                 }
             }
@@ -305,17 +315,17 @@ class SpliceGraph(
         sites.addAll(this.ends.keys)
         sites = sites.asSequence().distinct().sorted().toMutableList()
 
-        val assStarts = this.assSites["start"]!!.asSequence().sorted().distinct().toList()
-        val assEnds = this.assSites["end"]!!.asSequence().distinct().sorted().toList()
+        val as35Starts = this.as35Sites["start"]!!.asSequence().sorted().distinct().toList()
+        val as35Ends = this.as35Sites["end"]!!.asSequence().distinct().sorted().toList()
 
         var firstEnds = 0
-        for ( i in 0..(assStarts.size - 1)) {
+        for ( i in 0..(as35Starts.size - 1)) {
             var j = firstEnds
 
-            while ( j < assEnds.size - 1 ) {
+            while ( j < as35Ends.size - 1 ) {
 
                 // 如果j太小，就跳过
-                if ( assEnds[j] <= this.starts[assStarts[i]]!!.getExtremeSite() ) {
+                if ( as35Ends[j] <= this.starts[as35Starts[i]]!!.getExtremeSite() ) {
                     if ( firstEnds != j ) {
 
                     }
@@ -324,34 +334,49 @@ class SpliceGraph(
                     continue
                 }
 
-                val currentStart = this.starts[assStarts[i]]!!.getSites()
-                val currentEnd = this.ends[assEnds[j]]!!.getSites()
+                val currentStart = this.starts[as35Starts[i]]!!.getSites()
+                val currentEnd = this.ends[as35Ends[j]]!!.getSites()
 
                 for ( e1 in 0..(currentStart.size - 1) ) {
                     for ( e2 in (e1 + 1)..(currentStart.size - 1) ) {
                         for ( s1 in 0..(currentEnd.size - 1) ) {
                             for ( s2 in (s1 + 1)..(currentEnd.size - 1) ) {
                                 val mxeSites = listOf(
-                                        assStarts[i],
+                                        as35Starts[i],
                                         currentStart[e1].site,
                                         currentEnd[s1].site,
                                         currentStart[e2].site,
                                         currentEnd[s2].site,
-                                        assEnds[j]
+                                        as35Ends[j]
                                 )
 
                                 if (
                                         this.isOrdered(mxeSites) &&
                                         sites.indexOf(currentStart[e2].site) - sites.indexOf(currentEnd[s1].site) == 1
                                 ) {
-                                    res.add(SpliceEvent(
+
+                                    val tmpEvent = SpliceEvent(
                                             event = "MXE",
                                             chromosome = this.chromosome,
-                                            start = assStarts[i],
-                                            end = assEnds[j],
+                                            start = as35Starts[i],
+                                            end = as35Ends[j],
                                             strand = this.strand,
                                             sliceSites = mxeSites.toMutableList()
-                                    ))
+                                    )
+
+                                    val values = when ( this.strand ) {
+                                        '-' -> listOf(
+                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s1].site ),
+                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e1].site )
+                                        )
+                                        else -> listOf(
+                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e2].site ),
+                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s2].site )
+                                        )
+                                    }
+
+                                    tmpEvent.psi = values.sum() / values.size
+                                    res.add(tmpEvent)
                                 }
 
                             }

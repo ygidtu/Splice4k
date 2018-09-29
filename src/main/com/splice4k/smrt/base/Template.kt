@@ -11,6 +11,11 @@ import java.util.*
  * 基因与Reads的配对
  */
 
+
+/**
+ * @param template 构筑出的以某基因为核心的template
+ * @param reads 与template配对的所有reads
+ */
 class Template(
         val template: Genes,
         reads: MutableList<Genes>

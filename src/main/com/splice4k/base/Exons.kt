@@ -9,21 +9,30 @@ package com.splice4k.base
  */
 
 
-
+/**
+ * @param chromosome 染色体
+ * @param start 起始位点
+ * @param end 终止位点
+ * @param exonId 外显子id
+ */
 class Exons(
-
         chromosome: String,
         start: Int,
         end: Int,
-        val strand: Char,
         val exonId: String
 
 ): GenomicLoci(chromosome, start, end) {
 
     var source = mutableMapOf(
-            "gene" to "",
-            "transcript" to ""
+            "gene" to mutableSetOf<String>(),
+            "transcript" to mutableSetOf()
     )
+
+    override fun toString(): String {
+        return this.source["gene"]!!.asSequence().distinct().joinToString(prefix = "", postfix = "\t", separator = ",") +
+                this.source["transcript"]!!.asSequence().distinct().joinToString(prefix = "", postfix = "\t", separator = ",") +
+                this.exonId
+    }
 }
 
 

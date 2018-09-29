@@ -6,27 +6,36 @@ import com.splice4k.base.SpliceEvent
 import com.splice4k.base.SpliceGraph
 import com.splice4k.errors.ChromosomeException
 import com.splice4k.index.AnnotationIndex
-import com.splice4k.index.BamIndex
+import com.splice4k.index.SJIndex
 import com.splice4k.smrt.base.Template
 import com.splice4k.tools.IdentifyAS
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
+import com.splice4k.tools.PsiOfIR
 
 
 /**
  * @since 2018.06.21
- * @version 20180927
+ * @version 20180929
  * @author Zhang Yiming
  *
  * 根据基因和Reads的配对情况，找出其中的可变剪接情况
  */
 
-
+/**
+ * @param template 构筑出的模板
+ * @param bamIndex 读取的Bam文件的index
+ * @param refIndex 读取的reference文件的index
+ * @param silent 是否输出详细信息
+ * @param overlapOfExonIntron 判断IR时外显子与内含子之间重合程度
+ * @param error 判断A3/A5是否存（等）时所需要的阈值
+ * @param threads 计算所有的线程数
+ */
 class SJFinder(
         template: GeneReadsCoupler,
-        val bamIndex: BamIndex?=null,
+        val bamIndex: SJIndex,
         val refIndex: AnnotationIndex,
         val silent: Boolean,
         val overlapOfExonIntron: Double,
@@ -37,7 +46,7 @@ class SJFinder(
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
     private val results = hashMapOf<SpliceEvent, MutableList<String>>()
     private val identified = mutableSetOf<String>()
-
+    private val psiOfIR = PsiOfIR()
 
     init {
         this.identifySJ()
@@ -95,6 +104,14 @@ class SJFinder(
                                 ),
                                 event = "IR"
                         )
+
+                        tmp.psi = this.psiOfIR.getPsi(
+                                chromosome = template.template.chromosome,
+                                regionStart = exons[i].start - 1,
+                                regionEnd = exons[i].end + 1,
+                                bamFile = this.bamIndex.infile
+                        )
+
                         this.results[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\tNA")
                         this.identified.add("${tmp.event}_${tmp.sliceSites}")
                     }
@@ -146,26 +163,31 @@ class SJFinder(
 
         while (!executor.isTerminated) {}
 
-        val identifyAS = IdentifyAS( overlapOfExonIntron = this.overlapOfExonIntron )
+        val identifyAS = IdentifyAS(
+                overlapOfExonIntron = this.overlapOfExonIntron,
+                bamFile = this.bamIndex.infile
+        )
 
         this.logger.info("Finding alternative splicing events by another algorithm")
-        bamIndex?.let {
-            val tmp = identifyAS.matchEventsWithRef(
-                    event = bamIndex.data.values.toList(),
-                    annotations = refIndex.data,
-                    threads = this.threads,
-                    error = this.error,
-                    show = false
-            )
 
-            for ( (k, v) in  tmp) {
-                if ( "${k.event}_${k.sliceSites}" !in this.identified ) {
-                    for ( j in v ) {
-                        this.results[k] = v.toMutableList()
-                    }
+        val tmp = identifyAS.matchEventsWithRef(
+                event = bamIndex.data.values.toList(),
+                annotations = refIndex.data,
+                threads = this.threads,
+                error = this.error,
+                show = false
+        )
+
+        for ( (k, v) in  tmp) {
+            if ( "${k.event}_${k.sliceSites}" !in this.identified ) {
+                for ( j in v ) {
+                    this.results[k] = v.asSequence().map { it.toString() + "\t0" }.toMutableList()
                 }
+            } else {
+                this.results[k] = v.asSequence().map { it.toString() + "\t2" }.toMutableList()
             }
         }
+
     }
 
 
@@ -174,19 +196,22 @@ class SJFinder(
      * @param outfile 输出文件的路径
      * @return
      */
-    fun saveTo(outfile: String) {
+    fun saveTo(outfile: File) {
 
-        if ( !File(outfile).parentFile.exists() ) {
-            File(outfile).parentFile.mkdirs()
+        if ( !outfile.parentFile.exists() ) {
+            outfile.parentFile.mkdirs()
         }
 
-        val writer = PrintWriter(File(outfile))
+        val writer = PrintWriter(outfile)
 
         for ( (k, v) in this.results ) {
             for ( j in v) {
-                if ( j != "NA\tNA\tNA" ) {
-                    writer.println("$k\t$j")
+                if ( j.matches(".*\t[02]$".toRegex()) ) {
+                    writer.println("$k\t$j\t${k.psi}")
+                } else {
+                    writer.println("$k\t$j\t1\t${k.psi}")
                 }
+
             }
         }
 
