@@ -36,6 +36,7 @@ class GeneReadsCoupler(
 
     private val novelReads = mutableListOf<Genes>()
 
+    // 同一个基因上，转录本和reads之间的配对
     val templates = mutableMapOf<String, MutableList<Template>>()
 
     private val reference = reference.transcripts.sorted()

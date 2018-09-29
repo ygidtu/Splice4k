@@ -77,7 +77,7 @@ class AnnotationIndex(
 
             val geneTranscript = mutableMapOf<String, String>()
 
-            val exons: MutableMap<String, MutableList<Int>> = mutableMapOf()
+            val exons: MutableMap<String, MutableList<Exons>> = mutableMapOf()
 
 
             while (reader.hasNext()) {
@@ -140,7 +140,7 @@ class AnnotationIndex(
                     }
 
                     if ( this.smrt ) {
-                        val tmpExon = mutableListOf(tmp.start, tmp.end)
+                        val tmpExon = mutableListOf(tmp)
 
                         if (exons.containsKey(sources["Parent"]!!)) {
                             tmpExon.addAll(exons[sources["Parent"]!!]!!)
@@ -196,7 +196,7 @@ class AnnotationIndex(
             this.logger.info("Reading from ${this.infile}")
             val pb = ProgressBar(message = "Reading exon from Gtf")
 
-            val exons: MutableMap<String, MutableList<Int>> = mutableMapOf()
+            val exons: MutableMap<String, MutableList<Exons>> = mutableMapOf()
             var exonNumber = 1
             while (reader.hasNext()) {
                 val line = reader.nextLine()
@@ -247,7 +247,7 @@ class AnnotationIndex(
                     }
 
                     if ( this.smrt ) {
-                        val tmpExon = mutableListOf(tmp.start, tmp.end)
+                        val tmpExon = mutableListOf(tmp)
 
                         if (exons.containsKey(sources["transcript_id"]!!)) {
                             tmpExon.addAll(exons[sources["transcript_id"]!!]!!)

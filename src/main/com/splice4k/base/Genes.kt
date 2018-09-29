@@ -51,7 +51,7 @@ class Genes(
         }
     }
 
-    val exons: MutableList<Int> = mutableListOf()
+    val exons: MutableList<Exons> = mutableListOf()
     get() {
         field.sort()
         return field
@@ -192,5 +192,20 @@ class Genes(
                 this.transcriptId,
                 exonString
         )
+    }
+
+
+    /**
+     * 获取外显子的
+     */
+    fun getExonsSites(): List<Int> {
+        val res = mutableListOf<Int>()
+
+        this.exons.forEach {
+            res.add(it.start)
+            res.add(it.end)
+        }
+
+        return res
     }
 }

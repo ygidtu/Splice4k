@@ -18,17 +18,23 @@ import java.util.*
 class GeneRead(val gene: Genes, val reads: Genes): Comparable<GeneRead> {
 
     // 比例改为相对于较短的那一个来算
-    var overlapPercent: Double = this.gene.overlapPercent(this.reads)
+    var overlapPercent: Double = this.gene.overlapPercent(this.reads, all = true)
 
 
     /**
      * 判断基因和reads的exon的重合程度是否符合90%的要求
      * 任意一对符合要求即可
+     * 对于bam文件来说，他的exons其实是junctions的范围，
+     * 所以理论上两者不会有重合，然后这里的位点就需要单独修改
+     * @param error 可容许的误差
      * @return Boolean  true符合；false不符合
      */
     fun isGeneReadsExonsOverlapQualified(error: Int = 3): Boolean {
-        val geneExons = this.gene.exons
-        val readsExons = this.reads.exons
+        val geneExons = mutableListOf(this.gene.start)
+        geneExons.addAll(this.gene.getExonsSites())
+        geneExons.add(this.gene.end)
+
+        val readsExons = this.reads.getExonsSites()
 
         var i = 0; var j = 0; var match = 0
         while (i < geneExons.size && j < readsExons.size) {

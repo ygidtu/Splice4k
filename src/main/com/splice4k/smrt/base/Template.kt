@@ -34,7 +34,7 @@ class Template(
         val res = mutableListOf<List<Int>>()
 
         for ( i in this.reads.distinct() ) {
-            res.add(i.exons)
+            res.add(i.getExonsSites())
         }
 
         return res

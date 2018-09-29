@@ -1,5 +1,6 @@
 package com.splice4k.index
 
+import com.splice4k.base.Exons
 import com.splice4k.base.Genes
 import com.splice4k.base.SpliceGraph
 import com.splice4k.progressbar.ProgressBar
@@ -127,9 +128,9 @@ class SJIndex(
      * @return 列表，记录了所有的intron的边界信息
      */
     private fun extractSpliceFromCigar( record: SAMRecord): List<Int> {
-        val results: MutableList<Int> = mutableListOf()
         var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
+        val results: MutableList<Int> = mutableListOf(position)
 
         for (i in record.cigar.toString()) {
             if (i in '0'..'9') {  // 如果是数字，就加到list中
@@ -154,7 +155,7 @@ class SJIndex(
                 tmp.clear()
             }
         }
-
+        results.add( record.alignmentEnd )
         return results
     }
 
@@ -211,8 +212,6 @@ class SJIndex(
                     continue
                 }
 
-
-                val junctions = this.extractSpliceFromCigar(record)
                 // init Genes
                 val tmpGene = Genes(
                         chromosome = record.referenceName,
@@ -221,8 +220,16 @@ class SJIndex(
                         geneName = record.readName,
                         strand = strand
                 )
+
                 // construct exon to transcripts
-                tmpGene.exons.addAll(junctions)
+                for ( i in 0..(spliceSites.size - 2) step 2 ) {
+                    tmpGene.exons.add(Exons(
+                            chromosome = record.referenceName,
+                            start = spliceSites[i],
+                            end = spliceSites[i + 1],
+                            exonId = ""
+                    ))
+                }
 
                 this.transcripts.add(tmpGene)
             }

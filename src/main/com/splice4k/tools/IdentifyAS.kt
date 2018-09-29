@@ -9,7 +9,6 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
-import com.splice4k.tools.PsiOfIR
 
 
 
@@ -40,143 +39,7 @@ class IdentifyAS(
 ) {
     private val logger = Logger.getLogger(IdentifyAS::class.java)
     private val psiOfIR = PsiOfIR()
-
-    /**
-     * 检查SE是否真实存在，即是否确实在注释中存在这么个外显子
-     * @param currentEvent 事件
-     * @param exonList 事件范围内的外显子
-     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
-     */
-    private fun checkSE( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-
-        for ( currentExon in exonList ) {
-
-
-            if ( currentEvent.sliceSites[1] <= currentExon.start &&
-                    currentEvent.sliceSites[2] >= currentExon.end ) {
-                return currentExon
-            }
-        }
-        return null
-    }
-
-    /**
-     * 检查A3/A5是否真实存在，即确定是否发生在某个外显子上
-     * @param currentEvent 事件
-     * @param exonList 事件范围内的外显子
-     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
-     */
-    private fun checkA35( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-        var match = 0
-
-        for ( currentExon in exonList ) {
-
-            if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
-                if (
-                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) <= 1 &&
-                                currentEvent.sliceSites[3] in currentExon.start..currentExon.end
-                ) {
-                    match ++
-                }
-            } else if (currentEvent.sliceSites[2] == currentEvent.sliceSites[3]) {
-                if (
-                    kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 1 &&
-                            currentEvent.sliceSites[0] in currentExon.start..currentExon.end
-                        ) {
-                    match ++
-                }
-            }
-
-            if ( match > 0 ) {
-                return currentExon
-            }
-        }
-        return null
-    }
-
-    /**
-     * 检查MXE事件是否存在，即确定是否发生于至少两个外显子上
-     * @param currentEvent 事件
-     * @param exonList 事件范围内的外显子
-     * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
-     */
-    private fun checkMXE( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-        val matched1 = mutableSetOf<Exons>()
-        val matched2 = mutableSetOf<Exons>()
-        val geneExons = mutableMapOf<String, MutableSet<Exons>>()
-
-        for ( exon in exonList ) {
-            if ( currentEvent.sliceSites[1] <= exon.start && currentEvent.sliceSites[2] >= exon.end ) {
-                matched1.add(exon)
-
-                exon.source["gene"]!!.forEach {
-                    val tmp = mutableSetOf(exon)
-                    if ( geneExons.containsKey(it) ) {
-                        tmp.addAll(geneExons[it]!!)
-                    }
-                    geneExons[it] = tmp
-                }
-            }
-
-            if ( currentEvent.sliceSites[3] <= exon.start && currentEvent.sliceSites[4] >= exon.end ) {
-                matched2.add(exon)
-
-                exon.source["gene"]!!.forEach {
-                    val tmp = mutableSetOf(exon)
-                    if ( geneExons.containsKey(it) ) {
-                        tmp.addAll(geneExons[it]!!)
-                    }
-                    geneExons[it] = tmp
-                }
-            }
-        }
-
-
-        /*
-         稍微写一下思路，有点复杂
-         已经在上边的遍历收集了所有的基因及其外现在
-         那么我们就来看，如果同一个基因有两个及以上的外显子，
-         且这两个外显子分别能够跟MXE的两个skipped区域对应，
-         那么就认为这个MXE来自这个基因
-          */
-        if ( matched1.isNotEmpty() && matched2.isNotEmpty() ) {
-
-            for ( ( k, values ) in geneExons ) {
-                if (values.size >= 2) {
-                    var match = 0
-                    val matched = mutableListOf<Exons>()
-                    for ( v in values.sorted()) {
-                        if ( v in matched1 ) {
-                            match ++
-                            matched.add(v)
-                        }
-
-                        if ( v in matched2 ) {
-                            match *= -1
-                            matched.add(v)
-                        }
-
-                        if ( match < 0 ) {
-                            val res = Exons(
-                                    chromosome = v.chromosome,
-                                    start = v.start,
-                                    end = v.end,
-                                    exonId = matched.asSequence().map { it.exonId }.joinToString(prefix = "", postfix = "", separator = ",")
-                            )
-
-                            res.source["gene"]!!.add(k)
-
-                            matched.forEach { res.source["transcript"]!!.addAll(it.source["transcript"]!!) }
-
-                            return res
-                        }
-                    }
-                }
-            }
-        }
-
-        return null
-    }
+    private val checkAS = CheckAS()
 
 
     /**
@@ -199,13 +62,7 @@ class IdentifyAS(
                     currentEvent.isUpStream( currentExon ) -> {
                         i ++
 
-                        when (currentEvent.event) {
-                            "SE" -> this.checkSE(currentEvent, annotation.subList(logged, j))
-
-                            "MXE" -> this.checkMXE( currentEvent, annotation.subList(logged, j) )
-
-                            else -> this.checkA35( currentEvent, annotation.subList(logged, j) )
-                        }?.let {
+                        this.checkAS.check( currentEvent, annotation.subList(logged, j) )?.let {
                             try {
                                 if ( matched.containsKey(currentEvent) ) {
                                     matched[currentEvent]!!.add( it )

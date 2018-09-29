@@ -14,6 +14,7 @@ import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
 import com.splice4k.tools.PsiOfIR
+import com.splice4k.tools.CheckAS
 
 
 /**
@@ -47,6 +48,7 @@ class SJFinder(
     private val results = hashMapOf<SpliceEvent, MutableList<String>>()
     private val identified = mutableSetOf<String>()
     private val psiOfIR = PsiOfIR()
+    private val checkAS = CheckAS()
 
     init {
         this.identifySJ()
@@ -60,14 +62,8 @@ class SJFinder(
      */
     private fun findIR(template: Template) {
 
-        val exonSites = template.template.exons
-        val exons = mutableListOf<GenomicLoci>()
-        for ( i in 1..(exonSites.size - 2) step 2 ) {
-            exons.add(GenomicLoci(
-                    start = exonSites[i],
-                    end = exonSites[i + 1]
-            ))
-        }
+        val exons = template.template.exons
+
 
         val junctions = mutableListOf<GenomicLoci>()
 
@@ -112,7 +108,7 @@ class SJFinder(
                                 bamFile = this.bamIndex.infile
                         )
 
-                        this.results[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\tNA")
+                        this.results[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\t${exons[i].exonId}")
                         this.identified.add("${tmp.event}_${tmp.sliceSites}")
                     }
                 }
@@ -147,8 +143,10 @@ class SJFinder(
                     }
 
                     for (i in graph.identifyAS( error = this.error, silent = this.silent ).iterator()) {
-                        this.results[i] = mutableListOf("$gene\t${pair.template.transcriptId}\tNA")
-                        this.identified.add("${i.event}_${i.sliceSites}")
+                        this.checkAS.check(i, pair.template.exons)?.let {
+                            this.results[i] = mutableListOf("$gene\t${pair.template.transcriptId}\t${it.exonId}")
+                            this.identified.add("${i.event}_${i.sliceSites}")
+                        }
                     }
 
                     this.findIR(template = pair)
