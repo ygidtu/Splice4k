@@ -31,9 +31,10 @@ import kotlin.system.exitProcess
  */
 class SJIndex(
         val infile: File,
-        val filter: Int,
-        val silent: Boolean,
-        val smrt: Boolean = false
+        private val filter: Int,
+        private val silent: Boolean,
+        private val smrt: Boolean = false,
+        private val unique: Boolean = false
 ) {
     val fileFormat: String = FileValidator().check(this.infile)
     private val logger = Logger.getLogger(SJIndex::class.java)
@@ -80,7 +81,10 @@ class SJIndex(
 
         val pattern = when ( star ) {
             false -> "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()
-            else -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s\\d+\\s+(\\d+).*$".toRegex()
+            else -> when (this.unique) {
+                true -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s1\\s+(\\d+).*$".toRegex()
+                else -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s[01]\\s+(\\d+).*$".toRegex()
+            }
         }
 
         val reader = Scanner(this.infile)

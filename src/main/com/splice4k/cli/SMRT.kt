@@ -1,20 +1,25 @@
 package com.splice4k.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
+import com.splice4k.base.Exons
+import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.smrt.tools.GeneReadsCoupler
 import com.splice4k.smrt.tools.SJFinder
-import com.splice4k.tools.FileValidator
 import org.apache.log4j.FileAppender
 import org.apache.log4j.Level
 import org.apache.log4j.Logger
 import org.apache.log4j.PatternLayout
 import java.io.File
+import java.io.PrintWriter
+import kotlin.system.exitProcess
 
 
 /**
@@ -27,11 +32,9 @@ import java.io.File
 
 class SMRT: CliktCommand(help = "Find AS from PacBio data") {
 
-    private val input by option(
-            "-i",
-            "--input",
+    private val input by argument(
             help = "Path to input Bam/Sam file"
-    ).file(exists = true).required()
+    ).file(exists = true).multiple()
 
 
     private val reference by option(
@@ -121,44 +124,86 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
             this.addFileAppender(it)
         }
 
+        if ( this.output.isDirectory ) {
+            println("Please set path of output file [event not exists]")
+            exitProcess(0)
+        }
+
         val logger = Logger.getLogger(SMRT::class.java)
-        val fileValidator = FileValidator()
 
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
-        val bam =  SJIndex(
-                infile = this.input.absoluteFile,
-                silent = !this.show,
-                smrt = true,
-                filter = this.junctionsFilter
-        )
+        val psis = mutableMapOf<SpliceEvent, MutableMap<String, Double?>>()
+        val labels = mutableListOf<String>()
+        val results = mutableMapOf<SpliceEvent, MutableList<String>>()
 
 
         // val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
         val ref = AnnotationIndex(
-                        infile = this.reference.absoluteFile,
-                        smrt = true
-                )
-
-
-        logger.info("Start to compare ref and reads")
-        val matched = GeneReadsCoupler(
-                reference = ref,
-                reads = bam,
-                overlap = this.overlapOfRefReads,
-                distanceError = this.error
+                infile = this.reference.absoluteFile,
+                smrt = true
         )
 
-        logger.info("Start to identify splice events")
-        SJFinder(
-                template = matched,
-                bamIndex = bam,
-                refIndex = ref,
-                silent = !this.show,
-                overlapOfExonIntron = this.overlapOfExonIntron,
-                error = this.error,
-                threads = this.threads
-        ).saveTo(this.output.absoluteFile)
+
+        for ( it in this.input ) {
+            val bam =  SJIndex(
+                    infile = it.absoluteFile,
+                    silent = !this.show,
+                    smrt = true,
+                    filter = this.junctionsFilter
+            )
+
+            logger.info("Start to compare ref and reads")
+            val matched = GeneReadsCoupler(
+                    reference = ref,
+                    reads = bam,
+                    overlap = this.overlapOfRefReads,
+                    distanceError = this.error
+            )
+
+            logger.info("Start to identify splice events")
+            val data = SJFinder(
+                    template = matched,
+                    bamIndex = bam,
+                    refIndex = ref,
+                    silent = !this.show,
+                    overlapOfExonIntron = this.overlapOfExonIntron,
+                    error = this.error,
+                    threads = this.threads
+            ).results
+
+            for ( (k, values) in data ) {
+                if ( results.containsKey(k) ) {
+                    results[k]!!.addAll(values)
+                } else {
+                    results[k] = values.toMutableList()
+                }
+
+                if ( psis.containsKey(k) ) {
+                    psis[k]!![labels.last()] = k.psi
+                } else {
+                    psis[k] = mutableMapOf(labels.last() to k.psi)
+                }
+            }
+
+            if ( !this.output.parentFile.exists() ) {
+                this.output.parentFile.mkdirs()
+            }
+
+            val writer = PrintWriter(this.output)
+
+            writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+
+            for ((key, values) in results ) {
+                for ( v in values ) {
+                    val psi = mutableListOf<Double?>()
+                    for ( label in labels ) {
+                        psi.add(psis[key]!![label])
+                    }
+                    writer.println("$key\t$v\t${psi.joinToString("\t")}")
+                }
+            }
+        }
     }
 }

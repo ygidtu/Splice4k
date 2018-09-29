@@ -1,7 +1,6 @@
 package com.splice4k.tools
 
-import htsjdk.samtools.SAMRecord
-import htsjdk.samtools.SamReaderFactory
+import htsjdk.samtools.*
 import java.io.File
 
 /**
@@ -64,7 +63,7 @@ class PsiOfIR() {
             regionStart: Int,
             regionEnd: Int,
             bamFile: File
-    ): Double {
+    ): Double? {
         val exons = mutableMapOf<Int, Int>()
         val junctions = mutableMapOf<Int, Int>()
 
@@ -80,25 +79,29 @@ class PsiOfIR() {
             junctions[i] = 0
         }
 
-        val tmpReader =  SamReaderFactory
-                .makeDefault()
-                .open(bamFile)
-                .query(chromosome, regionStart - 20, regionEnd + 20, false)
+        try{
+            val tmpReader =  SamReaderFactory
+                    .makeDefault()
+                    .open(bamFile)
+                    .query(chromosome, regionStart - 20, regionEnd + 20, false)
 
-        for ( i in tmpReader ) {
+            for ( i in tmpReader ) {
 
-            val sites = this.extractSpliceFromCigar(i)
-            for ( j in 0..(sites.size - 2) step 2 ) {
-                for ( k in sites[j]..sites[j + 1] ) {
-                    if ( exons.containsKey(k) ) {
-                        exons[k] = 1 + exons[k]!!
-                    }
+                val sites = this.extractSpliceFromCigar(i)
+                for ( j in 0..(sites.size - 2) step 2 ) {
+                    for ( k in sites[j]..sites[j + 1] ) {
+                        if ( exons.containsKey(k) ) {
+                            exons[k] = 1 + exons[k]!!
+                        }
 
-                    if ( junctions.containsKey(k) ) {
-                        junctions[k] = 1 + junctions[k]!!
+                        if ( junctions.containsKey(k) ) {
+                            junctions[k] = 1 + junctions[k]!!
+                        }
                     }
                 }
             }
+        } catch (e: SAMException) {
+            return null
         }
 
         fun getMean(data: Map<Int, Int>): Double {

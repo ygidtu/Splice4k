@@ -248,6 +248,7 @@ class IdentifyAS(
 
         val writer = PrintWriter(outFile)
 
+        writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\tPSI")
         for ( (k, v) in results) {
             for ( j in v.distinct() ) {
                 writer.println("$k\t$j\t${k.psi}")

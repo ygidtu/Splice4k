@@ -85,7 +85,7 @@ class FileValidator() {
                     continue
                 }
 
-                if ( line.matches("\"^([\\\\w\\\\.]+)\\\\s(\\\\d+)\\\\s(\\\\d+)\\\\s([12])\\\\s\\\\d+\\\\s\\\\d+\\\\s+(\\\\d+).*\$\".toRegex()".toRegex()) ) {
+                if ( line.matches("^([\\w\\.]+)\\s+\\d+\\s+\\d+\\s+[012]\\s+\\d+\\s+[01]\\s+\\d+\\s+\\d+\\s+\\d+".toRegex()) ) {
                     res = true
                 }
                 break
@@ -118,7 +118,7 @@ class FileValidator() {
 
                 val lines = line.split("\t")
 
-                if ( lines[8].matches("([\\w-]+=[\\w:\\s%-,\\.]+;)+([\\w-]+=[\\w:\\s%-,\\.]+)\$".toRegex()) ) {
+                if ( lines[8].matches("([\\w-\\.]+=[\\w:\\s-%,\\.]+;)+([\\w-]+=[\\w:\\s-%,\\.]+)\$".toRegex()) ) {
                     res = true
                 }
                 break
@@ -151,7 +151,7 @@ class FileValidator() {
 
                 val lines = line.split("\t")
 
-                if ( lines[8].matches("([\\w-]+ \"[\\w+\\.%-,:]+\"; ?)+".toRegex()) ) {
+                if ( lines[8].matches("([\\w-]+ \"[\\w+\\.\\s-%,:]+\"; ?)+".toRegex()) ) {
                     res = true
                 }
                 break

@@ -45,7 +45,7 @@ class SJFinder(
 ) {
     private val template = template.templates
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
-    private val results = hashMapOf<SpliceEvent, MutableList<String>>()
+    val results = hashMapOf<SpliceEvent, MutableList<String>>()
     private val identified = mutableSetOf<String>()
     private val psiOfIR = PsiOfIR()
     private val checkAS = CheckAS()
@@ -201,7 +201,7 @@ class SJFinder(
         }
 
         val writer = PrintWriter(outfile)
-
+        writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\tmethods\tPSI")
         for ( (k, v) in this.results ) {
             for ( j in v) {
                 if ( j.matches(".*\t[02]$".toRegex()) ) {

@@ -26,7 +26,7 @@ import com.splice4k.tools.FileValidator
  */
 class AnnotationIndex(
         private val infile: File,
-        val smrt: Boolean = false
+        private val smrt: Boolean = false
 ) {
     private val logger = Logger.getLogger(AnnotationIndex::class.java)
     private val fileFormat = FileValidator().check(this.infile)
@@ -119,17 +119,8 @@ class AnnotationIndex(
                             exonId = sources["exon_id"] ?: sources["ID"]!!
                     )
 
-                    try{
-
-                        tmp.source["transcript"]!!.add(sources["Parent"]!!)
-                        tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]]!!)
-
-                    } catch (e: NullPointerException) {
-                        println(line)
-                        println(sources)
-                        exitProcess(0)
-                    }
-
+                    tmp.source["transcript"]!!.add(sources["Parent"]!!)
+                    tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]]!!)
 
                     val tmpExons = mutableListOf(tmp)
                     val key = "${lines[0]}${lines[6]}"
@@ -209,14 +200,17 @@ class AnnotationIndex(
 
                 val sources = getSource(lines.subList(8, lines.size))
 
-                if ( this.smrt && lines[2] == "transcript" ) {
-                    this.transcripts.add(Genes(
-                            chromosome = lines[0],
-                            start = lines[3].toInt(),
-                            end = lines[4].toInt(),
-                            strand = lines[6].toCharArray()[0],
-                            information = sources
-                    ))
+                if ( lines[2] == "transcript" || lines[2].matches(".*rna.*".toRegex(RegexOption.IGNORE_CASE) ) ) {
+
+                    if ( this.smrt ) {
+                        this.transcripts.add(Genes(
+                                chromosome = lines[0],
+                                start = lines[3].toInt(),
+                                end = lines[4].toInt(),
+                                strand = lines[6].toCharArray()[0],
+                                information = sources
+                        ))
+                    }
 
                     exonNumber = 1
                 } else if (lines[2] == "exon") {
@@ -235,8 +229,8 @@ class AnnotationIndex(
                             exonId = exonId
                     )
 
-                    tmp.source["transcript"]!!.add(sources["transcript_id"]!!)
-                    tmp.source["gene"]!!.add(sources["gene_id"]!!)
+                    tmp.source["transcript"]!!.add(sources["transcript_id"] ?: sources["ID"]!!)
+                    tmp.source["gene"]!!.add(sources["gene_id"] ?: sources["GeneID"] ?: sources["Parent"]!! )
 
                     val tmpExons = mutableListOf(tmp)
                     val key = "${lines[0]}${lines[6]}"
