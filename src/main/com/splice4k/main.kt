@@ -8,6 +8,7 @@ import com.splice4k.cli.Parameters
 import com.splice4k.cli.SGS
 import com.splice4k.cli.SMRT
 import kotlin.system.exitProcess
+import com.splice4k.cli.Iso
 
 
 /**
@@ -19,7 +20,11 @@ import kotlin.system.exitProcess
 
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
-    val cmd = Parameters().subcommands(Extract()).subcommands(SGS()).subcommands(SMRT())
+    val cmd = Parameters()
+            .subcommands(Extract())
+            .subcommands(SGS())
+            .subcommands(SMRT())
+            .subcommands(Iso())
 
     // help message
     if (args.size <= 1) {
@@ -28,6 +33,7 @@ fun main(args: Array<String>) {
             args[0].toLowerCase() == "smrt" -> SMRT().getFormattedHelp()
             args[0].toLowerCase() == "extract" -> Extract().getFormattedHelp()
             args[0].toLowerCase() == "sgs" -> SGS().getFormattedHelp()
+            args[0].toLowerCase() == "iso" -> Iso().getFormattedHelp()
             args[0].toLowerCase() in arrayOf("-v", "--version") -> {
                 println("Splice4k version: 20180929")
                 exitProcess(0)
@@ -44,6 +50,7 @@ fun main(args: Array<String>) {
             "smrt" -> SMRT().getFormattedHelp()
             "extract" -> Extract().getFormattedHelp()
             "sgs" -> SGS().getFormattedHelp()
+            "iso" -> Iso().getFormattedHelp()
             else -> cmd.getFormattedHelp()
         }
 
@@ -67,6 +74,7 @@ fun main(args: Array<String>) {
             "smrt" -> println(SMRT().getFormattedHelp())
             "sgs" -> println(SGS().getFormattedHelp())
             "extract" -> println(Extract().getFormattedHelp())
+            "iso" -> println(Iso().getFormattedHelp())
             else -> println(cmd.getFormattedHelp())
         }
 

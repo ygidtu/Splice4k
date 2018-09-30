@@ -7,17 +7,12 @@ import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
-import com.splice4k.base.Exons
 import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.smrt.tools.GeneReadsCoupler
+import com.splice4k.smrt.tools.TranscriptsReadsCoupler
 import com.splice4k.smrt.tools.SJFinder
-import org.apache.log4j.FileAppender
-import org.apache.log4j.Level
 import org.apache.log4j.Logger
-import org.apache.log4j.PatternLayout
-import java.io.File
 import java.io.PrintWriter
 import kotlin.system.exitProcess
 
@@ -100,29 +95,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
     ).flag(default = false)
 
 
-    private val log by option(help = "Path to the log file").file()
-
-
-    /**
-     * 为log添加文件appender
-     * @param logFile log文件的地址
-     */
-    private fun addFileAppender(logFile: File) {
-        val fa = FileAppender()
-        fa.name = "FileLogger"
-        fa.file = logFile.absolutePath
-        fa.layout = PatternLayout("[%d{yyyy-MM-dd HH:mm:ss}] [%-5p] [%c{1}:%L] - %m%n")
-        fa.threshold = Level.DEBUG
-        fa.append = true
-        fa.activateOptions()
-
-        Logger.getRootLogger().addAppender(fa)
-    }
-
     override fun run() {
-        this.log?.let {
-            this.addFileAppender(it)
-        }
 
         if ( this.output.isDirectory ) {
             println("Please set path of output file [event not exists]")
@@ -139,7 +112,6 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
 
 
-        // val refTsv = File(outDir, refFile.name.split(".")[0] + ".tsv")
         val ref = AnnotationIndex(
                 infile = this.reference.absoluteFile,
                 smrt = true
@@ -155,7 +127,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
             )
 
             logger.info("Start to compare ref and reads")
-            val matched = GeneReadsCoupler(
+            val matched = TranscriptsReadsCoupler(
                     reference = ref,
                     reads = bam,
                     overlap = this.overlapOfRefReads,
@@ -192,7 +164,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
             }
 
             val writer = PrintWriter(this.output)
-
+            val tmpResults = mutableSetOf<String>()
             writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
@@ -201,9 +173,12 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                     for ( label in labels ) {
                         psi.add(psis[key]!![label])
                     }
-                    writer.println("$key\t$v\t${psi.joinToString("\t")}")
+                    tmpResults.asSequence().distinct().joinToString("\n")
+
                 }
             }
+            writer.print(tmpResults.asSequence().distinct().joinToString("\n"))
+            writer.close()
         }
     }
 }

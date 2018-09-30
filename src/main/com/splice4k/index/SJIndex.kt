@@ -18,7 +18,7 @@ import kotlin.system.exitProcess
 /**
  * @author Zhang Yiming
  * @since ???
- * @version 20180929
+ * @version 20180930
  */
 
 
@@ -43,7 +43,7 @@ class SJIndex(
 
     init {
         if ( smrt && this.fileFormat != "bam" ) {
-            this.logger.error("Please check input format")
+            this.logger.error("Please check input format, it should be BAM|SAM")
             exitProcess(2)
         }
 
@@ -73,19 +73,84 @@ class SJIndex(
     }
 
 
+    /*
+        val pattern = when ( star ) {
+            false -> "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()
+            else -> when (this.unique) {
+            true -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s1\\s+(\\d+).*$".toRegex()
+            else -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s[01]\\s+(\\d+).*$".toRegex()
+            }
+        }
+
+        var (chromosome, tmpStart, tmpEnd, strand, count) = pattern.find(line)!!.destructured
+
+        strand = when( strand  ) {
+            "" -> "."
+            "1" -> "+"
+            "2" -> "-"
+            else -> strand
+        }
+     */
+
+
+    /**
+     * 从sj文件中通过split的方式获取数据。
+     * @param line 文件行
+     * @return 关键字map
+     */
+    private fun getSitesFromSJ(line: String): Map<String, String> {
+        val results = mutableMapOf<String, String>()
+
+        var lines = line.replace("\n", "").split("\t")
+
+        results["count"] = lines.last()
+
+        results["strand"] = when {
+            lines.first().endsWith("+") -> "+"
+            lines.first().endsWith("-") -> "-"
+            else -> "."
+        }
+
+        lines = lines.first().split(":")
+
+        results["chromosome"] = lines.first()
+
+        lines = lines.last().split("-")
+
+        results["start"] = lines.first()
+
+        results["end"] = lines[1].replace("[+-\\.]".toRegex(), "")
+
+        return results
+    }
+
+    /**
+     * 从star文件中通过split的方式获取数据。
+     * @param line 文件行
+     * @return 关键字map
+     */
+    private fun getSitesFromSTAR(line: String): Map<String, String> {
+        val lines = line.split("\\s+".toRegex())
+
+        return mapOf(
+                "chromosome" to lines[0],
+                "start" to lines[1],
+                "end" to lines[2],
+                "strand" to when (lines[3]) {
+                    "1" -> "+"
+                    "2" -> "-"
+                    else -> "."
+                },
+                "uniq" to lines[5],
+                "count" to lines[6]
+        )
+    }
+
     /**
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
      */
     private fun readSJ( star: Boolean ) {
         logger.info("Reading from ${this.infile}")
-
-        val pattern = when ( star ) {
-            false -> "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()
-            else -> when (this.unique) {
-                true -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s1\\s+(\\d+).*$".toRegex()
-                else -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s[01]\\s+(\\d+).*$".toRegex()
-            }
-        }
 
         val reader = Scanner(this.infile)
 
@@ -95,26 +160,27 @@ class SJIndex(
             val line = reader.nextLine()
             pb.step()
             try{
-                var (chromosome, tmpStart, tmpEnd, strand, count) = pattern.find(line)!!.destructured
 
-                strand = when( strand  ) {
-                    "" -> "."
-                    "1" -> "+"
-                    "2" -> "-"
-                    else -> strand
+                val info = when(this.fileFormat) {
+                    "sj" -> getSitesFromSJ(line)
+                    else -> getSitesFromSTAR(line)
                 }
 
-                if ( count.toInt() < this.filter ) {
+                if ( info["count"]!!.toInt() < this.filter ) {
                     continue
                 }
 
-                val key = "$chromosome$strand"
-                val tmpGraph = when ( this.data.containsKey(key) ) {
-                    true -> this.data[key]!!
-                    else -> SpliceGraph(chromosome = chromosome, strand = strand.toCharArray().first())
+                if ( this.fileFormat == "star" && this.unique && info["uniq"] == "0" ) {
+                    continue
                 }
 
-                tmpGraph.addEdge(start = tmpStart.toInt(), end = tmpEnd.toInt(), freq = count.toInt())
+                val key = "${info["chromosome"]!!}${info["strand"]!!}"
+                val tmpGraph = when ( this.data.containsKey(key) ) {
+                    true -> this.data[key]!!
+                    else -> SpliceGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
+                }
+
+                tmpGraph.addEdge(start = info["start"]!!.toInt(), end = info["end"]!!.toInt(), freq = info["count"]!!.toInt())
 
                 this.data[key] = tmpGraph
             } catch ( e: NullPointerException ) {

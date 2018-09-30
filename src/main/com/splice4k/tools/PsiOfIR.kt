@@ -1,18 +1,23 @@
 package com.splice4k.tools
 
 import htsjdk.samtools.*
+import org.apache.log4j.Logger
 import java.io.File
 
 /**
  * 专门用于IR事件中PSI的计算
  * @author Zhang Yiming
  * @since 2018.09.29
- * @version 20180929
+ * @version 20180930
+ *
+ * 20180930 支持在没有index的情况下，自动生成index
  */
 
 
 
-class PsiOfIR() {
+class PsiOfIR {
+    private val logger = Logger.getLogger(PsiOfIR::class.java)
+
     /**
      * private function
      * 从单条bam中提取cigar中的N区域
@@ -82,8 +87,16 @@ class PsiOfIR() {
         try{
             val tmpReader =  SamReaderFactory
                     .makeDefault()
+                    .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
+                    .validationStringency(ValidationStringency.LENIENT)
                     .open(bamFile)
-                    .query(chromosome, regionStart - 20, regionEnd + 20, false)
+
+            val indexFile = File("${bamFile.absolutePath}.bai")
+            if ( !indexFile.exists() ) {
+                this.logger.info("Creating index for $bamFile")
+                BAMIndexer.createIndex(tmpReader, indexFile)
+            }
+
 
             for ( i in tmpReader ) {
 

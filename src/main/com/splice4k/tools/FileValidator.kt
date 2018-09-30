@@ -54,7 +54,7 @@ class FileValidator() {
                     continue
                 }
 
-                if ( line.matches("^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()) ) {
+                if ( line.matches("^[\\w\\.]+:\\d+-\\d+[+-\\.]?\t\\d+$".toRegex()) ) {
                     res = true
                 }
                 break

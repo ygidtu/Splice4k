@@ -35,7 +35,7 @@ import com.splice4k.tools.CheckAS
  * @param threads 计算所有的线程数
  */
 class SJFinder(
-        template: GeneReadsCoupler,
+        template: TranscriptsReadsCoupler,
         val bamIndex: SJIndex,
         val refIndex: AnnotationIndex,
         val silent: Boolean,

@@ -14,7 +14,7 @@ import com.splice4k.tools.FileValidator
 
 /**
  * 注释文件index的基础类
- * @version 2018.9.29
+ * @version 2018.9.30
  * @author Zhang Yiming
  * @since ???
  */
@@ -26,48 +26,61 @@ import com.splice4k.tools.FileValidator
  */
 class AnnotationIndex(
         private val infile: File,
-        private val smrt: Boolean = false
+        private val smrt: Boolean = false,
+        private val iso: Boolean = false
 ) {
     private val logger = Logger.getLogger(AnnotationIndex::class.java)
     private val fileFormat = FileValidator().check(this.infile)
     val data = mutableMapOf<String, MutableList<Exons>>()
+    val genes = mutableListOf<Genes>()
 
     val transcripts: MutableList<Genes> = mutableListOf()
 
     init {
+        this.readFromAnnotation()
+    }
 
-        when( this.fileFormat ) {
-            "gtf" ->  this.readExonFromGtf()
 
-            "gff" -> this.readExonFromGff()
+    private fun getSourceFromGff(info: List<String>): Map<String, String> {
+        val results: MutableMap<String, String> = mutableMapOf()
 
-            else -> {
-                logger.info("Please check reference file format")
-                exitProcess(2)
+        for (inf in info[0].split(";")) {
+            val tmp = inf.split("=")
+
+            if ( ":" in tmp[1] ) {
+                results[tmp[0]] = tmp[1].split(":")[1]
+            } else {
+                results[tmp[0]] = tmp[1]
             }
         }
+
+        return results
+    }
+
+
+    private fun getSourceFromGtf(info: List<String>): Map<String, String> {
+        val results: MutableMap<String, String> = mutableMapOf()
+
+        for (i in 0..(info.size - 1) step 2) {
+            try{
+                results[info[i]] = info[i+1]     // get rid of useless characters
+                        .replace("\"", "")
+                        .replace(";", "")
+            } catch ( e: IndexOutOfBoundsException ) {
+                continue
+            }
+
+
+        }
+        return results
     }
 
 
     /**
      * 从Gff文件中读取信息
      */
-    private fun readExonFromGff() {
-        fun getSource(info: List<String>): Map<String, String> {
-            val results: MutableMap<String, String> = mutableMapOf()
+    private fun readFromAnnotation() {
 
-            for (inf in info[0].split(";")) {
-                val tmp = inf.split("=")
-
-                if ( ":" in tmp[1] ) {
-                    results[tmp[0]] = tmp[1].split(":")[1]
-                } else {
-                    results[tmp[0]] = tmp[1]
-                }
-            }
-
-            return results
-        }
 
         try {
             val reader = Scanner(this.infile)
@@ -75,10 +88,11 @@ class AnnotationIndex(
             this.logger.info("Reading from ${this.infile}")
             val pb = ProgressBar(message = "Reading exon from Gff")
 
+            val tmpGenes = mutableMapOf<String, Genes>()
             val geneTranscript = mutableMapOf<String, String>()
 
             val exons: MutableMap<String, MutableList<Exons>> = mutableMapOf()
-
+            var exonNumber = 1
 
             while (reader.hasNext()) {
                 val line = reader.nextLine()
@@ -87,10 +101,34 @@ class AnnotationIndex(
                     continue
                 }
 
-                val lines = line.replace("\n", "").split("\t".toRegex())
+                val lines = line.replace("\n", "").split("\\s+".toRegex())
                 pb.step()
 
-                val sources = getSource(lines.subList(8, lines.size))
+                val sources = when(this.fileFormat) {
+                    "gtf" ->  this.getSourceFromGtf(lines.subList(8, lines.size))
+
+                    "gff" -> this.getSourceFromGff(lines.subList(8, lines.size))
+
+                    else -> {
+                        logger.info("Please check reference file format, it should be gtf|gff")
+                        exitProcess(2)
+                    }
+                }
+
+
+                if ( this.iso && lines[2].matches(".*gene.*".toRegex(RegexOption.IGNORE_CASE)) ) {
+                    val gene = Genes(
+                            chromosome = lines[0],
+                            start = lines[3].toInt(),
+                            end = lines[4].toInt(),
+                            strand = lines[6].toCharArray()[0],
+                            information = sources
+                    )
+
+                    tmpGenes[gene.geneId] = gene
+
+                }
+
 
                 if (  // 两种标准，严防不标准的gff文件
                         "transcript_id" in sources.keys ||
@@ -110,17 +148,24 @@ class AnnotationIndex(
                         ))
                     }
 
+                    exonNumber = 1
                 } else if (lines[2] == "exon") {
+
+                    var exonId = sources["exon_id"] ?: sources["ID"]
+                    if ( exonId == null ) {
+                        exonId = "${sources["Parent"] ?: sources["transcript_id"]}.$exonNumber"
+                        exonNumber ++
+                    }
 
                     val tmp = Exons(
                             chromosome = lines[0],
                             start = lines[3].toInt(),
                             end = lines[4].toInt(),
-                            exonId = sources["exon_id"] ?: sources["ID"]!!
+                            exonId = exonId
                     )
 
-                    tmp.source["transcript"]!!.add(sources["Parent"]!!)
-                    tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]]!!)
+                    tmp.source["transcript"]!!.add(sources["Parent"] ?: sources["transcript_id"] ?: sources["ID"]!! )
+                    tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]] ?: sources["gene_id"] ?: sources["GeneID"]!!)
 
                     val tmpExons = mutableListOf(tmp)
                     val key = "${lines[0]}${lines[6]}"
@@ -133,10 +178,14 @@ class AnnotationIndex(
                     if ( this.smrt ) {
                         val tmpExon = mutableListOf(tmp)
 
-                        if (exons.containsKey(sources["Parent"]!!)) {
-                            tmpExon.addAll(exons[sources["Parent"]!!]!!)
+                        if (exons.containsKey(sources["Parent"] ?: sources["transcript_id"]!! )) {
+                            tmpExon.addAll(exons[sources["Parent"] ?: sources["transcript_id"]]!!)
                         }
-                        exons[sources["Parent"]!!] = tmpExon
+                        exons[sources["Parent"] ?: sources["transcript_id"]!!] = tmpExon
+                    }
+
+                    if ( this.iso ) {
+                        tmpGenes[sources["gene_id"] ?: sources["GeneID"] ?: geneTranscript[sources["Parent"]!!]  ]!!.exons.add(tmp)
                     }
                 }
             }
@@ -153,115 +202,7 @@ class AnnotationIndex(
                 }
             }
 
-        }catch (e: IOException) {
-            this.logger.error(e.toString())
-        }
-    }
-
-
-    /**
-     * 从Gtf文件中读取信息
-     */
-    private fun readExonFromGtf() {
-        fun getSource(info: List<String>): Map<String, String> {
-            val results: MutableMap<String, String> = mutableMapOf()
-
-            for (i in 0..(info.size - 1) step 2) {
-                try{
-                    results[info[i]] = info[i+1]     // get rid of useless characters
-                            .replace("\"", "")
-                            .replace(";", "")
-                } catch ( e: IndexOutOfBoundsException ) {
-                    continue
-                }
-
-
-            }
-            return results
-        }
-
-
-        try {
-            val reader = Scanner(this.infile)
-
-            this.logger.info("Reading from ${this.infile}")
-            val pb = ProgressBar(message = "Reading exon from Gtf")
-
-            val exons: MutableMap<String, MutableList<Exons>> = mutableMapOf()
-            var exonNumber = 1
-            while (reader.hasNext()) {
-                val line = reader.nextLine()
-                val lines = line.split("\\s+".toRegex())
-                pb.step()
-
-                if ( line.startsWith("#") ) {
-                    continue
-                }
-
-                val sources = getSource(lines.subList(8, lines.size))
-
-                if ( lines[2] == "transcript" || lines[2].matches(".*rna.*".toRegex(RegexOption.IGNORE_CASE) ) ) {
-
-                    if ( this.smrt ) {
-                        this.transcripts.add(Genes(
-                                chromosome = lines[0],
-                                start = lines[3].toInt(),
-                                end = lines[4].toInt(),
-                                strand = lines[6].toCharArray()[0],
-                                information = sources
-                        ))
-                    }
-
-                    exonNumber = 1
-                } else if (lines[2] == "exon") {
-
-                    var exonId = sources["exon_id"] ?: sources["ID"]
-
-                    if ( exonId == null ) {
-                        exonId = "${sources["transcript_id"]!!}$exonNumber"
-                        exonNumber++
-                    }
-
-                    val tmp = Exons(
-                            chromosome = lines[0],
-                            start = lines[3].toInt(),
-                            end = lines[4].toInt(),
-                            exonId = exonId
-                    )
-
-                    tmp.source["transcript"]!!.add(sources["transcript_id"] ?: sources["ID"]!!)
-                    tmp.source["gene"]!!.add(sources["gene_id"] ?: sources["GeneID"] ?: sources["Parent"]!! )
-
-                    val tmpExons = mutableListOf(tmp)
-                    val key = "${lines[0]}${lines[6]}"
-                    if ( this.data.containsKey(key) ) {
-                        this.data[key]!!.addAll(tmpExons)
-                    } else {
-                        this.data[key] = tmpExons
-                    }
-
-                    if ( this.smrt ) {
-                        val tmpExon = mutableListOf(tmp)
-
-                        if (exons.containsKey(sources["transcript_id"]!!)) {
-                            tmpExon.addAll(exons[sources["transcript_id"]!!]!!)
-                        }
-                        exons[sources["transcript_id"]!!] = tmpExon
-                    }
-                }
-            }
-
-            reader.close()
-            pb.close()
-
-
-            if ( this.smrt ) {
-                for (i in transcripts) {
-                    if (exons.containsKey(i.transcriptId)) {
-                        i.exons.addAll(exons[i.transcriptId]!!)
-                    }
-                }
-            }
+            this.genes.addAll(tmpGenes.values)
 
         }catch (e: IOException) {
             this.logger.error(e.toString())

@@ -14,7 +14,6 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
 import java.io.PrintWriter
-import java.io.File
 import kotlin.system.exitProcess
 
 
@@ -56,14 +55,14 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             "-u",
             "--unique",
             help = "Unique of STAR"
-    ).flag(default = true)
+    ).flag(default = false)
 
 
     private val junctionsFilter by option(
             "-c",
             "--count",
-            help = "Filter low abundance junctions [default: 5]"
-    ).int().default(5).validate {
+            help = "Filter low abundance junctions [default: 3]"
+    ).int().default(3).validate {
         it >= 0
     }
 
@@ -121,10 +120,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
 
 
             for ( it in this.input ) {
-                labels.add( when ( it.toString().endsWith("SJ.out.tab")) {
-                    true -> it.name.replace("[_\\.]?SJ\\.out\\.tab$".toRegex(), "")
-                    else -> it.name.replace("\\.(\\w+)$".toRegex(), "")
-                } )
+                labels.add( it.name )
 
                 val sj = SJIndex(
                         infile = it.absoluteFile,
@@ -166,6 +162,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         psis[k] = mutableMapOf(labels.last() to k.psi)
                     }
                 }
+
             }
 
 
@@ -174,6 +171,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             }
 
             val writer = PrintWriter(this.output)
+            val tmpResults = mutableSetOf<String>()
 
             writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
@@ -183,10 +181,11 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                     for ( label in labels ) {
                         psi.add(psis[key]!![label])
                     }
-                    writer.println("$key\t$v\t${psi.joinToString("\t")}")
+                    tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
                 }
             }
-
+            writer.print(tmpResults.asSequence().distinct().joinToString("\n"))
+            writer.close()
         }
 
     }

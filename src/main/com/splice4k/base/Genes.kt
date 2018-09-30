@@ -35,6 +35,12 @@ class Genes(
             false -> value
         }
     }
+    get() {
+        if ( field == "." ) {
+            return this.transcriptId
+        }
+        return field
+    }
 
     var geneName: String = "."
 
@@ -179,7 +185,7 @@ class Genes(
     fun get() : List<String> {
         var exonString = ""
         for (i in this.exons) {
-            exonString += "$i,"
+            exonString += "${i.start},${i.end},"
         }
 
         return listOf(

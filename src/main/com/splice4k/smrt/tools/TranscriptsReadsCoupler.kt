@@ -26,13 +26,13 @@ import org.apache.log4j.Logger
  * @param overlap 定义基因和read确实具是一对的重合程度的阈值
  * @param distanceError 多少bp以内，可以认为两个位点其实是同一个位点，这里是容错率
  */
-class GeneReadsCoupler(
+class TranscriptsReadsCoupler(
         reference: AnnotationIndex,
         reads: SJIndex,
         private val overlap: Double,
         private val distanceError: Int
         ) {
-    private val logger = Logger.getLogger(GeneReadsCoupler::class.java)
+    private val logger = Logger.getLogger(TranscriptsReadsCoupler::class.java)
 
     private val novelReads = mutableListOf<Genes>()
 
@@ -44,6 +44,8 @@ class GeneReadsCoupler(
 
     init {
         this.matchGeneReads()
+        println("total: ${this.reads.size}")
+        println("novel: ${this.novelReads.size}")
     }
 
 
