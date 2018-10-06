@@ -11,6 +11,7 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
+import java.lang.IndexOutOfBoundsException
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -213,7 +214,7 @@ class SJIndex(
                 }
 
                 // Soft clip以及insertion的两种区域都不记载在alignment之内
-                if (i != 'S' && i != 'I') {
+                if (i != 'D' && i != 'I') {
                     position += tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
                 }
 
@@ -244,7 +245,6 @@ class SJIndex(
         this.logger.info("Reading from ${this.infile}")
         val pb = ProgressBar(message = "Reading from Bam")
 
-        val test = mutableMapOf<String, Char>()
         for ( record in tmpReader) {
 
             pb.step()
@@ -264,9 +264,32 @@ class SJIndex(
 
             val spliceSites = this.extractSpliceFromCigar(record)
 
-            if (spliceSites.isEmpty()) {
+            if (spliceSites.size <= 2) {
                 continue
             }
+
+//            var strand: Char? = null
+//            for ( i in 1..(spliceSites.size - 2) step 2 ) {
+//                try{
+//                    val st = record.readString.slice( (spliceSites[i] - record.alignmentStart - 3)..(spliceSites[i] - record.alignmentStart ) )
+//                    val en = record.readString.slice( (spliceSites[i + 1] - record.alignmentStart)..(spliceSites[i + 1] - record.alignmentStart + 3) )
+//
+//                    if ( "GT" in st && "AG" in en ) {
+//                        strand = '+'
+//                        break
+//                    }
+//                    if ( "CA" in st && "TC" in en ) {
+//                        strand = '-'
+//                        break
+//                    }
+//                } catch ( e: IndexOutOfBoundsException ) {
+//
+//                }
+//            }
+//
+//            if ( strand == null ) {
+//                continue
+//            }
 
             /*
              这个问题以前从没注意过，跟STAR比对过才发现在这个问题
@@ -275,16 +298,20 @@ class SJIndex(
              只要是first in pair，就看是mate的情况；否则看reads negate strand
              其实都代表这条reads在负链上
               */
-            val strand = when( record.firstOfPairFlag ) {
-                true -> when ( !record.readNegativeStrandFlag ) {
-                    true -> '-'
-                    false -> '+'
+            val strandJudge = when( record.readPairedFlag ) {
+                true -> when( record.firstOfPairFlag ) {
+                    true -> record.mateNegativeStrandFlag
+                    false -> record.readNegativeStrandFlag
                 }
-                false -> when ( record.readNegativeStrandFlag ) {
-                    true -> '-'
-                    false -> '+'
-                }
+
+                false -> record.readNegativeStrandFlag
             }
+
+            val strand = when ( strandJudge ) {
+                true -> '-'
+                false -> '+'
+            }
+
 
             // SGS构建junctions map
             val tmpGraph = when( this.data.containsKey("${record.referenceName}$strand")  ) {
@@ -295,6 +322,7 @@ class SJIndex(
             for ( i in 1..(spliceSites.size - 2) step 2) {
                 tmpGraph.addEdge(start = spliceSites[i], end = spliceSites[i + 1])
             }
+
 
             this.data["${record.referenceName}$strand"] = tmpGraph
 

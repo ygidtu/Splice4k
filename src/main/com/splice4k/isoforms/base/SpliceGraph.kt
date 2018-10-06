@@ -108,4 +108,3 @@ class SpliceGraph() {
         return this.adj.values.map { it.toString() }.joinToString("\n")
     }
 }
-
