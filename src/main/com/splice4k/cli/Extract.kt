@@ -8,9 +8,6 @@ import com.github.ajalt.clikt.parameters.options.validate
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.int
 import com.splice4k.index.SJIndex
-import com.splice4k.tools.FileValidator
-import org.apache.log4j.Logger
-import kotlin.system.exitProcess
 
 /**
  * @author Zhang Yiming

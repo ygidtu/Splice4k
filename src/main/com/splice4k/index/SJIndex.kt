@@ -243,9 +243,24 @@ class SJIndex(
 
         this.logger.info("Reading from ${this.infile}")
         val pb = ProgressBar(message = "Reading from Bam")
+
+        val test = mutableMapOf<String, Char>()
         for ( record in tmpReader) {
 
             pb.step()
+
+            // 判断reads是否为unique mapped
+            if (record.hasAttribute("NH")) {
+
+                val mapped = record.getAttribute("NH").toString().toInt()
+
+                if ( mapped <= 0 || mapped > 1) continue
+            } else {
+                // 没有NH标签的reads，通常也会造成其他错误，因此直接放弃
+                if (!this.silent) this.logger.warn("${record.readName} does not have attribute NH")
+                continue
+            }
+
 
             val spliceSites = this.extractSpliceFromCigar(record)
 
@@ -253,9 +268,22 @@ class SJIndex(
                 continue
             }
 
-            val strand = when(record.readNegativeStrandFlag) {
-                true -> '-'
-                false -> '+'
+            /*
+             这个问题以前从没注意过，跟STAR比对过才发现在这个问题
+             mate reverse strand或者read reverse strand都有可能代表了这条reads真实存在的链情况
+             STAR的解决方案可能是按照first in pair来处理的，
+             只要是first in pair，就看是mate的情况；否则看reads negate strand
+             其实都代表这条reads在负链上
+              */
+            val strand = when( record.firstOfPairFlag ) {
+                true -> when ( !record.readNegativeStrandFlag ) {
+                    true -> '-'
+                    false -> '+'
+                }
+                false -> when ( record.readNegativeStrandFlag ) {
+                    true -> '-'
+                    false -> '+'
+                }
             }
 
             // SGS构建junctions map
@@ -272,17 +300,6 @@ class SJIndex(
 
             // SMRT 构建list of transcripts
             if ( smrt ) {
-                // 判断reads是否为unique mapped
-                if (record.hasAttribute("NH")) {
-
-                    val mapped = record.getAttribute("NH").toString().toInt()
-
-                    if ( mapped <= 0 || mapped > 1) continue
-                } else {
-                    // 没有NH标签的reads，通常也会造成其他错误，因此直接放弃
-                    if (!this.silent) this.logger.warn("${record.readName} does not have attribute NH")
-                    continue
-                }
 
                 // init Genes
                 val tmpGene = Genes(
