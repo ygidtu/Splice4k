@@ -28,6 +28,9 @@ class Exons(
             "transcript" to mutableSetOf()
     )
 
+    // 专门用于isoform组装，表明来源所用
+    var annotation = ""
+
     override fun toString(): String {
         return this.source["gene"]!!.asSequence().distinct().joinToString(prefix = "", postfix = "\t", separator = ",") +
                 this.source["transcript"]!!.asSequence().distinct().joinToString(prefix = "", postfix = "\t", separator = ",") +

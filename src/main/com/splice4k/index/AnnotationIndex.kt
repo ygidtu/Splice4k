@@ -6,7 +6,6 @@ import com.splice4k.progressbar.ProgressBar
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.IOException
-import java.lang.NullPointerException
 import java.util.*
 import kotlin.system.exitProcess
 import com.splice4k.tools.FileValidator
@@ -14,7 +13,7 @@ import com.splice4k.tools.FileValidator
 
 /**
  * 注释文件index的基础类
- * @version 2018.9.30
+ * @version 20181006
  * @author Zhang Yiming
  * @since ???
  */
@@ -110,7 +109,7 @@ class AnnotationIndex(
                     "gff" -> this.getSourceFromGff(lines.subList(8, lines.size))
 
                     else -> {
-                        logger.info("Please check reference file format, it should be gtf|gff")
+                        logger.info("Please check reference file ${this.infile} format, it should be gtf|gff")
                         exitProcess(2)
                     }
                 }
@@ -130,27 +129,7 @@ class AnnotationIndex(
                 }
 
 
-                if (  // 两种标准，严防不标准的gff文件
-                        "transcript_id" in sources.keys ||
-                        (lines[2].matches(".*(rna|transcript).*".toRegex(RegexOption.IGNORE_CASE)) &&
-                                !lines[2].matches(".*gene.*".toRegex(RegexOption.IGNORE_CASE)))
-                ) {
-
-                    geneTranscript[sources["ID"]!!] = sources["Parent"]!!
-
-                    if ( this.smrt ) {
-                        this.transcripts.add(Genes(
-                                chromosome = lines[0],
-                                start = lines[3].toInt(),
-                                end = lines[4].toInt(),
-                                strand = lines[6].toCharArray()[0],
-                                information = sources
-                        ))
-                    }
-
-                    exonNumber = 1
-                } else if (lines[2] == "exon") {
-
+                if (lines[2].matches(".*exon.*".toRegex(RegexOption.IGNORE_CASE))) {
                     var exonId = sources["exon_id"] ?: sources["ID"]
                     if ( exonId == null ) {
                         exonId = "${sources["Parent"] ?: sources["transcript_id"]}.$exonNumber"
@@ -187,6 +166,25 @@ class AnnotationIndex(
                     if ( this.iso ) {
                         tmpGenes[sources["gene_id"] ?: sources["GeneID"] ?: geneTranscript[sources["Parent"]!!]  ]!!.exons.add(tmp)
                     }
+                } else if (  // 两种标准，严防不标准的gff文件
+                        ("transcript_id" in sources.keys && "exon_id" !in sources.keys ) ||
+                        (lines[2].matches(".*(rna|transcript).*".toRegex(RegexOption.IGNORE_CASE)) &&
+                        !lines[2].matches(".*gene.*".toRegex(RegexOption.IGNORE_CASE)))
+                ) {
+
+                    geneTranscript[sources["ID"] ?: sources["transcript_id"]!! ] = sources["Parent"] ?: sources["gene_id"] ?: sources["GeneID"]!!
+
+                    if ( this.smrt ) {
+                        this.transcripts.add(Genes(
+                                chromosome = lines[0],
+                                start = lines[3].toInt(),
+                                end = lines[4].toInt(),
+                                strand = lines[6].toCharArray()[0],
+                                information = sources
+                        ))
+                    }
+
+                    exonNumber = 1
                 }
             }
 

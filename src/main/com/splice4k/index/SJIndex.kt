@@ -18,7 +18,7 @@ import kotlin.system.exitProcess
 /**
  * @author Zhang Yiming
  * @since ???
- * @version 20180930
+ * @version 20181006
  */
 
 
@@ -39,11 +39,13 @@ class SJIndex(
     val fileFormat: String = FileValidator().check(this.infile)
     private val logger = Logger.getLogger(SJIndex::class.java)
     val transcripts = mutableListOf<Genes>()
+
+    // chromosome and splice graph
     val data = mutableMapOf<String, SpliceGraph>()
 
     init {
         if ( smrt && this.fileFormat != "bam" ) {
-            this.logger.error("Please check input format, it should be BAM|SAM")
+            this.logger.error("Please check ${this.infile} format, it should be BAM|SAM")
             exitProcess(2)
         }
 
@@ -262,7 +264,7 @@ class SJIndex(
                 else -> SpliceGraph(record.referenceName, strand)
             }
 
-            for ( i in 0..(spliceSites.size - 1) step 2) {
+            for ( i in 1..(spliceSites.size - 2) step 2) {
                 tmpGraph.addEdge(start = spliceSites[i], end = spliceSites[i + 1])
             }
 

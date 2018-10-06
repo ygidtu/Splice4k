@@ -12,7 +12,7 @@ import kotlin.math.abs
 
 /**
  * @since 2018.09.19
- * @version 20190929
+ * @version 20191006
  * @author Zhang yiming
  *
  * 构建小型的可变剪接图，基本上就是把对应的Same Start和Same end收集到一起
@@ -396,12 +396,19 @@ class SpliceGraph(
 
 
     /**
-     * 过滤低丰度
-     * @param threshold 过滤的阈值
+     * 获取范围内所有符合要求的junctions位点，以start位点为标准
+     * 获取范围内start对应的所有点的
      */
-    fun filter(threshold: Int) {
-        this.starts.values.forEach { it.filter(threshold = threshold) }
-        this.ends.values.forEach { it.filter(threshold = threshold) }
+    fun getSites( range: Pair<Int, Int> ): List<Site> {
+        val res = mutableListOf<Site>()
+
+        for ( i in range.first..range.second ) {
+            this.starts[i]?.let{
+                res.addAll( it.getSites() )
+            }
+        }
+
+        return res
     }
 
 

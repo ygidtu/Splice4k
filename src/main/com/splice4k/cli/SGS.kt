@@ -20,7 +20,7 @@ import kotlin.system.exitProcess
 /**
  * @author Zhang Yiming
  * @since 2018.09.27
- * @version 20180929
+ * @version 20181006
  */
 
 
@@ -166,8 +166,8 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             }
 
 
-            if ( !this.output.parentFile.exists() ) {
-                this.output.parentFile.mkdirs()
+            if ( !this.output.absoluteFile.parentFile.exists() ) {
+                this.output.absoluteFile.parentFile.mkdirs()
             }
 
             val writer = PrintWriter(this.output)
@@ -184,7 +184,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                     tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
                 }
             }
-            writer.print(tmpResults.asSequence().distinct().joinToString("\n"))
+            writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
             writer.close()
         }
 

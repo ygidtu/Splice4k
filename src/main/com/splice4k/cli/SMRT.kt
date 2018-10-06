@@ -20,7 +20,7 @@ import kotlin.system.exitProcess
 /**
  * @author Zhang Yiming
  * @since 2018.09.27
- * @version 20180928
+ * @version 20181006
  */
 
 
@@ -119,6 +119,8 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
 
 
         for ( it in this.input ) {
+            labels.add(it.name)
+
             val bam =  SJIndex(
                     infile = it.absoluteFile,
                     silent = !this.show,
@@ -159,8 +161,8 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                 }
             }
 
-            if ( !this.output.parentFile.exists() ) {
-                this.output.parentFile.mkdirs()
+            if ( !this.output.absoluteFile.parentFile.exists() ) {
+                this.output.absoluteFile.parentFile.mkdirs()
             }
 
             val writer = PrintWriter(this.output)
@@ -173,11 +175,10 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
                     for ( label in labels ) {
                         psi.add(psis[key]!![label])
                     }
-                    tmpResults.asSequence().distinct().joinToString("\n")
-
+                    tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
                 }
             }
-            writer.print(tmpResults.asSequence().distinct().joinToString("\n"))
+            writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
             writer.close()
         }
     }
