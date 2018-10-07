@@ -7,7 +7,7 @@ import com.splice4k.base.GenomicLoci
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.isoforms.base.SpliceGraph
-import com.splice4k.progressbar.ProgressBar
+import me.tongfei.progressbar.ProgressBar
 import java.io.File
 import java.io.PrintWriter
 
@@ -51,7 +51,7 @@ class GeneReadsCoupler(
         val results = mutableMapOf<Genes, MutableList<Genes>>()
         var i = 0; var j = 0
 
-        val pb = ProgressBar(message = "testing")
+        val pb = ProgressBar("Matching", this.bamIndex.size.toLong())
         while ( i < this.bamIndex.size && j < this.reference.size ) {
             val currentReads = this.bamIndex[i]
             val currentRef = this.reference[j]

@@ -4,6 +4,8 @@ import com.splice4k.base.Exons
 import com.splice4k.base.Genes
 import com.splice4k.tools.FileValidator
 import me.tongfei.progressbar.ProgressBar
+import me.tongfei.progressbar.ProgressBarBuilder
+import me.tongfei.progressbar.ProgressBarStyle
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.FileInputStream
@@ -84,7 +86,8 @@ class AnnotationIndex(
 
         try {
             this.logger.info("Reading from ${this.infile}")
-            val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), "Reading"))
+            val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
+            val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
 
             val tmpGenes = mutableMapOf<String, Genes>()
             val geneTranscript = mutableMapOf<String, String>()

@@ -9,7 +9,6 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
-import me.tongfei.progressbar.ProgressBar
 
 
 

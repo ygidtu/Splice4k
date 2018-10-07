@@ -7,6 +7,8 @@ import com.splice4k.tools.FileValidator
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SamReaderFactory
 import me.tongfei.progressbar.ProgressBar
+import me.tongfei.progressbar.ProgressBarBuilder
+import me.tongfei.progressbar.ProgressBarStyle
 import org.apache.log4j.Logger
 import java.io.File
 import java.io.FileInputStream
@@ -155,8 +157,8 @@ class SJIndex(
      */
     private fun readSJ() {
         logger.info("Reading from ${this.infile}")
-
-        val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), "Reading"))
+        val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
+        val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
 
         while (reader.hasNext()) {
             val line = reader.nextLine()
@@ -237,8 +239,8 @@ class SJIndex(
                 .iterator()
 
         this.logger.info("Reading from ${this.infile}")
-
-        val pb = ProgressBar.wrap(tmpReader.stream(), "Reading")
+        val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
+        val pb = ProgressBar.wrap(tmpReader.stream(), pbb)
 
         for ( record in pb) {
 

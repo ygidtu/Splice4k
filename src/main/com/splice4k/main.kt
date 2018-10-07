@@ -35,7 +35,7 @@ fun main(args: Array<String>) {
             args[0].toLowerCase() == "sgs" -> SGS().getFormattedHelp()
             args[0].toLowerCase() == "iso" -> Iso().getFormattedHelp()
             args[0].toLowerCase() in arrayOf("-v", "--version") -> {
-                println("Splice4k version: 20181006")
+                println("Splice4k version: 20181007")
                 exitProcess(0)
             }
             else -> cmd.getFormattedHelp()

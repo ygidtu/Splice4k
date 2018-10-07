@@ -13,9 +13,7 @@ import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
-import me.tongfei.progressbar.ProgressBar
 import java.io.PrintWriter
-import java.io.File
 import kotlin.system.exitProcess
 
 
@@ -172,7 +170,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         show = this.show
                 )
 
-                for ( (k, values) in ProgressBar.wrap(data.iterator(), "") ) {
+                for ( (k, values) in data ) {
                     if ( results.containsKey(k) ) {
                         results[k]!!.addAll(values)
                     } else {
