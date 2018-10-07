@@ -11,7 +11,6 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.IOException
 import java.io.PrintWriter
-import java.lang.IndexOutOfBoundsException
 import java.util.*
 import kotlin.system.exitProcess
 
@@ -127,6 +126,7 @@ class SJIndex(
         return results
     }
 
+
     /**
      * 从star文件中通过split的方式获取数据。
      * @param line 文件行
@@ -148,6 +148,7 @@ class SJIndex(
                 "count" to lines[6]
         )
     }
+
 
     /**
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
@@ -200,12 +201,12 @@ class SJIndex(
      * @param record 单条SAM/BAM的信息
      * @return 列表，记录了所有的intron的边界信息
      */
-    private fun extractSpliceFromCigar( record: SAMRecord): List<Int> {
+    private fun extractSpliceFromCigar( record: SAMRecord ): List<Int> {
         var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
-        val results: MutableList<Int> = mutableListOf(position)
+        val results: MutableList<Int> = mutableListOf( position )
 
-        for (i in record.cigar.toString()) {
+        for ( i in record.cigarString ) {
             if (i in '0'..'9') {  // 如果是数字，就加到list中
                 tmp.add(i)
             } else {
@@ -213,14 +214,13 @@ class SJIndex(
                     continue
                 }
 
-                // Soft clip以及insertion的两种区域都不记载在alignment之内
-                if (i != 'D' && i != 'I') {
-                    position += tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
+                if (i != 'D' && i != 'H' && i != '' ) {
+                    position += tmp.joinToString(separator = "").toInt()
                 }
 
                 if (i == 'N') {
                     results.add(
-                            position - tmp.joinToString(prefix = "", postfix = "", separator = "").toInt()
+                            position - tmp.joinToString(separator = "").toInt()
                     )
 
                     results.add(position - 1)
@@ -264,32 +264,6 @@ class SJIndex(
 
             val spliceSites = this.extractSpliceFromCigar(record)
 
-            if (spliceSites.size <= 2) {
-                continue
-            }
-
-//            var strand: Char? = null
-//            for ( i in 1..(spliceSites.size - 2) step 2 ) {
-//                try{
-//                    val st = record.readString.slice( (spliceSites[i] - record.alignmentStart - 3)..(spliceSites[i] - record.alignmentStart ) )
-//                    val en = record.readString.slice( (spliceSites[i + 1] - record.alignmentStart)..(spliceSites[i + 1] - record.alignmentStart + 3) )
-//
-//                    if ( "GT" in st && "AG" in en ) {
-//                        strand = '+'
-//                        break
-//                    }
-//                    if ( "CA" in st && "TC" in en ) {
-//                        strand = '-'
-//                        break
-//                    }
-//                } catch ( e: IndexOutOfBoundsException ) {
-//
-//                }
-//            }
-//
-//            if ( strand == null ) {
-//                continue
-//            }
 
             /*
              这个问题以前从没注意过，跟STAR比对过才发现在这个问题
