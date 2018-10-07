@@ -13,7 +13,9 @@ import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
+import me.tongfei.progressbar.ProgressBar
 import java.io.PrintWriter
+import java.io.File
 import kotlin.system.exitProcess
 
 
@@ -33,7 +35,10 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
     private val bam by option(
             "-b",
             "--bam",
-            help = "Bam file for calculation of IR PSI value, index needed"
+            help = "Path to BAM/SAM files, or the directory contains BAM/SAM files. [default: current running directory]\n" +
+                    "\tIf input files are BAM/SAM files, this parameter won't work\n" +
+                    "\tIf specified path to directory contains BAM/SAM files corresponding to STAR SJ.out.tab files, this program will auto match those files\n" +
+                    "\tIf specified BAM/SAM file with this parameter, then this program will calculate PSI of IR using this file\n"
     ).file(exists = true)
 
 
@@ -49,13 +54,6 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             "--output",
             help = "Path to output file"
     ).file().required()
-
-
-    private val unique by option(
-            "-u",
-            "--unique",
-            help = "Unique of STAR"
-    ).flag(default = false)
 
 
     private val junctionsFilter by option(
@@ -118,7 +116,6 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                     smrt = false
             )
 
-
             for ( it in this.input ) {
                 labels.add( it.name )
 
@@ -126,14 +123,40 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         infile = it.absoluteFile,
                         filter = this.junctionsFilter,
                         silent = !this.show,
-                        smrt = false,
-                        unique = this.unique
+                        smrt = false
                 )
 
 
-                val bamFile = when ( sj.fileFormat == "bam" ) {
-                    true -> it
+                val bamFile = when ( sj.fileFormat ) {
+                    "bam" -> it
+                    "star" -> {
+
+                        if ( this.bam != null ) {
+                            if ( this.bam!!.isFile ) {   // bam is file, this use this file
+                                this.bam
+                            } else {                     // this.bam is directory, then try to find the corresponding bam file
+                                var bamFile = this.bam
+
+                                val pattern = ".*${it.name.replace("[_\\.]SJ.out.tab".toRegex(), "")}[\\._](\\w+\\.)*bam$"
+                                        .toRegex(RegexOption.IGNORE_CASE)
+
+                                for ( i in this.bam!!.walkTopDown() ) {
+                                    if ( i.name.matches( pattern ) ) {
+                                        bamFile = i.absoluteFile
+                                        break
+                                    }
+                                }
+                                bamFile
+                            }
+                        } else {
+                            this.bam
+                        }
+                    }
                     else -> this.bam
+                }
+
+                if ( sj.fileFormat == "star" && bamFile != null ) {
+                    println( "${sj.infile.name} -> ${bamFile.name}" )
                 }
 
                 val identifyAS = IdentifyAS(
@@ -149,7 +172,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         show = this.show
                 )
 
-                for ( (k, values) in data ) {
+                for ( (k, values) in ProgressBar.wrap(data.iterator(), "") ) {
                     if ( results.containsKey(k) ) {
                         results[k]!!.addAll(values)
                     } else {
@@ -162,7 +185,6 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         psis[k] = mutableMapOf(labels.last() to k.psi)
                     }
                 }
-
             }
 
 

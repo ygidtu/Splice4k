@@ -2,13 +2,14 @@ package com.splice4k.index
 
 import com.splice4k.base.Exons
 import com.splice4k.base.Genes
-import com.splice4k.progressbar.ProgressBar
+import com.splice4k.tools.FileValidator
+import me.tongfei.progressbar.ProgressBar
 import org.apache.log4j.Logger
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.util.*
 import kotlin.system.exitProcess
-import com.splice4k.tools.FileValidator
 
 
 /**
@@ -82,10 +83,8 @@ class AnnotationIndex(
 
 
         try {
-            val reader = Scanner(this.infile)
-
             this.logger.info("Reading from ${this.infile}")
-            val pb = ProgressBar(message = "Reading exon from Gff")
+            val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), "Reading"))
 
             val tmpGenes = mutableMapOf<String, Genes>()
             val geneTranscript = mutableMapOf<String, String>()
@@ -101,7 +100,6 @@ class AnnotationIndex(
                 }
 
                 val lines = line.replace("\n", "").split("\\s+".toRegex())
-                pb.step()
 
                 val sources = when(this.fileFormat) {
                     "gtf" ->  this.getSourceFromGtf(lines.subList(8, lines.size))
@@ -189,7 +187,6 @@ class AnnotationIndex(
             }
 
             reader.close()
-            pb.close()
 
             if ( this.smrt ) {
                 // 为转录本指定外显子

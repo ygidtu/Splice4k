@@ -9,6 +9,7 @@ import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import java.util.concurrent.Executors
+import me.tongfei.progressbar.ProgressBar
 
 
 
@@ -195,7 +196,6 @@ class IdentifyAS(
         this.logger.info("Matching AS events with Reference")
 
         for ( (k, v) in events ) {
-
             if ( k.endsWith(".") ) {
                 var tmpK = k.replace("\\.$", "-")
                 if ( annotations.containsKey(tmpK) ) {

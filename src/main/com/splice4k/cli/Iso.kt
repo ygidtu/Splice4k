@@ -101,7 +101,6 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT data") {
                 infile = this.input,
                 filter = 0,
                 silent = !this.show,
-                unique = true,
                 smrt = true
         )
 

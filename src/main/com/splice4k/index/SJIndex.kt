@@ -3,12 +3,13 @@ package com.splice4k.index
 import com.splice4k.base.Exons
 import com.splice4k.base.Genes
 import com.splice4k.base.SpliceGraph
-import com.splice4k.progressbar.ProgressBar
 import com.splice4k.tools.FileValidator
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SamReaderFactory
+import me.tongfei.progressbar.ProgressBar
 import org.apache.log4j.Logger
 import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.io.PrintWriter
 import java.util.*
@@ -33,8 +34,7 @@ class SJIndex(
         val infile: File,
         private val filter: Int,
         private val silent: Boolean,
-        private val smrt: Boolean = false,
-        private val unique: Boolean = false
+        private val smrt: Boolean = false
 ) {
     val fileFormat: String = FileValidator().check(this.infile)
     private val logger = Logger.getLogger(SJIndex::class.java)
@@ -59,8 +59,8 @@ class SJIndex(
     private fun getAllSJ() {
 
         when ( fileFormat ) {
-            "sj" -> this.readSJ( star = false )
-            "star" -> this.readSJ( star = true )
+            "sj" -> this.readSJ()
+            "star" -> this.readSJ()
             "bam" -> this.readBam()
             else -> {
                 this.logger.error("Please check input file format")
@@ -153,16 +153,14 @@ class SJIndex(
     /**
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
      */
-    private fun readSJ( star: Boolean ) {
+    private fun readSJ() {
         logger.info("Reading from ${this.infile}")
 
-        val reader = Scanner(this.infile)
-
-        val pb = ProgressBar(message = "Reading SJ")
+        val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), "Reading"))
 
         while (reader.hasNext()) {
             val line = reader.nextLine()
-            pb.step()
+
             try{
 
                 val info = when(this.fileFormat) {
@@ -171,10 +169,6 @@ class SJIndex(
                 }
 
                 if ( info["count"]!!.toInt() < this.filter ) {
-                    continue
-                }
-
-                if ( this.fileFormat == "star" && this.unique && info["uniq"] == "0" ) {
                     continue
                 }
 
@@ -191,7 +185,7 @@ class SJIndex(
                 continue
             }
         }
-        pb.close()
+        reader.close()
     }
 
 
@@ -214,7 +208,7 @@ class SJIndex(
                     continue
                 }
 
-                if (i != 'D' && i != 'H' && i != '' ) {
+                if (i != 'D' && i != 'H' && i != 'P' ) {
                     position += tmp.joinToString(separator = "").toInt()
                 }
 
@@ -243,11 +237,10 @@ class SJIndex(
                 .iterator()
 
         this.logger.info("Reading from ${this.infile}")
-        val pb = ProgressBar(message = "Reading from Bam")
 
-        for ( record in tmpReader) {
+        val pb = ProgressBar.wrap(tmpReader.stream(), "Reading")
 
-            pb.step()
+        for ( record in pb) {
 
             // 判断reads是否为unique mapped
             if (record.hasAttribute("NH")) {
