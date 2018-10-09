@@ -6,7 +6,7 @@ import org.apache.log4j.Logger
 import com.splice4k.cli.Extract
 import com.splice4k.cli.Parameters
 import com.splice4k.cli.SGS
-import com.splice4k.cli.SMRT
+import com.splice4k.cli.SMS
 import kotlin.system.exitProcess
 import com.splice4k.cli.Iso
 
@@ -23,14 +23,14 @@ fun main(args: Array<String>) {
     val cmd = Parameters()
             .subcommands(Extract())
             .subcommands(SGS())
-            .subcommands(SMRT())
+            .subcommands(SMS())
             .subcommands(Iso())
 
     // help message
     if (args.size <= 1) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
-            args[0].toLowerCase() == "smrt" -> SMRT().getFormattedHelp()
+            args[0].toLowerCase() == "sms" -> SMS().getFormattedHelp()
             args[0].toLowerCase() == "extract" -> Extract().getFormattedHelp()
             args[0].toLowerCase() == "sgs" -> SGS().getFormattedHelp()
             args[0].toLowerCase() == "iso" -> Iso().getFormattedHelp()
@@ -47,7 +47,7 @@ fun main(args: Array<String>) {
     // help message
     if ( "-h" in args || "--help" in args ) {
         val help = when (args[0].toLowerCase()) {
-            "smrt" -> SMRT().getFormattedHelp()
+            "sms" -> SMS().getFormattedHelp()
             "extract" -> Extract().getFormattedHelp()
             "sgs" -> SGS().getFormattedHelp()
             "iso" -> Iso().getFormattedHelp()
@@ -71,7 +71,7 @@ fun main(args: Array<String>) {
 
         println("=".repeat(40))
         when ( args[0].toLowerCase() ) {
-            "smrt" -> println(SMRT().getFormattedHelp())
+            "sms" -> println(SMS().getFormattedHelp())
             "sgs" -> println(SGS().getFormattedHelp())
             "extract" -> println(Extract().getFormattedHelp())
             "iso" -> println(Iso().getFormattedHelp())

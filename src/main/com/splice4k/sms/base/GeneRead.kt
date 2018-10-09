@@ -1,4 +1,4 @@
-package com.splice4k.smrt.base
+package com.splice4k.sms.base
 
 import com.splice4k.base.Genes
 import java.util.*

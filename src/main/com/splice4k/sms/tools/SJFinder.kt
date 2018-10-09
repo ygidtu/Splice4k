@@ -1,4 +1,4 @@
-package com.splice4k.smrt.tools
+package com.splice4k.sms.tools
 
 
 import com.splice4k.base.GenomicLoci
@@ -7,7 +7,7 @@ import com.splice4k.base.SpliceGraph
 import com.splice4k.errors.ChromosomeException
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.smrt.base.Template
+import com.splice4k.sms.base.Template
 import com.splice4k.tools.CheckAS
 import com.splice4k.tools.IdentifyAS
 import com.splice4k.tools.PsiOfIR

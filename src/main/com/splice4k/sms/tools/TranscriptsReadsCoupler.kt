@@ -1,11 +1,11 @@
-package com.splice4k.smrt.tools
+package com.splice4k.sms.tools
 
 
 import com.splice4k.base.Genes
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.smrt.base.GeneRead
-import com.splice4k.smrt.base.Template
+import com.splice4k.sms.base.GeneRead
+import com.splice4k.sms.base.Template
 import org.apache.log4j.Logger
 
 

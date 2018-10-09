@@ -10,8 +10,8 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.smrt.tools.SJFinder
-import com.splice4k.smrt.tools.TranscriptsReadsCoupler
+import com.splice4k.sms.tools.SJFinder
+import com.splice4k.sms.tools.TranscriptsReadsCoupler
 import org.apache.log4j.Logger
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -25,7 +25,7 @@ import kotlin.system.exitProcess
 
 
 
-class SMRT: CliktCommand(help = "Find AS from PacBio data") {
+class SMS: CliktCommand(help = "Find AS from PacBio data") {
 
     private val input by argument(
             help = "Path to input Bam/Sam file"
@@ -102,7 +102,7 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
             exitProcess(0)
         }
 
-        val logger = Logger.getLogger(SMRT::class.java)
+        val logger = Logger.getLogger(SMS::class.java)
 
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
