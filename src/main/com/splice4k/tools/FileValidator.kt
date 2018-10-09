@@ -23,12 +23,15 @@ class FileValidator() {
      */
     private fun isBam(infile: File): Boolean {
         try{
-            for ( i in SamReaderFactory
+
+            val reader = SamReaderFactory
                     .makeDefault()
                     .open(infile)
-                    .iterator() ) {
+                    .iterator()
+            for ( i in reader ) {
                 break
             }
+            reader.close()
             return true
         } catch (e: SAMException) {
 
@@ -77,7 +80,7 @@ class FileValidator() {
      * @param infile 输入文件
      */
     private fun isStar(infile: File): Boolean {
-        println(infile.absolutePath)
+
         try{
             val reader = Scanner(infile.absoluteFile)
 
@@ -171,6 +174,7 @@ class FileValidator() {
                     break
                 }
             }
+
             return res
         } catch ( e: Exception ) {
 

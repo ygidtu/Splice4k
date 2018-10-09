@@ -168,7 +168,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                         threads = this.threads,
                         show = this.show
                 )
-
+                
                 for ( (k, values) in data ) {
                     if ( results.containsKey(k) ) {
                         results[k]!!.addAll(values)

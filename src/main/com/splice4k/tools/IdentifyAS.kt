@@ -7,7 +7,9 @@ import com.splice4k.base.SpliceGraph
 import com.splice4k.errors.ChromosomeException
 import org.apache.log4j.Logger
 import java.io.File
+import java.util.concurrent.Callable
 import java.util.concurrent.Executors
+import java.util.concurrent.Future
 
 
 
@@ -31,127 +33,191 @@ import java.util.concurrent.Executors
 
 /**
  * @param overlapOfExonIntron 识别IR所需的外显子与内含子的重合程度
+ * @param bamFile 提供用来找IR PSI的bam文件
  */
 class IdentifyAS(
         private val overlapOfExonIntron: Double,
         private val bamFile: File?
 ) {
     private val logger = Logger.getLogger(IdentifyAS::class.java)
-    private val psiOfIR = PsiOfIR()
-    private val checkAS = CheckAS()
 
 
     /**
-     * 将获取到的剪接时间与基因挂钩
+     * 为多进程写的类，继承自Callable
+     * @param graph 构建的same start和same end图
+     * @param bamFile 提供用来找IR PSI的bam文件
+     * @param annotations 参考基因组的基因（转录本）以及对应的外显子
+     * @param overlapOfExonIntron 判断IR时外显子与内含子之间重合程度
+     * @param error 判断A3/A5是否存（等）时所需要的阈值
+     * @param show 是否输出详细信息
+     * @param logger 日志
      */
-    private fun matchEventsWithRefSingleChromosome(
-            events: List<SpliceEvent>,
-            annotation: List<Exons>?,
-            matched: MutableMap<SpliceEvent, MutableList<Exons>>
-    ) {
+    class Run(
+            private val graph: SpliceGraph,
+            private val bamFile: File?,
+            private val annotations: Map<String, List<Exons>>,
+            private val overlapOfExonIntron: Double,
+            private val error: Int,
+            private val show: Boolean,
+            private val logger: Logger
+    ): Callable<MutableMap<SpliceEvent, MutableList<Exons>>> {
+        private val psiOfIR = PsiOfIR()
+        private val checkAS = CheckAS()
 
-        if ( annotation != null ) {
-            var i = 0; var j = 0; var logged = 0; var firstMatch = true
+        /**
+         * 将获取到的剪接时间与基因挂钩
+         */
+        private fun matchEventsWithRefSingleChromosome(
+                events: List<SpliceEvent>,
+                annotation: List<Exons>?
+        ): MutableMap<SpliceEvent, MutableList<Exons>> {
 
-            while ( i < events.size && j < annotation.size) {
-                val currentEvent = events[i]
-                val currentExon = annotation[j]
+            val matched = mutableMapOf<SpliceEvent, MutableList<Exons>>()
 
-                when{
-                    currentEvent.isUpStream( currentExon ) -> {
-                        i ++
+            if ( annotation != null ) {
+                var i = 0; var j = 0; var logged = 0; var firstMatch = true
 
-                        this.checkAS.check( currentEvent, annotation.subList(logged, j) )?.let {
-                            try {
-                                if ( matched.containsKey(currentEvent) ) {
-                                    matched[currentEvent]!!.add( it )
-                                } else {
-                                    matched[currentEvent] = mutableListOf( it )
+                while ( i < events.size && j < annotation.size) {
+                    val currentEvent = events[i]
+                    val currentExon = annotation[j]
+
+                    when{
+                        currentEvent.isUpStream( currentExon ) -> {
+                            i ++
+
+                            this.checkAS.check( currentEvent, annotation.subList(logged, j) )?.let {
+                                try {
+                                    if ( matched.containsKey(currentEvent) ) {
+                                        matched[currentEvent]!!.add( it )
+                                    } else {
+                                        matched[currentEvent] = mutableListOf( it )
+                                    }
+
+                                } catch (error: kotlin.KotlinNullPointerException ) {
+                                    this.logger.error(error)
+
+                                    for ( e in error.stackTrace ) {
+                                        this.logger.error(e)
+                                    }
+                                    this.logger.error("Event is $currentEvent")
                                 }
+                            }
 
-                            } catch (error: kotlin.KotlinNullPointerException ) {
-                                this.logger.error(error)
 
-                                for ( e in error.stackTrace ) {
-                                    this.logger.error(e)
-                                }
-                                this.logger.error("Event is $currentEvent")
+                            if ( !firstMatch ) {
+                                j = logged
+                                firstMatch = true
                             }
                         }
+                        currentEvent.isDownStream( currentExon ) -> {
+                            j++
+                        }
+                        else -> {
 
+                            if ( firstMatch ) {
+                                logged = j
+                                firstMatch = false
+                            }
 
-                        if ( !firstMatch ) {
-                            j = logged
-                            firstMatch = true
+                            j++
                         }
                     }
-                    currentEvent.isDownStream( currentExon ) -> {
-                        j++
-                    }
-                    else -> {
 
-                        if ( firstMatch ) {
-                            logged = j
-                            firstMatch = false
-                        }
-
-                        j++
-                    }
-                }
-
-                if (
-                        i < events.size - 1 &&
-                        j < annotation.size - 1 &&
-                        currentExon.source == annotation[j + 1].source
-                ) {
-                    try{
-                        // junction gap
-                        val tmp1 = GenomicLoci(
-                                chromosome = currentEvent.chromosome,
-                                start = currentEvent.end,
-                                end = events[i + 1].start
-                        )
-
-                        // exons gap
-                        val tmp2 = GenomicLoci(
-                                chromosome = currentExon.chromosome,
-                                start = currentExon.end,
-                                end = annotation[j + 1].start
-                        )
-                        if (
-
-                                tmp2.overlapPercent(tmp1, all = true) > this.overlapOfExonIntron
-                        ) {
-                            val tmp = SpliceEvent(
-                                    event = "IR",
+                    if (
+                            i < events.size - 1 &&
+                            j < annotation.size - 1 &&
+                            currentExon.source == annotation[j + 1].source
+                    ) {
+                        try{
+                            // junction gap
+                            val tmp1 = GenomicLoci(
                                     chromosome = currentEvent.chromosome,
-                                    start = kotlin.math.min(currentEvent.end, currentExon.end),
-                                    end = kotlin.math.max(events[i + 1].start, annotation[j + 1].start),
-                                    strand = currentEvent.strand,
-                                    sliceSites = mutableListOf(
-                                            currentEvent.end,
-                                            currentExon.end,
-                                            events[i + 1].start,
-                                            annotation[j + 1].start
-                                    )
+                                    start = currentEvent.end,
+                                    end = events[i + 1].start
                             )
 
-                            this.bamFile?.let {
-                                tmp.psi = this.psiOfIR.getPsi(
+                            // exons gap
+                            val tmp2 = GenomicLoci(
+                                    chromosome = currentExon.chromosome,
+                                    start = currentExon.end,
+                                    end = annotation[j + 1].start
+                            )
+                            if (
+
+                                    tmp2.overlapPercent(tmp1, all = true) > this.overlapOfExonIntron
+                            ) {
+                                val tmp = SpliceEvent(
+                                        event = "IR",
                                         chromosome = currentEvent.chromosome,
-                                        regionStart = currentExon.end,
-                                        regionEnd = annotation[j + 1].start,
-                                        bamFile = this.bamFile
+                                        start = kotlin.math.min(currentEvent.end, currentExon.end),
+                                        end = kotlin.math.max(events[i + 1].start, annotation[j + 1].start),
+                                        strand = currentEvent.strand,
+                                        sliceSites = mutableListOf(
+                                                currentEvent.end,
+                                                currentExon.end,
+                                                events[i + 1].start,
+                                                annotation[j + 1].start
+                                        )
                                 )
+
+                                this.bamFile?.let {
+                                    tmp.psi = this.psiOfIR.getPsi(
+                                            chromosome = currentEvent.chromosome,
+                                            regionStart = currentExon.end,
+                                            regionEnd = annotation[j + 1].start,
+                                            bamFile = this.bamFile
+                                    )
+                                }
+                                matched[tmp] = mutableListOf(currentExon)
                             }
-                            matched[tmp] = mutableListOf(currentExon)
+                        } catch (e: ChromosomeException) {
+
                         }
-                    } catch (e: ChromosomeException) {
 
                     }
-
                 }
             }
+
+            return matched
+        }
+
+
+        /**
+         * 重载call function
+         * @return 与外部class的结果类别一致
+         */
+        override fun call(): MutableMap<SpliceEvent, MutableList<Exons>>  {
+            val tmpRes = this.graph.identifyAS(error = error, silent = !show)
+            val k = "${this.graph.chromosome}${this.graph.strand}"
+
+            val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
+            if ( k.endsWith(".") ) {
+                var tmpK = k.replace("\\.$", "-")
+                if ( annotations.containsKey(tmpK) ) {
+                    results.putAll(
+                            this.matchEventsWithRefSingleChromosome(
+                                    events = tmpRes.asSequence().distinct().sorted().toList(),
+                                    annotation = annotations[tmpK]?.sorted()
+                            )
+                    )
+                }
+
+                tmpK = k.replace("\\.$", "+")
+                results.putAll(
+                        this.matchEventsWithRefSingleChromosome(
+                                events = tmpRes.asSequence().distinct().sorted().toList(),
+                                annotation = annotations[tmpK]?.sorted()
+                        )
+                )
+            } else {
+                results.putAll(
+                        this.matchEventsWithRefSingleChromosome(
+                                events = tmpRes.asSequence().distinct().sorted().toList(),
+                                annotation = annotations[k]?.sorted()
+                        )
+                )
+            }
+            return results
         }
     }
 
@@ -172,66 +238,30 @@ class IdentifyAS(
 
         this.logger.info("Predicting Alternative Splicing events")
 
-        val events = mutableMapOf<String, List<SpliceEvent>>()
+        // val events = mutableMapOf<String, List<SpliceEvent>>()
         val res = HashMap<SpliceEvent, MutableList<Exons>>()
+        val pool = Executors.newFixedThreadPool( threads )
+        val futures = mutableListOf<Future<MutableMap<SpliceEvent, MutableList<Exons>>>>()
 
-        var executor = Executors.newFixedThreadPool(threads)
+        for ( i in event ) {
+            val f = pool.submit(Run(
+                    graph = i,
+                    bamFile = this.bamFile,
+                    annotations = annotations,
+                    overlapOfExonIntron = this.overlapOfExonIntron,
+                    error = error,
+                    show = show,
+                    logger = this.logger
+            ))
 
-        for ( i in event) {
-            val worker = Runnable {
-                val tmpEvents = i.identifyAS(error = error, silent = !show)
-                events["${i.chromosome}${i.strand}"] = tmpEvents
-            }
-            executor.execute(worker)
-        }
-        executor.shutdown()
-        while (!executor.isTerminated) {}
-
-        executor = Executors.newFixedThreadPool(threads)
-
-        this.logger.info("Matching AS events with Reference")
-
-        for ( (k, v) in events ) {
-            if ( k.endsWith(".") ) {
-                var tmpK = k.replace("\\.$", "-")
-                if ( annotations.containsKey(tmpK) ) {
-
-                    val worker = Runnable {
-                        this.matchEventsWithRefSingleChromosome(
-                                events = v.asSequence().distinct().sorted().toList(),
-                                annotation = annotations[tmpK]?.sorted(),
-                                matched = res
-                        )
-                    }
-                    executor.execute(worker)
-                }
-
-                tmpK = k.replace("\\.$", "+")
-                val worker = Runnable {
-                    this.matchEventsWithRefSingleChromosome(
-                            events = v.asSequence().distinct().sorted().toList(),
-                            annotation = annotations[tmpK]?.sorted(),
-                            matched = res
-                    )
-                }
-                executor.execute(worker)
-
-            } else {
-                val worker = Runnable {
-                    this.matchEventsWithRefSingleChromosome(
-                            events = v.asSequence().distinct().sorted().toList(),
-                            annotation = annotations[k]?.sorted(),
-                            matched = res
-                    )
-                }
-                executor.execute(worker)
-
-            }
+            futures.add(f)
         }
 
+        futures.forEach {
+            res.putAll(it.get())
+        }
 
-        executor.shutdown()
-        while (!executor.isTerminated) { }
+        pool.shutdown()
 
         return res
     }

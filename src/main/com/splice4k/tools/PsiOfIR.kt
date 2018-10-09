@@ -106,24 +106,24 @@ class PsiOfIR {
                     .validationStringency(ValidationStringency.LENIENT)
                     .open(bamFile)
 
+            tmpReader.use {
+                for ( i in tmpReader.query( chromosome, regionStart, regionEnd, false ) ) {
 
-            for ( i in tmpReader.query( chromosome, regionStart, regionEnd, false ) ) {
+                    val sites = this.extractSpliceFromCigar(i)
+                    for ( j in 0..(sites.size - 2) step 2 ) {
+                        for ( k in sites[j]..sites[j + 1] ) {
+                            if ( exons.containsKey(k) ) {
+                                exons[k] = 1 + exons[k]!!
+                            }
 
-                val sites = this.extractSpliceFromCigar(i)
-                for ( j in 0..(sites.size - 2) step 2 ) {
-                    for ( k in sites[j]..sites[j + 1] ) {
-                        if ( exons.containsKey(k) ) {
-                            exons[k] = 1 + exons[k]!!
-                        }
-
-                        if ( junctions.containsKey(k) ) {
-                            junctions[k] = 1 + junctions[k]!!
+                            if ( junctions.containsKey(k) ) {
+                                junctions[k] = 1 + junctions[k]!!
+                            }
                         }
                     }
                 }
             }
 
-            tmpReader.close()
         } catch (e: SAMException) {
             return null
         }
