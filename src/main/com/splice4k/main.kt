@@ -35,7 +35,7 @@ fun main(args: Array<String>) {
             args[0].toLowerCase() == "sgs" -> SGS().getFormattedHelp()
             args[0].toLowerCase() == "iso" -> Iso().getFormattedHelp()
             args[0].toLowerCase() in arrayOf("-v", "--version") -> {
-                println("Splice4k version: 20181007")
+                println("Splice4k version: 20181009")
                 exitProcess(0)
             }
             else -> cmd.getFormattedHelp()
@@ -80,10 +80,11 @@ fun main(args: Array<String>) {
 
     } catch (e: Exception) {
 
-        logger.error(e)
+        logger.error(e.localizedMessage)
 
         e.stackTrace.forEach { logger.error(it) }
 
+        exitProcess(e.hashCode())
     }
 }
 

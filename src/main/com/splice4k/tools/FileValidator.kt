@@ -6,6 +6,7 @@ import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMException
 import htsjdk.samtools.SAMFormatException
 import java.io.IOException
+import java.lang.NumberFormatException
 
 /**
  * 检查文件格式
@@ -45,22 +46,24 @@ class FileValidator() {
     private fun isSJ(infile: File): Boolean {
         try{
             val reader = Scanner(infile)
-
             var res = false
-            while ( reader.hasNext() ) {
-                val line = reader.nextLine()
+            reader.use {
 
-                if ( line.startsWith("#") ) {
-                    continue
-                }
+                while ( reader.hasNext() ) {
+                    val line = reader.nextLine()
 
-                if ( line.matches("^[\\w\\.]+:\\d+-\\d+[+-\\.]?\t\\d+$".toRegex()) ) {
-                    res = true
+                    if ( line.startsWith("#") ) {
+                        continue
+                    }
+
+                    if ( line.matches("^[\\w\\.]+:\\d+-\\d+[+-\\.]?\t\\d+$".toRegex()) ) {
+                        res = true
+                    }
+
+                    break
                 }
-                break
             }
 
-            reader.close()
             return res
         } catch ( e: IOException ) {
 
@@ -74,24 +77,29 @@ class FileValidator() {
      * @param infile 输入文件
      */
     private fun isStar(infile: File): Boolean {
+        println(infile.absolutePath)
         try{
-            val reader = Scanner(infile)
+            val reader = Scanner(infile.absoluteFile)
 
             var res = false
-            while ( reader.hasNext() ) {
-                val line = reader.nextLine()
 
-                if ( line.startsWith("#") ) {
-                    continue
-                }
+            reader.use {
+                while ( reader.hasNext() ) {
+                    val line = reader.nextLine()
 
-                if ( line.matches("^([\\w\\.]+)\\s+\\d+\\s+\\d+\\s+[012]\\s+\\d+\\s+[01]\\s+\\d+\\s+\\d+\\s+\\d+".toRegex()) ) {
-                    res = true
+                    if ( line.startsWith("#") ) {
+                        continue
+                    }
+
+                    // ^([\w\.]+)(\s+\d+){8}(\s+)?
+                    if ( line.matches("^([\\w\\.]+)\\s+\\d+\\s+\\d+\\s+[012]\\s+\\d+\\s+[01]\\s+\\d+\\s+\\d+\\s+\\d+$".toRegex()) ) {
+                        res = true
+                    }
+
+                    break
                 }
-                break
             }
 
-            reader.close()
             return res
         } catch ( e: IOException ) {
 
@@ -109,22 +117,25 @@ class FileValidator() {
             val reader = Scanner(infile)
 
             var res = false
-            while ( reader.hasNext() ) {
-                val line = reader.nextLine()
 
-                if ( line.startsWith("#") ) {
-                    continue
+            reader.use {
+                while ( reader.hasNext() ) {
+                    val line = reader.nextLine()
+
+                    if ( line.startsWith("#") ) {
+                        continue
+                    }
+
+                    val lines = line.split("\t")
+
+                    if ( lines[8].matches("([\\w-\\.]+=[\\w:\\s-%,\\.]+;)+([\\w-]+=[\\w:\\s-%,\\.]+)?\$".toRegex()) ) {
+                        res = true
+                    }
+
+                    break
                 }
-
-                val lines = line.split("\t")
-
-                if ( lines[8].matches("([\\w-\\.]+=[\\w:\\s-%,\\.]+;)+([\\w-]+=[\\w:\\s-%,\\.]+)\$".toRegex()) ) {
-                    res = true
-                }
-                break
             }
 
-            reader.close()
             return res
         } catch ( e: Exception ) {
 
@@ -142,22 +153,24 @@ class FileValidator() {
             val reader = Scanner(infile)
 
             var res = false
-            while ( reader.hasNext() ) {
-                val line = reader.nextLine()
 
-                if ( line.startsWith("#") ) {
-                    continue
+            reader.use {
+                while ( reader.hasNext() ) {
+                    val line = reader.nextLine()
+
+                    if ( line.startsWith("#") ) {
+                        continue
+                    }
+
+                    val lines = line.split("\t")
+
+                    if ( lines[8].matches("([\\w-]+ \"[\\w+\\.\\s-%,:]+\"; ?)+".toRegex()) ) {
+                        res = true
+                    }
+
+                    break
                 }
-
-                val lines = line.split("\t")
-
-                if ( lines[8].matches("([\\w-]+ \"[\\w+\\.\\s-%,:]+\"; ?)+".toRegex()) ) {
-                    res = true
-                }
-                break
             }
-
-            reader.close()
             return res
         } catch ( e: Exception ) {
 
@@ -170,13 +183,26 @@ class FileValidator() {
      * @param infile 输入文件
      */
     fun check(infile: File): String {
-        return when {
-            this.isBam(infile) -> "bam"
-            this.isSJ(infile) -> "sj"
-            this.isStar(infile) -> "star"
-            this.isGtf(infile) -> "gtf"
-            this.isGff(infile) -> "gff"
-            else -> "Unknown"
+        if ( this.isBam(infile) ) {
+            return "bam"
         }
+
+        if ( this.isStar(infile) ) {
+            return "star"
+        }
+
+        if ( this.isSJ(infile) ) {
+            return "sj"
+        }
+
+        if ( this.isGff(infile) ) {
+            return "gff"
+        }
+
+        if ( this.isGtf(infile) ) {
+            return "gtf"
+        }
+
+        return "Unknown"
     }
 }

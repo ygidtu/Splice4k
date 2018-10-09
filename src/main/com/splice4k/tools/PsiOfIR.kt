@@ -98,7 +98,7 @@ class PsiOfIR {
             }
 
 
-            for ( i in tmpReader ) {
+            for ( i in tmpReader.query( chromosome, regionStart, regionEnd, false ) ) {
 
                 val sites = this.extractSpliceFromCigar(i)
                 for ( j in 0..(sites.size - 2) step 2 ) {
@@ -113,6 +113,8 @@ class PsiOfIR {
                     }
                 }
             }
+
+            tmpReader.close()
         } catch (e: SAMException) {
             return null
         }

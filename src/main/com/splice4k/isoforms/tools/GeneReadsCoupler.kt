@@ -8,6 +8,7 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.isoforms.base.SpliceGraph
 import me.tongfei.progressbar.ProgressBar
+import org.jetbrains.kotlin.utils.addToStdlib.sumByLong
 import java.io.File
 import java.io.PrintWriter
 
@@ -29,7 +30,7 @@ class GeneReadsCoupler(
     private val reference = reference.genes.sorted()
     private val referenceTranscripts = mutableMapOf<String, MutableList<Genes>>()
     private val results = mutableMapOf<Genes, List<Genes>>()
-
+    private val exonCount = mutableMapOf<Exons, Int>()
 
     init {
         reference.transcripts.forEach {
@@ -77,6 +78,10 @@ class GeneReadsCoupler(
         pb.close()
 
         for ( (k, v) in results ) {
+            if ( v.isEmpty() ) {
+                continue
+            }
+
             this.results[k] = this.constructIsoforms(v).map {
                 this.matchIsoformsTranscripts(k, it)
             }
@@ -112,6 +117,8 @@ class GeneReadsCoupler(
                         it.site > mergedExons[j].end -> j = mergedExons.size          // 位点在exon下游，就直接略过了
                         else -> {
                             graph.addEdge( edge = mergedExons[i] to mergedExons[j], weight = it.count )
+                            this.exonCount[mergedExons[i]] = it.count
+                            this.exonCount[mergedExons[j]] = it.count
                             j++
                         }
                     }
@@ -270,19 +277,56 @@ class GeneReadsCoupler(
         for ( transcript in transcripts ) {
             val transcript_id = "${gene.geneId}.$index"
 
+            val count = mutableListOf<Int?>()
+            val tmpRes = transcript.exons.asSequence().withIndex().map {
+                count.add( this.exonCount[it.value] )
+                "${gene.chromosome}\t" +
+                        "Splice4k\t" +
+                        "exon\t" +
+                        "${it.value.start + 1}\t" +
+                        "${it.value.end - 1}\t" +
+                        ".\t" +
+                        "${gene.strand}\t" +
+                        ".\t" +
+                        "gene_id \"${gene.geneId}\"; " +
+                        "gene_name \"${gene.geneName}\"; " +
+                        "transcript_id \"${gene.geneId}.$index\"; " +
+                        "exon_id \"$transcript_id.${it.index}\"; " +
+                        "cov \"${count.last() ?: "NA"}\"; " +
+                        when (it.value.annotation) {
+                            "" -> "ref_exon \"NA\"; "
+                            else -> "ref_exon \"${it.value.annotation}\"; "
+                        }
+            }
+
+
+            var total = 0
+            var number = 0
+
+            for ( it in count ) {
+
+                if ( it != null) {
+                    total += it
+                    number++
+                }
+            }
+
             res.add(
                     "${gene.chromosome}\t" +
                     "Splice4k\t" +
                     "transcript\t" +
-                    "${transcript.start}\t" +
-                    "${transcript.end}\t" +
+                    "${transcript.start + 1}\t" +
+                    "${transcript.end - 1}\t" +
                     ".\t" +
                     "${gene.strand}\t" +
                     ".\t" +
                     "gene_id \"${gene.geneId}\"; " +
                     "gene_name \"${gene.geneName}\"; " +
                     "transcript_id \"$transcript_id\"; " +
-                    // "cov \"$count\"; " +
+                    "cov \"${when( number ) {
+                        0 -> 0.toDouble()
+                        else -> total / number.toDouble()}
+                    }\"; " +
                     when (transcript.parent) {
                         "" -> "ref_transcript \"NA\"; "
                         else -> "ref_transcript \"${transcript.parent}\"; "
@@ -290,26 +334,7 @@ class GeneReadsCoupler(
             )
 
             index ++
-            for ( (i, exon) in transcript.exons.withIndex() ) {
-                res.add(
-                        "${gene.chromosome}\t" +
-                                "Splice4k\t" +
-                                "exon\t" +
-                                "${exon.start}\t" +
-                                "${exon.end}\t" +
-                                ".\t" +
-                                "${gene.strand}\t" +
-                                ".\t" +
-                                "gene_id \"${gene.geneId}\"; " +
-                                "gene_name \"${gene.geneName}\"; " +
-                                "transcript_id \"${gene.geneId}.$index\"; " +
-                                "exon_id \"$transcript_id.$i\"; " +
-                                when (exon.annotation) {
-                                    "" -> "ref_exon \"NA\"; "
-                                    else -> "ref_exon \"${exon.annotation}\"; "
-                                }
-                )
-            }
+            res.addAll( tmpRes )
         }
 
 

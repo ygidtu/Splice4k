@@ -13,6 +13,7 @@ import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
+import org.apache.log4j.Logger
 import java.io.PrintWriter
 import kotlin.system.exitProcess
 
@@ -96,14 +97,14 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
 
 
     override fun run() {
-
+        val logger = Logger.getLogger(SGS::class.java)
         if ( this.output.isDirectory ) {
-            println("Please set path of output file [event not exists]")
+            logger.error("Please set path of output file [event not exists]")
             exitProcess(0)
         }
 
         if ( this.input.isEmpty() ) {
-            println("input files are required")
+            logger.error("input files are required")
         } else {
             val psis = mutableMapOf<SpliceEvent, MutableMap<String, Double?>>()
             val labels = mutableListOf<String>()
@@ -129,32 +130,30 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                     "bam" -> it
                     "star" -> {
 
-                        if ( this.bam != null ) {
-                            if ( this.bam!!.isFile ) {   // bam is file, this use this file
-                                this.bam
-                            } else {                     // this.bam is directory, then try to find the corresponding bam file
-                                var bamFile = this.bam
+                        val bamDirectory = this.bam ?: it.absoluteFile.parentFile
 
-                                val pattern = ".*${it.name.replace("[_\\.]SJ.out.tab".toRegex(), "")}[\\._](\\w+\\.)*bam$"
-                                        .toRegex(RegexOption.IGNORE_CASE)
+                        if ( bamDirectory!!.isFile ) {   // bam is file, this use this file
+                            bamDirectory
+                        } else {                     // this.bam is directory, then try to find the corresponding bam file
+                            var bamFile = bamDirectory
 
-                                for ( i in this.bam!!.walkTopDown() ) {
-                                    if ( i.name.matches( pattern ) ) {
-                                        bamFile = i.absoluteFile
-                                        break
-                                    }
+                            val pattern = ".*${it.name.replace("[_\\.]SJ.out.tab".toRegex(), "")}[\\._](\\w+\\.)*bam$"
+                                    .toRegex(RegexOption.IGNORE_CASE)
+
+                            for ( i in bamDirectory.walkTopDown() ) {
+                                if ( i.name.matches( pattern ) ) {
+                                    bamFile = i.absoluteFile
+                                    break
                                 }
-                                bamFile
                             }
-                        } else {
-                            this.bam
+                            bamFile
                         }
                     }
                     else -> this.bam
                 }
 
                 if ( sj.fileFormat == "star" && bamFile != null ) {
-                    println( "${sj.infile.name} -> ${bamFile.name}" )
+                    logger.info( "${sj.infile.name} -> ${bamFile.name}" )
                 }
 
                 val identifyAS = IdentifyAS(
@@ -197,9 +196,9 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
 
             for ((key, values) in results ) {
                 for ( v in values ) {
-                    val psi = mutableListOf<Double?>()
+                    val psi = mutableListOf<String>()
                     for ( label in labels ) {
-                        psi.add(psis[key]!![label])
+                        psi.add(psis[key]!![label]?.toString() ?: "NA")
                     }
                     tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
                 }

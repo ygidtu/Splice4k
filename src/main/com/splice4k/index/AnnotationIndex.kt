@@ -47,6 +47,10 @@ class AnnotationIndex(
         val results: MutableMap<String, String> = mutableMapOf()
 
         for (inf in info[0].split(";")) {
+            if ( inf == "" ) {
+                continue
+            }
+
             val tmp = inf.split("=")
 
             if ( ":" in tmp[1] ) {
@@ -82,7 +86,6 @@ class AnnotationIndex(
      * 从Gff文件中读取信息
      */
     private fun readFromAnnotation() {
-
 
         try {
             this.logger.info("Reading from ${this.infile}")
@@ -145,7 +148,7 @@ class AnnotationIndex(
                     )
 
                     tmp.source["transcript"]!!.add(sources["Parent"] ?: sources["transcript_id"] ?: sources["ID"]!! )
-                    tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]] ?: sources["gene_id"] ?: sources["GeneID"]!!)
+                    tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]] ?: sources["gene_id"] ?: sources["GeneID"] ?: sources["ID"]!!)
 
                     val tmpExons = mutableListOf(tmp)
                     val key = "${lines[0]}${lines[6]}"
@@ -173,7 +176,11 @@ class AnnotationIndex(
                         !lines[2].matches(".*gene.*".toRegex(RegexOption.IGNORE_CASE)))
                 ) {
 
-                    geneTranscript[sources["ID"] ?: sources["transcript_id"]!! ] = sources["Parent"] ?: sources["gene_id"] ?: sources["GeneID"]!!
+                    try {
+                        geneTranscript[sources["ID"] ?: sources["transcript_id"]!! ] = sources["Parent"] ?: sources["gene_id"] ?: sources["GeneID"]!!
+                    } catch (e: NullPointerException) {
+                        continue
+                    }
 
                     if ( this.smrt ) {
                         this.transcripts.add(Genes(

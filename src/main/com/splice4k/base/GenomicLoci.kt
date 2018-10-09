@@ -33,7 +33,7 @@ open class GenomicLoci: Comparable<GenomicLoci> {
     var end: Int = -1
         set(value) {
             if (value >= this.start && value > 0) field = value
-            else throw ChromosomeException("End ($value) < start ${this.start} or $value < 0")
+            else throw ChromosomeException("End ($value) < start (${this.start}) or $value < 0")
         }
 
     val length: Int
@@ -124,23 +124,10 @@ open class GenomicLoci: Comparable<GenomicLoci> {
      * @param other Genes
      * @return true有重合，false没有重合
      */
-    fun isOverlap(other: GenomicLoci): Boolean {
+    private fun isOverlap(other: GenomicLoci): Boolean {
         return this.chromosome == other.chromosome &&
                 this.start <= other.end &&
                 this.end >= other.start
-    }
-
-
-    /**
-     * 返回两个位点的重合bp数
-     * @param other Genes
-     * @return null 没有重合，int重合的bp数q
-     */
-    fun getOverlap(other: GenomicLoci): Int? {
-        if (!this.isOverlap(other)) {
-            return null
-        }
-        return min(this.end, other.end) - max(this.start, other.start)
     }
 
 

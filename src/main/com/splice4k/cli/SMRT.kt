@@ -10,8 +10,8 @@ import com.github.ajalt.clikt.parameters.types.int
 import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.smrt.tools.TranscriptsReadsCoupler
 import com.splice4k.smrt.tools.SJFinder
+import com.splice4k.smrt.tools.TranscriptsReadsCoupler
 import org.apache.log4j.Logger
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -111,7 +111,6 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
 
-
         val ref = AnnotationIndex(
                 infile = this.reference.absoluteFile,
                 smrt = true
@@ -171,9 +170,9 @@ class SMRT: CliktCommand(help = "Find AS from PacBio data") {
 
             for ((key, values) in results ) {
                 for ( v in values ) {
-                    val psi = mutableListOf<Double?>()
+                    val psi = mutableListOf<String>()
                     for ( label in labels ) {
-                        psi.add(psis[key]!![label])
+                        psi.add(psis[key]!![label]?.toString() ?: "NA")
                     }
                     tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
                 }

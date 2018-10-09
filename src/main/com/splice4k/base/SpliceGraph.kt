@@ -137,7 +137,7 @@ class SpliceGraph(
                                 sliceSites = mutableListOf(starts.node, i.site, j.site, ends.node)
                         )
 
-                        tmpEvent.psi = (starts.getPsi(i.site)  + ends.getPsi(j.site)) / 2
+                        tmpEvent.psi = (starts.getPsi(i.site) + ends.getPsi(j.site)) / 2
 
                         res.add(tmpEvent)
 
@@ -160,13 +160,13 @@ class SpliceGraph(
                     val sites = mutableListOf(
                             starts.node,
                             starts.node,
-                            starts.getSite(i)!!.site,
-                            starts.getSite(j)!!.site
+                            starts.getSite(i).site,
+                            starts.getSite(j).site
                     )
 
                     sites.sort()
                     if (
-                            abs(starts.getSite(i)!!.site - starts.getSite(j)!!.site) >= error &&
+                            abs(starts.getSite(i).site - starts.getSite(j).site) >= error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
 
@@ -199,14 +199,14 @@ class SpliceGraph(
                 for ( j in (i + 1)..(ends.size - 1) ) {
 
                     val sites = mutableListOf(
-                            ends.getSite(i)!!.site,
-                            ends.getSite(j)!!.site,
+                            ends.getSite(i).site,
+                            ends.getSite(j).site,
                             ends.node,
                             ends.node
                     )
                     sites.sort()
                     if (
-                            abs(ends.getSite(i)!!.site - ends.getSite(j)!!.site) > error &&
+                            abs(ends.getSite(i).site - ends.getSite(j).site) > error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
 

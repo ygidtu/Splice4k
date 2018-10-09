@@ -158,8 +158,7 @@ class SJFinder(
 
 
         executor.shutdown()
-
-        while (!executor.isTerminated) {}
+        while ( !executor.isTerminated ) {}
 
         val identifyAS = IdentifyAS(
                 overlapOfExonIntron = this.overlapOfExonIntron,
@@ -185,35 +184,6 @@ class SJFinder(
                 this.results[k] = v.asSequence().map { it.toString() + "\t2" }.toMutableList()
             }
         }
-
-    }
-
-
-    /**
-     * 保存至文件
-     * @param outfile 输出文件的路径
-     * @return
-     */
-    fun saveTo(outfile: File) {
-
-        if ( !outfile.parentFile.exists() ) {
-            outfile.parentFile.mkdirs()
-        }
-
-        val writer = PrintWriter(outfile)
-        writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\tmethods\tPSI")
-        for ( (k, v) in this.results ) {
-            for ( j in v) {
-                if ( j.matches(".*\t[02]$".toRegex()) ) {
-                    writer.println("$k\t$j\t${k.psi}")
-                } else {
-                    writer.println("$k\t$j\t1\t${k.psi}")
-                }
-
-            }
-        }
-
-        writer.close()
 
     }
 }

@@ -38,10 +38,9 @@ class SJIndex(
         private val silent: Boolean,
         private val smrt: Boolean = false
 ) {
-    val fileFormat: String = FileValidator().check(this.infile)
     private val logger = Logger.getLogger(SJIndex::class.java)
     val transcripts = mutableListOf<Genes>()
-
+    val fileFormat = FileValidator().check( this.infile )
     // chromosome and splice graph
     val data = mutableMapOf<String, SpliceGraph>()
 
@@ -59,13 +58,12 @@ class SJIndex(
      * 获取所有的可变剪接事件
      */
     private fun getAllSJ() {
-
         when ( fileFormat ) {
             "sj" -> this.readSJ()
             "star" -> this.readSJ()
             "bam" -> this.readBam()
             else -> {
-                this.logger.error("Please check input file format")
+                this.logger.error("Please check ${this.infile} format")
                 exitProcess(2)
             }
         }
@@ -160,34 +158,36 @@ class SJIndex(
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
 
-        while (reader.hasNext()) {
-            val line = reader.nextLine()
+        reader.use {
+            while (reader.hasNext()) {
+                val line = reader.nextLine()
 
-            try{
+                try{
 
-                val info = when(this.fileFormat) {
-                    "sj" -> getSitesFromSJ(line)
-                    else -> getSitesFromSTAR(line)
-                }
+                    val info = when(this.fileFormat) {
+                        "sj" -> getSitesFromSJ(line)
+                        else -> getSitesFromSTAR(line)
+                    }
 
-                if ( info["count"]!!.toInt() < this.filter ) {
+                    if ( info["count"]!!.toInt() < this.filter ) {
+                        continue
+                    }
+
+                    val key = "${info["chromosome"]!!}${info["strand"]!!}"
+                    val tmpGraph = when ( this.data.containsKey(key) ) {
+                        true -> this.data[key]!!
+                        else -> SpliceGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
+                    }
+
+                    tmpGraph.addEdge(start = info["start"]!!.toInt(), end = info["end"]!!.toInt(), freq = info["count"]!!.toInt())
+
+                    this.data[key] = tmpGraph
+                } catch ( e: NullPointerException ) {
                     continue
                 }
-
-                val key = "${info["chromosome"]!!}${info["strand"]!!}"
-                val tmpGraph = when ( this.data.containsKey(key) ) {
-                    true -> this.data[key]!!
-                    else -> SpliceGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
-                }
-
-                tmpGraph.addEdge(start = info["start"]!!.toInt(), end = info["end"]!!.toInt(), freq = info["count"]!!.toInt())
-
-                this.data[key] = tmpGraph
-            } catch ( e: NullPointerException ) {
-                continue
             }
         }
-        reader.close()
+
     }
 
 
@@ -210,7 +210,8 @@ class SJIndex(
                     continue
                 }
 
-                if (i != 'D' && i != 'H' && i != 'P' ) {
+                // 'D', 'H', 'P',
+                if (i !in arrayOf('S', 'I') ) {
                     position += tmp.joinToString(separator = "").toInt()
                 }
 
@@ -308,13 +309,19 @@ class SJIndex(
                 )
 
                 // construct exon to transcripts
-                for ( i in 0..(spliceSites.size - 2) step 2 ) {
-                    tmpGene.exons.add(Exons(
-                            chromosome = record.referenceName,
-                            start = spliceSites[i],
-                            end = spliceSites[i + 1],
-                            exonId = ""
-                    ))
+                try{
+                    for ( i in 0..(spliceSites.size - 2) step 2 ) {
+                        tmpGene.exons.add(Exons(
+                                chromosome = record.referenceName,
+                                start = spliceSites[i],
+                                end = spliceSites[i + 1],
+                                exonId = ""
+                        ))
+                    }
+                } catch ( e: com.splice4k.errors.ChromosomeException ) {
+                    this.logger.error(e.localizedMessage)
+                    println(spliceSites)
+                    exitProcess(0)
                 }
 
                 this.transcripts.add(tmpGene)

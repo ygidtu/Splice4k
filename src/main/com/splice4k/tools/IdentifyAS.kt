@@ -7,7 +7,6 @@ import com.splice4k.base.SpliceGraph
 import com.splice4k.errors.ChromosomeException
 import org.apache.log4j.Logger
 import java.io.File
-import java.io.PrintWriter
 import java.util.concurrent.Executors
 
 
@@ -186,9 +185,7 @@ class IdentifyAS(
             executor.execute(worker)
         }
         executor.shutdown()
-        while (!executor.isTerminated) {
-
-        }
+        while (!executor.isTerminated) {}
 
         executor = Executors.newFixedThreadPool(threads)
 
@@ -234,28 +231,9 @@ class IdentifyAS(
 
 
         executor.shutdown()
-        while (!executor.isTerminated) {
-        }
+        while (!executor.isTerminated) { }
 
         return res
-    }
-
-    fun writeTo(outfile: File, results: Map<SpliceEvent, List<Exons>>) {
-        val outFile = outfile.absoluteFile
-
-        if (!outFile.parentFile.exists()) outFile.parentFile.mkdirs()
-
-        val writer = PrintWriter(outFile)
-
-        writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\tPSI")
-        for ( (k, v) in results) {
-            for ( j in v.distinct() ) {
-                writer.println("$k\t$j\t${k.psi}")
-            }
-        }
-
-        writer.close()
-
     }
 }
 
