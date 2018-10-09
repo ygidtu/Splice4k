@@ -241,7 +241,7 @@ class SJIndex(
 
         this.logger.info("Reading from ${this.infile}")
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
-        val pb = ProgressBar.wrap(tmpReader.stream(), pbb)
+        val pb = ProgressBar.wrap(tmpReader, pbb)
 
         for ( record in pb) {
 
@@ -327,7 +327,8 @@ class SJIndex(
                 this.transcripts.add(tmpGene)
             }
         }
-        pb.close()
+
+        tmpReader.close()
     }
 
 

@@ -278,25 +278,32 @@ class GeneReadsCoupler(
             val transcript_id = "${gene.geneId}.$index"
 
             val count = mutableListOf<Int?>()
-            val tmpRes = transcript.exons.asSequence().withIndex().map {
-                count.add( this.exonCount[it.value] )
-                "${gene.chromosome}\t" +
-                        "Splice4k\t" +
-                        "exon\t" +
-                        "${it.value.start + 1}\t" +
-                        "${it.value.end - 1}\t" +
-                        ".\t" +
-                        "${gene.strand}\t" +
-                        ".\t" +
-                        "gene_id \"${gene.geneId}\"; " +
-                        "gene_name \"${gene.geneName}\"; " +
-                        "transcript_id \"${gene.geneId}.$index\"; " +
-                        "exon_id \"$transcript_id.${it.index}\"; " +
-                        "cov \"${count.last() ?: "NA"}\"; " +
-                        when (it.value.annotation) {
-                            "" -> "ref_exon \"NA\"; "
-                            else -> "ref_exon \"${it.value.annotation}\"; "
-                        }
+            val tmpRes = mutableListOf<String>()
+
+            for ( (i, exon) in transcript.exons.withIndex() ) {
+                count.add( this.exonCount[exon] )
+
+                if ( ( exon.end - exon.start ) > 3 ) {
+                    tmpRes.add(
+                            "${gene.chromosome}\t" +
+                            "Splice4k\t" +
+                            "exon\t" +
+                            "${exon.start + 1}\t" +
+                            "${exon.end - 1}\t" +
+                            ".\t" +
+                            "${gene.strand}\t" +
+                            ".\t" +
+                            "gene_id \"${gene.geneId}\"; " +
+                            "gene_name \"${gene.geneName}\"; " +
+                            "transcript_id \"${gene.geneId}.$index\"; " +
+                            "exon_id \"$transcript_id.$i\"; " +
+                            "cov \"${count.last() ?: "NA"}\"; " +
+                            when (exon.annotation) {
+                                "" -> "ref_exon \"NA\"; "
+                                else -> "ref_exon \"${exon.annotation}\"; "
+                            }
+                    )
+                }
             }
 
 

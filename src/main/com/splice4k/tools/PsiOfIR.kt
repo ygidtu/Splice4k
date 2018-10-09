@@ -84,18 +84,27 @@ class PsiOfIR {
             junctions[i] = 0
         }
 
+
         try{
+            val indexFile = File("${bamFile.absolutePath}.bai")
+            if ( !indexFile.exists() ) {
+                val tmpReader =  SamReaderFactory
+                        .makeDefault()
+                        .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
+                        .validationStringency(ValidationStringency.LENIENT)
+                        .open(bamFile)
+
+                this.logger.info("Creating index for $bamFile")
+                BAMIndexer.createIndex(tmpReader, indexFile)
+
+                tmpReader.close()
+            }
+
             val tmpReader =  SamReaderFactory
                     .makeDefault()
                     .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
                     .validationStringency(ValidationStringency.LENIENT)
                     .open(bamFile)
-
-            val indexFile = File("${bamFile.absolutePath}.bai")
-            if ( !indexFile.exists() ) {
-                this.logger.info("Creating index for $bamFile")
-                BAMIndexer.createIndex(tmpReader, indexFile)
-            }
 
 
             for ( i in tmpReader.query( chromosome, regionStart, regionEnd, false ) ) {
