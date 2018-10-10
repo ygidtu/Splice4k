@@ -215,10 +215,10 @@ class SJFinder(
         for ( (k, v) in  tmp) {
             if ( "${k.event}_${k.sliceSites}" !in this.identified ) {
                 for ( j in v ) {
-                    this.results[k] = v.asSequence().map { it.toString() + "\t0" }.toMutableList()
+                    this.results[k] = v.asSequence().map { it.toString() }.toMutableList()
                 }
             } else {
-                this.results[k] = v.asSequence().map { it.toString() + "\t2" }.toMutableList()
+                this.results[k] = v.asSequence().map { it.toString() }.toMutableList()
             }
         }
 

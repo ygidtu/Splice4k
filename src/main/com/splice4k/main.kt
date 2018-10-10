@@ -17,6 +17,8 @@ import com.splice4k.cli.Iso
  * @version 20181006
  */
 
+const val VERSION = "Splice4k version: 1.1.0 -> 2018.10.10"
+
 
 fun main(args: Array<String>) {
     val logger = Logger.getLogger("main")
@@ -35,7 +37,7 @@ fun main(args: Array<String>) {
             args[0].toLowerCase() == "sgs" -> SGS().getFormattedHelp()
             args[0].toLowerCase() == "iso" -> Iso().getFormattedHelp()
             args[0].toLowerCase() in arrayOf("-v", "--version") -> {
-                println("Splice4k version: 20181009")
+                println(VERSION)
                 exitProcess(0)
             }
             else -> cmd.getFormattedHelp()
@@ -46,6 +48,7 @@ fun main(args: Array<String>) {
 
     // help message
     if ( "-h" in args || "--help" in args ) {
+        println(VERSION)
         val help = when (args[0].toLowerCase()) {
             "sms" -> SMS().getFormattedHelp()
             "extract" -> Extract().getFormattedHelp()
@@ -70,6 +73,7 @@ fun main(args: Array<String>) {
         println(e.localizedMessage)
 
         println("=".repeat(40))
+        println(VERSION)
         when ( args[0].toLowerCase() ) {
             "sms" -> println(SMS().getFormattedHelp())
             "sgs" -> println(SGS().getFormattedHelp())
