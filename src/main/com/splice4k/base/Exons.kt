@@ -36,6 +36,14 @@ class Exons(
                 this.source["transcript"]!!.asSequence().distinct().joinToString(prefix = "", postfix = "\t", separator = ",") +
                 this.exonId
     }
+
+
+    /**
+     * 生成该外显子信息的字符串，应用isoforms的外显子情况查看上
+     */
+    fun getString(): String {
+        return "${this.chromosome}:${this.start}-${this.end}\t${this.exonId}"
+    }
 }
 
 

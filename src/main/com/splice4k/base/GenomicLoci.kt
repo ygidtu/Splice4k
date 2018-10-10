@@ -135,17 +135,19 @@ open class GenomicLoci: Comparable<GenomicLoci> {
      * 计算两个文件之间的重合程度
      * @param other 第二个位点
      * @param all boolean值； true -> 计算连个位点并集的重合比例；false -> 交集
+     * @param narrow boolean值；true -> 以两个位点中较窄的那个计算重合程度；false -> 并不，按照其他标准走
      * @return double, 两个位点重合的比例，如果<=0，则没有重合
      */
-    fun overlapPercent(other: GenomicLoci, all: Boolean = false): Double {
+    fun overlapPercent(other: GenomicLoci, all: Boolean = false, narrow: Boolean = false): Double {
 
         if (this.chromosome != other.chromosome) {
             return 0.0
         }
 
-        val region = when (all) {
-            false ->  (this.end - this.start).toDouble()
-            else -> (max(this.end, other.end) - min(this.start, other.start)).toDouble()
+        val region = when  {
+            all ->  (max(this.end, other.end) - min(this.start, other.start)).toDouble()
+            narrow -> min(this.end - this.start, other.end - other.start).toDouble()
+            else -> (this.end - this.start).toDouble()
         }
 
         return (min(this.end, other.end) - max(this.start, other.start)) / region * 100

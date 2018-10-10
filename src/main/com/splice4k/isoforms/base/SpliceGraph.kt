@@ -1,6 +1,8 @@
 package com.splice4k.isoforms.base
 
 import com.splice4k.base.Exons
+import java.security.CodeSource
+import java.util.*
 
 
 /**
@@ -12,12 +14,11 @@ import com.splice4k.base.Exons
  */
 
 
-class SpliceGraph() {
-    var nodes: Int = 0
-    var edges: Int = 0
+class SpliceGraph {
 
     private val adj = mutableMapOf<Exons, MutableList<DirectedEdge>>()
     private val targets = mutableSetOf<Exons>()
+
 
 
     /**
@@ -41,8 +42,6 @@ class SpliceGraph() {
         }
 
         this.targets.add( edge.second )
-        this.edges ++
-        this.nodes ++
     }
 
 
@@ -51,24 +50,35 @@ class SpliceGraph() {
      * 有向图，搜索起来没有特别麻烦
      * 理论上能够获取所有的path
      * @param edge 有向边
-     * @param res 收集这条边上可能的exons
+     * @param results 收集最终每条完整的path
+     * @param currentPath 目前正在走的path
      * @return list of exons，路径上涉及到的所有外显子
      */
-    private fun depthSearch( edge: DirectedEdge, res: MutableList<Exons> ): MutableList<Exons> {
-        if ( edge.to() !in res ) {
-            res.add(edge.to())
+    private fun depthFirstSearch( edge: DirectedEdge, results: MutableList<List<Exons>>, currentPath: MutableList<Exons> ): List<Exons> {
+        if ( !currentPath.contains(edge.from()) ) {
+            currentPath.add(edge.from())
+        }
+
+        if ( !currentPath.contains(edge.to()) ) {
+            currentPath.add(edge.to())
         }
 
         if ( this.adj.containsKey(edge.to()) ) {
 
             for ( i in this.adj[edge.to()]!! ) {
-                if ( i.to() in res ) {
-                    continue
+                // make a copy of currentPath, to make sure, this won't collect different path into this list
+                val tmpPath = currentPath.asSequence().toMutableList()
+                this.depthFirstSearch(edge = i, results = results, currentPath = tmpPath)
+
+                // make sure this full path is visited
+                if ( !this.adj.containsKey(tmpPath.last())) {
+                    results.add(tmpPath)
                 }
-                this.depthSearch(edge = i, res = res)
+
             }
         }
-        return res
+
+        return currentPath
     }
 
 
@@ -91,13 +101,7 @@ class SpliceGraph() {
             }
 
             for ( j in this.adj[i]!! ) {
-                val tmp = mutableListOf(i)
-                this.depthSearch( edge = j, res = tmp )
-
-                if ( !results.contains(tmp) ) {
-                    results.add(tmp)
-                }
-
+                this.depthFirstSearch( edge = j, results = results, currentPath = mutableListOf() )
             }
         }
 
@@ -105,6 +109,7 @@ class SpliceGraph() {
     }
 
     override fun toString(): String {
-        return this.adj.values.map { it.toString() }.joinToString("\n")
+        return this.adj.values.asSequence().map { it.toString() }.joinToString("\n")
     }
 }
+

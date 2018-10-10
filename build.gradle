@@ -1,0 +1,66 @@
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.kotlin.jvm' version '1.2.71'
+}
+
+group 'ChenlinLab'
+version '1.0.2'
+
+sourceCompatibility = 1.8
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src/main']
+        }
+
+        resources {
+            srcDirs= ["src/resources"]
+        }
+    }
+
+    test {
+        java {
+            srcDirs = ['src/test']
+        }
+    }
+}
+
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+
+ext.kotlin_version = '1.2.71'
+
+repositories {
+    mavenCentral()
+    maven { url "http://maven.aliyun.com/nexus/content/groups/public" }
+    maven { url "http://repo.maven.apache.org/maven2" }
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+    compile "com.github.samtools:htsjdk:2.15.1"
+    compile "com.github.ajalt:clikt:1.5.0"
+    compile "log4j:log4j:1.2.17"
+    compile "me.tongfei:progressbar:0.7.2"
+}
+
+//create a single Jar with all dependencies
+jar {
+    manifest {
+        attributes 'Main-Class': "com.splice4k.MainKt"
+    }
+
+    from {
+        //添加依懒到打包文件
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}

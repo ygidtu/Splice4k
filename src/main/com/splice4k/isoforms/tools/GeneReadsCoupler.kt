@@ -8,7 +8,6 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.isoforms.base.SpliceGraph
 import me.tongfei.progressbar.ProgressBar
-import org.jetbrains.kotlin.utils.addToStdlib.sumByLong
 import java.io.File
 import java.io.PrintWriter
 
@@ -63,6 +62,7 @@ class GeneReadsCoupler(
                 else -> {
                     if (
                             currentReads.strand == currentRef.strand &&
+                            currentReads.overlapPercent(currentRef) > this.overlapLevel &&
                             this.isExonMatch( reads = currentReads.exons, reference = currentRef.exons )
                     ) {
                         if ( results.containsKey(currentRef) ) {
@@ -82,9 +82,9 @@ class GeneReadsCoupler(
                 continue
             }
 
-            this.results[k] = this.constructIsoforms(v).map {
+            this.results[k] = this.constructIsoforms(v).asSequence().map {
                 this.matchIsoformsTranscripts(k, it)
-            }
+            }.toList()
         }
     }
 
@@ -106,15 +106,15 @@ class GeneReadsCoupler(
 
         var i = 0
         while ( i < mergedExons.size - 1 ) {        // for (i, j) in mergedExons.withIndex()
-            val juncs = junctions.getSites( mergedExons[i].start to mergedExons[i].end )
+            val juncs = junctions.getSites( (mergedExons[i].start - 3) to (mergedExons[i].end + 3) )
 
             juncs.forEach {
                 var j = i + 1
 
                 while ( j < mergedExons.size ) {
                     when  {
-                        it.site < mergedExons[j].start -> j ++                        // 位点在exon上游，就下一个位点
-                        it.site > mergedExons[j].end -> j = mergedExons.size          // 位点在exon下游，就直接略过了
+                        it.site < mergedExons[j].start - 3 -> j = mergedExons.size            // 位点在exon上游，就下一个位点
+                        it.site > mergedExons[j].end + 3 -> j ++                              // 位点在exon下游，就直接略过了
                         else -> {
                             graph.addEdge( edge = mergedExons[i] to mergedExons[j], weight = it.count )
                             this.exonCount[mergedExons[i]] = it.count
@@ -243,7 +243,7 @@ class GeneReadsCoupler(
                 currentExon = i
             }
 
-            if ( currentExon.overlapPercent(i, all = true) >= this.overlapLevel ) {
+            if ( currentExon.overlapPercent( i, narrow = true ) >= this.overlapLevel ) {
                 currentExon = Exons(
                         chromosome = currentExon.chromosome,
                         start = listOf(currentExon.start, i.start).min()!!,
@@ -273,9 +273,9 @@ class GeneReadsCoupler(
         val res = mutableListOf(
                 "${gene.chromosome}\tSplice4k\tgene\t${gene.start}\t${gene.end}\t.\t${gene.strand}\t.\tgene_id \"${gene.geneId}\"; gene_name \"${gene.geneName}\"; "
         )
-        var index = 0
-        for ( transcript in transcripts ) {
-            val transcript_id = "${gene.geneId}.$index"
+
+        for ( (index, transcript) in transcripts.withIndex() ) {
+            val transcriptId = "${gene.geneId}.$index"
 
             val count = mutableListOf<Int?>()
             val tmpRes = mutableListOf<String>()
@@ -296,7 +296,7 @@ class GeneReadsCoupler(
                             "gene_id \"${gene.geneId}\"; " +
                             "gene_name \"${gene.geneName}\"; " +
                             "transcript_id \"${gene.geneId}.$index\"; " +
-                            "exon_id \"$transcript_id.$i\"; " +
+                            "exon_id \"$transcriptId.$i\"; " +
                             "cov \"${count.last() ?: "NA"}\"; " +
                             when (exon.annotation) {
                                 "" -> "ref_exon \"NA\"; "
@@ -329,7 +329,7 @@ class GeneReadsCoupler(
                     ".\t" +
                     "gene_id \"${gene.geneId}\"; " +
                     "gene_name \"${gene.geneName}\"; " +
-                    "transcript_id \"$transcript_id\"; " +
+                    "transcript_id \"$transcriptId\"; " +
                     "cov \"${when( number ) {
                         0 -> 0.toDouble()
                         else -> total / number.toDouble()}
@@ -340,7 +340,6 @@ class GeneReadsCoupler(
                     }
             )
 
-            index ++
             res.addAll( tmpRes )
         }
 

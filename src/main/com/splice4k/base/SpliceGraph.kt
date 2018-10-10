@@ -399,6 +399,21 @@ class SpliceGraph(
      * 获取范围内所有符合要求的junctions位点，以start位点为标准
      * 获取范围内start对应的所有点的
      */
+//    fun getSites( range: Pair<Int, Int> ): Map<Int, List<Site>> {
+//        val res = mutableMapOf<Int, List<Site>>()
+//
+//        for ( i in range.first..range.second ) {
+//            val tmp = mutableListOf<Site>()
+//            this.starts[i]?.let{
+//                tmp.addAll( it.getSites() )
+//            }
+//
+//            res[i] = tmp
+//        }
+//
+//        return res
+//    }
+
     fun getSites( range: Pair<Int, Int> ): List<Site> {
         val res = mutableListOf<Site>()
 

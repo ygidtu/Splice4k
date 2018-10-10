@@ -51,6 +51,6 @@ import java.util.Objects
     }
 
     override fun toString(): String {
-        return "${this.edge.first} -> ${this.edge.second} | ${this.weight}"
+        return "${this.edge.first.getString()} -> ${this.edge.second.getString()} | ${this.weight}"
     }
 }
