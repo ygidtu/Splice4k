@@ -3,7 +3,7 @@ package com.splice4k.tools
 import com.splice4k.base.Exons
 import com.splice4k.base.GenomicLoci
 import com.splice4k.base.SpliceEvent
-import com.splice4k.base.SpliceGraph
+import com.splice4k.base.JunctionsGraph
 import com.splice4k.errors.ChromosomeException
 import org.apache.log4j.Logger
 import java.io.File
@@ -53,7 +53,7 @@ class IdentifyAS(
      * @param logger 日志
      */
     class Run(
-            private val graph: SpliceGraph,
+            private val graph: JunctionsGraph,
             private val bamFile: File?,
             private val annotations: Map<String, List<Exons>>,
             private val overlapOfExonIntron: Double,
@@ -229,7 +229,7 @@ class IdentifyAS(
      * @return Map of SpliceEvents and its corresponding genes, transcripts and exons
      */
     fun matchEventsWithRef(
-            event: List<SpliceGraph>,
+            event: List<JunctionsGraph>,
             annotations: Map<String, List<Exons>>,
             threads: Int,
             error: Int,

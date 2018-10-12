@@ -23,12 +23,12 @@ import kotlin.math.abs
  * @param chromosome 染色体
  * @param strand 链
  */
-class SpliceGraph(
+class JunctionsGraph(
         val chromosome: String,
         val strand: Char
 ) {
 
-    private val logger = Logger.getLogger(SpliceGraph::class.java)
+    private val logger = Logger.getLogger(JunctionsGraph::class.java)
     private val starts = mutableMapOf<Int, Sites>()
     private val ends = mutableMapOf<Int, Sites>()
 
@@ -399,21 +399,6 @@ class SpliceGraph(
      * 获取范围内所有符合要求的junctions位点，以start位点为标准
      * 获取范围内start对应的所有点的
      */
-//    fun getSites( range: Pair<Int, Int> ): Map<Int, List<Site>> {
-//        val res = mutableMapOf<Int, List<Site>>()
-//
-//        for ( i in range.first..range.second ) {
-//            val tmp = mutableListOf<Site>()
-//            this.starts[i]?.let{
-//                tmp.addAll( it.getSites() )
-//            }
-//
-//            res[i] = tmp
-//        }
-//
-//        return res
-//    }
-
     fun getSites( range: Pair<Int, Int> ): List<Site> {
         val res = mutableListOf<Site>()
 
@@ -424,6 +409,17 @@ class SpliceGraph(
         }
 
         return res
+    }
+
+
+    /**
+     * 将另外一个graph融合到这个图中
+     * @param other 另一个com.splice4k.SpliceGraph
+     */
+    fun add(other: JunctionsGraph) {
+        for ( (start, end) in other.starts ) {
+            this.addEdge( start = start, end = end.node, freq = end.size )
+        }
     }
 
 

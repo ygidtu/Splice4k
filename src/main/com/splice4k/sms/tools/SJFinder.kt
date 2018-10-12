@@ -3,7 +3,7 @@ package com.splice4k.sms.tools
 
 import com.splice4k.base.GenomicLoci
 import com.splice4k.base.SpliceEvent
-import com.splice4k.base.SpliceGraph
+import com.splice4k.base.JunctionsGraph
 import com.splice4k.errors.ChromosomeException
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
@@ -143,7 +143,7 @@ class SJFinder(
         override fun call(): HashMap<SpliceEvent, MutableList<String>> {
             for ( pair in this.template ) {
                 val exons = pair.getReadsExons().iterator()
-                val graph = SpliceGraph(
+                val graph = JunctionsGraph(
                         chromosome = pair.template.chromosome,
                         strand = pair.template.strand
                 )

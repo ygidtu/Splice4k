@@ -2,6 +2,7 @@ package com.splice4k.cli
 
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.*
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
@@ -23,11 +24,9 @@ import kotlin.system.exitProcess
 
 class Iso: CliktCommand(help = "Construct Isoforms through SMRT data") {
 
-    private val input by option(
-            "-i",
-            "--input",
+    private val input by argument(
             help = "Path to input BAM/SAM files, multiple files separate by space"
-    ).file(exists = true).required()
+    ).file(exists = true).multiple()
 
 
     private val reference by option(
@@ -75,12 +74,14 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT data") {
                 iso = true
         )
 
-        val bam = SJIndex(
-                infile = this.input,
-                filter = 0,
-                silent = !this.show,
-                smrt = true
-        )
+        val bam = this.input.map {
+                SJIndex(
+                    infile = it,
+                    filter = 0,
+                    silent = !this.show,
+                    smrt = true
+                )
+        }
 
         GeneReadsCoupler(
                 bamIndex = bam,

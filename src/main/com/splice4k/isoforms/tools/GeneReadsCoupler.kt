@@ -6,6 +6,7 @@ import com.splice4k.base.Genes
 import com.splice4k.base.GenomicLoci
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
+import com.splice4k.base.JunctionsGraph
 import com.splice4k.isoforms.base.SpliceGraph
 import me.tongfei.progressbar.ProgressBar
 import java.io.File
@@ -20,18 +21,28 @@ import java.io.PrintWriter
  */
 
 class GeneReadsCoupler(
-    bamIndex: SJIndex,
+    bamIndex: List<SJIndex>,
     reference: AnnotationIndex,
     private val overlapLevel: Double = 90.0
 ) {
-    private val bamIndex = bamIndex.transcripts.sorted()
-    private val junctions = bamIndex.data
+    private val bamIndex = bamIndex.flatMap { element -> element.transcripts.asIterable() }.sorted()
+    private val junctions = mutableMapOf<String, JunctionsGraph>()
     private val reference = reference.genes.sorted()
     private val referenceTranscripts = mutableMapOf<String, MutableList<Genes>>()
     private val results = mutableMapOf<Genes, List<Genes>>()
     private val exonCount = mutableMapOf<Exons, Int>()
 
     init {
+        bamIndex.forEach {
+            for ( ( key, value ) in it.data ) {
+                if ( this.junctions.containsKey( key ) ) {
+                    this.junctions[key]!!.add( value )
+                } else {
+                    this.junctions[key] = value
+                }
+            }
+        }
+
         reference.transcripts.forEach {
             if (this.referenceTranscripts.containsKey(it.parent)) {
                 this.referenceTranscripts[it.parent]!!.add(it)
@@ -58,7 +69,7 @@ class GeneReadsCoupler(
 
             when {
                 currentReads.isUpStream(currentRef) -> i++
-                currentReads.isDownStream(currentRef) -> { j++; pb.step()}
+                currentReads.isDownStream(currentRef) -> { j++; pb.stepTo(i.toLong())}
                 else -> {
                     if (
                             currentReads.strand == currentRef.strand &&

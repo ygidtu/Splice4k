@@ -2,7 +2,7 @@ package com.splice4k.index
 
 import com.splice4k.base.Exons
 import com.splice4k.base.Genes
-import com.splice4k.base.SpliceGraph
+import com.splice4k.base.JunctionsGraph
 import com.splice4k.tools.FileValidator
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SamReaderFactory
@@ -42,7 +42,7 @@ class SJIndex(
     val transcripts = mutableListOf<Genes>()
     val fileFormat = FileValidator().check( this.infile )
     // chromosome and splice graph
-    val data = mutableMapOf<String, SpliceGraph>()
+    val data = mutableMapOf<String, JunctionsGraph>()
 
     init {
         if ( smrt && this.fileFormat != "bam" ) {
@@ -176,7 +176,7 @@ class SJIndex(
                     val key = "${info["chromosome"]!!}${info["strand"]!!}"
                     val tmpGraph = when ( this.data.containsKey(key) ) {
                         true -> this.data[key]!!
-                        else -> SpliceGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
+                        else -> JunctionsGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
                     }
 
                     tmpGraph.addEdge(start = info["start"]!!.toInt(), end = info["end"]!!.toInt(), freq = info["count"]!!.toInt())
@@ -286,7 +286,7 @@ class SJIndex(
             // SGS构建junctions map
             val tmpGraph = when( this.data.containsKey("${record.referenceName}$strand")  ) {
                 true -> this.data["${record.referenceName}$strand"]!!
-                else -> SpliceGraph(record.referenceName, strand)
+                else -> JunctionsGraph(record.referenceName, strand)
             }
 
             for ( i in 1..(spliceSites.size - 2) step 2) {
