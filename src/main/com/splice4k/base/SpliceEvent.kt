@@ -36,6 +36,8 @@ class SpliceEvent(
 
     var psi: Double? = null
 
+    var isNovel = true
+
 
     override fun hashCode(): Int {
         return Objects.hash(this.event, this.chromosome, this.start, this.end, this.sliceSites.sorted())

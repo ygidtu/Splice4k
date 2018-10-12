@@ -72,6 +72,7 @@ class IdentifyAS(
                 annotation: List<Exons>?
         ): MutableMap<SpliceEvent, MutableList<Exons>> {
 
+            // 事件以及匹配到一起的外显子
             val matched = mutableMapOf<SpliceEvent, MutableList<Exons>>()
 
             if ( annotation != null ) {
@@ -87,10 +88,11 @@ class IdentifyAS(
 
                             this.checkAS.check( currentEvent, annotation.subList(logged, j) )?.let {
                                 try {
+
                                     if ( matched.containsKey(currentEvent) ) {
-                                        matched[currentEvent]!!.add( it )
+                                        matched[currentEvent]!!.addAll( it )
                                     } else {
-                                        matched[currentEvent] = mutableListOf( it )
+                                        matched[currentEvent] = it.toMutableList()
                                     }
 
                                 } catch (error: kotlin.KotlinNullPointerException ) {
@@ -102,7 +104,6 @@ class IdentifyAS(
                                     this.logger.error("Event is $currentEvent")
                                 }
                             }
-
 
                             if ( !firstMatch ) {
                                 j = logged

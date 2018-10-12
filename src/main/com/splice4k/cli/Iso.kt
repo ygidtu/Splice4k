@@ -57,6 +57,7 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT data") {
             help = "Enable detailed messages"
     ).flag(default = false)
 
+
     override fun run() {
         val logger = Logger.getLogger(Iso::class.java)
 

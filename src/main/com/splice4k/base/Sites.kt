@@ -47,8 +47,8 @@ class Sites( val node: Int ): Comparable<Sites> {
      * @param target 获取某个index位置上的Site，输入的index
      * @return Site？
      */
-    fun getSite(target: Int): Site {
-        return this.pos[target]!!
+    fun getSiteByIndex(target: Int): Site {
+        return this.pos[this.pos.keys.sorted()[target]]!!
     }
 
     /**

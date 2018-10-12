@@ -155,8 +155,13 @@ class SJFinder(
                 }
 
                 for (i in graph.identifyAS( error = this.error, silent = this.silent ).iterator()) {
-                    this.checkAS.check(i, pair.template.exons)?.let {
-                        this.results[i] = mutableListOf("${this.gene}\t${pair.template.transcriptId}\t${it.exonId}")
+                    val matched = this.checkAS.check(i, pair.template.exons)
+                    if ( matched != null ) {
+                        this.results[i] = mutableListOf("${this.gene}\t${pair.template.transcriptId}\t${ when( i.isNovel ) {
+                                true -> "NA"
+                                false -> matched.joinToString(separator = ",") { it.exonId }
+                            }
+                        }")
                     }
                 }
 

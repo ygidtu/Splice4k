@@ -14,17 +14,18 @@ class CheckAS() {
      * @param exonList 事件范围内的外显子
      * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
      */
-    private fun checkSE(currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-
+    private fun checkSE(currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons> {
+        val res = mutableListOf<Exons>()
         for ( currentExon in exonList ) {
-
 
             if ( currentEvent.sliceSites[1] <= currentExon.start &&
                     currentEvent.sliceSites[2] >= currentExon.end ) {
-                return currentExon
+
+                currentEvent.isNovel = false
+                res.add(currentExon)
             }
         }
-        return null
+        return res
     }
 
     /**
@@ -33,32 +34,33 @@ class CheckAS() {
      * @param exonList 事件范围内的外显子
      * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
      */
-    private fun checkA35(currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
-        var match = 0
+    private fun checkA35(currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons> {
+        val match = mutableSetOf<Exons>()
 
         for ( currentExon in exonList ) {
 
             if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
                 if (
-                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) <= 1 &&
-                        currentEvent.sliceSites[3] in currentExon.start..currentExon.end
+                        kotlin.math.abs(currentEvent.sliceSites[2] - currentExon.start) <= 3 ||
+                        kotlin.math.abs(currentEvent.sliceSites[3] - currentExon.start) <= 3
                 ) {
-                    match ++
+                    match.add(currentExon)
                 }
             } else if (currentEvent.sliceSites[2] == currentEvent.sliceSites[3]) {
                 if (
-                        kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 1 &&
-                        currentEvent.sliceSites[0] in currentExon.start..currentExon.end
+                        kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 3 ||
+                        kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 3
                 ) {
-                    match ++
+                    match.add(currentExon)
                 }
             }
-
-            if ( match > 0 ) {
-                return currentExon
-            }
         }
-        return null
+
+        if ( match.size > 1 ) {
+            currentEvent.isNovel = false
+        }
+
+        return match.toList()
     }
 
     /**
@@ -67,7 +69,7 @@ class CheckAS() {
      * @param exonList 事件范围内的外显子
      * @return Exons? null -> 不匹配； Exons -> 事件相关的外显子
      */
-    private fun checkMXE(currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
+    private fun checkMXE(currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons> {
         val matched1 = mutableSetOf<Exons>()
         val matched2 = mutableSetOf<Exons>()
         val geneExons = mutableMapOf<String, MutableSet<Exons>>()
@@ -135,18 +137,22 @@ class CheckAS() {
 
                             matched.forEach { res.source["transcript"]!!.addAll(it.source["transcript"]!!) }
 
-                            return res
+                            currentEvent.isNovel = false
+                            return listOf(res)
                         }
                     }
                 }
             }
         }
 
-        return null
+        return when (matched1.isNotEmpty()) {
+            true -> matched1.toMutableList()
+            else -> matched2.toMutableList()
+        }
     }
 
 
-    fun check( currentEvent: SpliceEvent, exonList: List<Exons> ): Exons? {
+    fun check( currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons>? {
         return when ( currentEvent.event ) {
             "A3" -> this.checkA35(currentEvent, exonList)
             "A5" -> this.checkA35(currentEvent, exonList)

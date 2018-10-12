@@ -166,7 +166,7 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
 
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
-            writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
                 for ( v in values ) {
@@ -174,7 +174,7 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
                     for ( label in labels ) {
                         psi.add(psis[key]!![label]?.toString() ?: "NA")
                     }
-                    tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
+                    tmpResults.add("$key\t${key.isNovel}\t$v\t${psi.joinToString("\t")}")
                 }
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))

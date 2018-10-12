@@ -142,7 +142,7 @@ class JunctionsGraph(
                         res.add(tmpEvent)
 
                         exonSkipped.add(Objects.hash(listOf(starts.node, i.site, j.site).sorted()))
-                        exonSkipped.add(Objects.hash(listOf(i.site, j.site, ends.node)))
+                        exonSkipped.add(Objects.hash(listOf(i.site, j.site, ends.node).sorted()))
 
                         this.as35Sites["start"]!!.add(starts.node)
                         this.as35Sites["end"]!!.add(ends.node)
@@ -160,16 +160,15 @@ class JunctionsGraph(
                     val sites = mutableListOf(
                             starts.node,
                             starts.node,
-                            starts.getSite(i).site,
-                            starts.getSite(j).site
+                            starts.getSiteByIndex(i).site,
+                            starts.getSiteByIndex(j).site
                     )
 
                     sites.sort()
                     if (
-                            abs(starts.getSite(i).site - starts.getSite(j).site) >= error &&
+                            abs(starts.getSiteByIndex(i).site - starts.getSiteByIndex(j).site) >= error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
-
                         val tmpEvent = SpliceEvent(
                                 event = when(this.strand) {
                                     '-' -> "A5"
@@ -199,17 +198,16 @@ class JunctionsGraph(
                 for ( j in (i + 1)..(ends.size - 1) ) {
 
                     val sites = mutableListOf(
-                            ends.getSite(i).site,
-                            ends.getSite(j).site,
+                            ends.getSiteByIndex(i).site,
+                            ends.getSiteByIndex(j).site,
                             ends.node,
                             ends.node
                     )
                     sites.sort()
                     if (
-                            abs(ends.getSite(i).site - ends.getSite(j).site) > error &&
+                            abs(ends.getSiteByIndex(i).site - ends.getSiteByIndex(j).site) > error &&
                             Objects.hash(sites.asSequence().sorted().distinct()) !in exonSkipped
                     ) {
-
                         val tmpEvent = SpliceEvent(
                                 event = when(this.strand) {
                                     '-' -> "A3"

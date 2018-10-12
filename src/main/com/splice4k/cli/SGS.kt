@@ -192,16 +192,36 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
 
-            writer.println("#spliceRange\tspliceType\tspliceSites\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
-                for ( v in values ) {
-                    val psi = mutableListOf<String>()
-                    for ( label in labels ) {
-                        psi.add(psis[key]!![label]?.toString() ?: "NA")
-                    }
-                    tmpResults.add("$key\t$v\t${psi.joinToString("\t")}")
+                val psi = mutableListOf<String>()
+                for ( label in labels ) {
+                    psi.add(psis[key]!![label]?.toString() ?: "NA")
                 }
+
+                val gene = mutableSetOf<String>()
+                val transcript = mutableListOf<String>()
+                val exon = mutableListOf<String>()
+
+                for (v in values) {
+                    v.source["gene"]?.let {
+                        gene.addAll(it)
+                    }
+
+                    v.source["transcript"]?.let {
+                        transcript.addAll(it)
+                    }
+
+                    exon.add(v.exonId)
+                }
+
+                if ( gene.isEmpty() ) gene.add("NA")
+                if ( transcript.isEmpty() ) transcript.add("NA")
+                if ( exon.isEmpty() ) exon.add("NA")
+
+                tmpResults.add("$key\t${key.isNovel}\t${gene.joinToString(",")}\t${transcript.joinToString(",")}\t${exon.joinToString(",")}\t${psi.joinToString("\t")}")
+
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
             writer.close()
