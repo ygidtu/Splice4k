@@ -119,7 +119,7 @@ class SJFinder(
                                     ),
                                     event = "IR"
                             )
-
+                            tmp.isNovel = false
                             tmp.psi = this.psiOfIR.getPsi(
                                     chromosome = template.template.chromosome,
                                     regionStart = exons[i].start - 1,

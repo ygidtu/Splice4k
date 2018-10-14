@@ -160,7 +160,7 @@ class IdentifyAS(
                                                 annotation[j + 1].start
                                         )
                                 )
-
+                                tmp.isNovel = false
                                 this.bamFile?.let {
                                     tmp.psi = this.psiOfIR.getPsi(
                                             chromosome = currentEvent.chromosome,
