@@ -3,6 +3,7 @@ package com.splice4k.tools
 import htsjdk.samtools.*
 import org.apache.log4j.Logger
 import java.io.File
+import java.nio.BufferUnderflowException
 
 /**
  * 专门用于IR事件中PSI的计算
@@ -67,8 +68,12 @@ class PsiOfIR {
             chromosome: String,
             regionStart: Int,
             regionEnd: Int,
-            bamFile: File
+            bamFile: File?
     ): Double? {
+        if ( bamFile == null ) {
+            return null
+        }
+
         val exons = mutableMapOf<Int, Int>()
         val junctions = mutableMapOf<Int, Int>()
 
@@ -84,10 +89,8 @@ class PsiOfIR {
             junctions[i] = 0
         }
 
-
         try{
-            val indexFile = File("${bamFile.absolutePath}.bai")
-            if ( !indexFile.exists() ) {
+            if ( !File("$bamFile.bai").exists() ) {
                 val tmpReader =  SamReaderFactory
                         .makeDefault()
                         .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
@@ -95,11 +98,15 @@ class PsiOfIR {
                         .open(bamFile)
 
                 this.logger.info("Creating index for $bamFile")
-                BAMIndexer.createIndex(tmpReader, indexFile)
+                BAMIndexer.createIndex(tmpReader, File("$bamFile.bai"))
 
                 tmpReader.close()
             }
+        } catch ( e: htsjdk.samtools.SAMException ) {
+            this.logger.info("Create index failed, ${e.localizedMessage}")
+        }
 
+        try{
             val tmpReader =  SamReaderFactory
                     .makeDefault()
                     .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
@@ -125,6 +132,9 @@ class PsiOfIR {
             }
 
         } catch (e: SAMException) {
+            return null
+        } catch (e: BufferUnderflowException) {
+            this.logger.warn("Can't get reads around $chromosome:$regionStart-$regionEnd from ${bamFile.name}")
             return null
         }
 

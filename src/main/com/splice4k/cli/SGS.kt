@@ -106,7 +106,7 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
         if ( this.input.isEmpty() ) {
             logger.error("input files are required")
         } else {
-            val psis = mutableMapOf<SpliceEvent, MutableMap<String, Double?>>()
+            val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
 
@@ -177,9 +177,9 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                     }
 
                     if ( psis.containsKey(k) ) {
-                        psis[k]!![labels.last()] = k.psi
+                        psis[k]!![labels.last()] = "${k.psi}|${k.getOtherPsi()}"
                     } else {
-                        psis[k] = mutableMapOf(labels.last() to k.psi)
+                        psis[k] = mutableMapOf(labels.last() to "${k.psi}|${k.getOtherPsi()}")
                     }
                 }
             }

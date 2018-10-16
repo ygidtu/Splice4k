@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'ChenlinLab'
-version '1.1.0'
+version '1.1.1'
 
 sourceCompatibility = 1.8
 
@@ -47,7 +47,7 @@ repositories {
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    compile "com.github.samtools:htsjdk:2.15.1"
+    compile "com.github.samtools:htsjdk:2.16.1"
     compile "com.github.ajalt:clikt:1.5.0"
     compile "log4j:log4j:1.2.17"
     compile "me.tongfei:progressbar:0.7.2"

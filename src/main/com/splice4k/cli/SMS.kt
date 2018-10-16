@@ -38,6 +38,12 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
             help = "Path to reference file [gtf|gff3]"
     ).file(exists = true).required()
 
+    private val bamFile by option(
+            "-b",
+            "--bam",
+            help = "Path to BAM/SAM file"
+    ).file(exists = true)
+
 
     private val output by option(
             "-o",
@@ -107,7 +113,7 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
-        val psis = mutableMapOf<SpliceEvent, MutableMap<String, Double?>>()
+        val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
 
@@ -143,7 +149,11 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
                     silent = !this.show,
                     overlapOfExonIntron = this.overlapOfExonIntron,
                     error = this.error,
-                    threads = this.threads
+                    threads = this.threads,
+                    bamFile = when( bam.fileFormat ) {
+                        "bam" -> bam.infile
+                        else -> this.bamFile
+                    }
             ).results
 
             for ( (k, values) in data ) {
@@ -154,9 +164,9 @@ class SMS: CliktCommand(help = "Find AS from PacBio data") {
                 }
 
                 if ( psis.containsKey(k) ) {
-                    psis[k]!![labels.last()] = k.psi
+                    psis[k]!![labels.last()] = "${k.psi}|${k.getOtherPsi()}"
                 } else {
-                    psis[k] = mutableMapOf(labels.last() to k.psi)
+                    psis[k] = mutableMapOf(labels.last() to "${k.psi}|${k.getOtherPsi()}")
                 }
             }
 

@@ -40,6 +40,15 @@ class JunctionsGraph(
 
 
     /**
+     * 检查JunctionGraph是否为空
+     * @return Boolean; true -> 空； false -> 非空
+     */
+    fun isEmpty(): Boolean {
+        return this.starts.isEmpty() && this.ends.isEmpty()
+    }
+
+
+    /**
      * 二分法进行插入
      * 保证序列有序，以及算法高效
      * @param list 包含Sites的list，主要为class内的starts和ends
@@ -81,8 +90,9 @@ class JunctionsGraph(
      * 添加边，在图中添加junctions
      * @param start junction的start
      * @param end junction的end
-     * @param startFreq start出现的次数
-     * @param endFreq end出现的次数
+     * @param freq start出现的次数
+     * @param transcript 可能的这个图的宿主转录本id
+     * @param gene 可能的这个junction图的宿主基因id
      */
     fun addEdge(
             start: Int,
@@ -112,6 +122,10 @@ class JunctionsGraph(
 
     /**
      * 判断Same Start与Same End之间的可变剪接
+     * @param starts 起始位点
+     * @param ends 终止位点
+     * @param res 识别出的剪接事件们
+     * @param error 误差，至少3bp以上才认为是可靠的剪接事件
      */
     private fun identifyBetweenSameStartEnd(
             starts: Sites?,
@@ -137,7 +151,9 @@ class JunctionsGraph(
                                 sliceSites = mutableListOf(starts.node, i.site, j.site, ends.node)
                         )
 
-                        tmpEvent.psi = (starts.getPsi(i.site) + ends.getPsi(j.site)) / 2
+                        tmpEvent.otherPSi.add(starts.getPsi(i.site))
+                        tmpEvent.otherPSi.add(starts.getPsi(j.site))
+                        tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
 
                         res.add(tmpEvent)
 
@@ -362,18 +378,18 @@ class JunctionsGraph(
                                             sliceSites = mxeSites.toMutableList()
                                     )
 
-                                    val values = when ( this.strand ) {
+                                    tmpEvent.otherPSi.addAll(when ( this.strand ) {
                                         '-' -> listOf(
-                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s1].site ),
-                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e1].site )
+                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e1].site ),
+                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s1].site )
                                         )
                                         else -> listOf(
                                                 this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e2].site ),
                                                 this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s2].site )
                                         )
-                                    }
+                                    })
 
-                                    tmpEvent.psi = values.sum() / values.size
+                                    tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
                                     res.add(tmpEvent)
                                 }
 

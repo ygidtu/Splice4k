@@ -6,7 +6,7 @@
 
     <groupId>groupId</groupId>
     <artifactId>Splice4k</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
 
     <properties>
         <kotlin.version>1.2.70</kotlin.version>
@@ -36,7 +36,7 @@
         <dependency>
             <groupId>com.github.samtools</groupId>
             <artifactId>htsjdk</artifactId>
-            <version>2.15.1</version>
+            <version>2.16.1</version>
         </dependency>
 
         <dependency>

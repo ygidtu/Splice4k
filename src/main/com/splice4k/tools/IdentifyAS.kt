@@ -2,15 +2,14 @@ package com.splice4k.tools
 
 import com.splice4k.base.Exons
 import com.splice4k.base.GenomicLoci
-import com.splice4k.base.SpliceEvent
 import com.splice4k.base.JunctionsGraph
+import com.splice4k.base.SpliceEvent
 import com.splice4k.errors.ChromosomeException
 import org.apache.log4j.Logger
 import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
-
 
 
 /**
@@ -244,7 +243,12 @@ class IdentifyAS(
         val pool = Executors.newFixedThreadPool( threads )
         val futures = mutableListOf<Future<MutableMap<SpliceEvent, MutableList<Exons>>>>()
 
+
         for ( i in event ) {
+            if ( i.isEmpty() ) {
+                continue
+            }
+
             val f = pool.submit(Run(
                     graph = i,
                     bamFile = this.bamFile,

@@ -2,8 +2,8 @@ package com.splice4k.sms.tools
 
 
 import com.splice4k.base.GenomicLoci
-import com.splice4k.base.SpliceEvent
 import com.splice4k.base.JunctionsGraph
+import com.splice4k.base.SpliceEvent
 import com.splice4k.errors.ChromosomeException
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
@@ -12,8 +12,9 @@ import com.splice4k.tools.CheckAS
 import com.splice4k.tools.IdentifyAS
 import com.splice4k.tools.PsiOfIR
 import org.apache.log4j.Logger
-import java.util.concurrent.Executors
+import java.io.File
 import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
 /**
@@ -40,7 +41,8 @@ class SJFinder(
         val silent: Boolean,
         val overlapOfExonIntron: Double,
         val error: Int,
-        val threads: Int
+        val threads: Int,
+        val bamFile: File?
 ) {
     private val template = template.templates
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
@@ -48,7 +50,7 @@ class SJFinder(
     private val identified = mutableSetOf<String>()
 
     init {
-        this.identifySJ()
+        this.identifySJ(this.bamFile)
     }
 
 
@@ -67,7 +69,8 @@ class SJFinder(
             private val bamIndex: SJIndex,
             private val error: Int,
             private val overlapOfExonIntron: Double,
-            private val silent: Boolean
+            private val silent: Boolean,
+            private val bamFile: File?
 
     ): Callable<HashMap<SpliceEvent, MutableList<String>>> {
         private val psiOfIR = PsiOfIR()
@@ -124,7 +127,7 @@ class SJFinder(
                                     chromosome = template.template.chromosome,
                                     regionStart = exons[i].start - 1,
                                     regionEnd = exons[i].end + 1,
-                                    bamFile = this.bamIndex.infile
+                                    bamFile = bamFile
                             )
 
                             this.results[tmp] = mutableListOf("${template.template.geneId}\t${template.template.transcriptId}\t${exons[i].exonId}")
@@ -176,7 +179,7 @@ class SJFinder(
     /**
      * 识别各种可变剪接类型
      */
-    private fun identifySJ() {
+    private fun identifySJ( bamFile: File? ) {
         this.logger.info("Finding alternative splicing events")
         // 这个gap就是为了控制输出一个合适的进度条的
         val pool = Executors.newFixedThreadPool(this.threads)
@@ -190,7 +193,8 @@ class SJFinder(
                     bamIndex = this.bamIndex,
                     error = this.error,
                     overlapOfExonIntron = this.overlapOfExonIntron,
-                    silent = this.silent
+                    silent = this.silent,
+                    bamFile = bamFile
             ))
 
             futures.add(f)
@@ -204,7 +208,10 @@ class SJFinder(
 
         val identifyAS = IdentifyAS(
                 overlapOfExonIntron = this.overlapOfExonIntron,
-                bamFile = this.bamIndex.infile
+                bamFile = when(this.bamIndex.fileFormat) {
+                    "bam" -> this.bamIndex.infile
+                    else -> bamFile
+                }
         )
 
         this.logger.info("Finding alternative splicing events by another algorithm")

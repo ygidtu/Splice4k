@@ -35,8 +35,21 @@ class SpliceEvent(
     }
 
     var psi: Double? = null
+    val otherPSi = mutableListOf<Double>()
 
     var isNovel = true
+
+
+    /**
+     * 获取其他位点的PSI的值
+     * @return string; None -> NA
+     */
+    fun getOtherPsi(): String {
+        return when( this.otherPSi.isEmpty() ) {
+            true -> "NA"
+            false -> this.otherPSi.joinToString(separator = ",")
+        }
+    }
 
 
     override fun hashCode(): Int {

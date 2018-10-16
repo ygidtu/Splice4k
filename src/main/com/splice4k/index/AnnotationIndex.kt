@@ -33,9 +33,14 @@ class AnnotationIndex(
 ) {
     private val logger = Logger.getLogger(AnnotationIndex::class.java)
     private val fileFormat = FileValidator().check(this.infile)
+
+    // exons(values) separated by chromosome and strand (key)
     val data = mutableMapOf<String, MutableList<Exons>>()
+
+    // list of genes
     val genes = mutableListOf<Genes>()
 
+    // list of transcripts
     val transcripts: MutableList<Genes> = mutableListOf()
 
     init {
@@ -92,6 +97,7 @@ class AnnotationIndex(
             val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
             val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
 
+            // <基因id, 基因本体> 收集基因与它对应的外显子的
             val tmpGenes = mutableMapOf<String, Genes>()
             val geneTranscript = mutableMapOf<String, String>()
 

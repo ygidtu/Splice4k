@@ -17,7 +17,7 @@ import com.splice4k.cli.Iso
  * @version 20181006
  */
 
-const val VERSION = "Splice4k version: 1.1.0 -> 2018.10.12"
+const val VERSION = "Splice4k version: 1.1.3 -> 2018.10.16"
 
 
 fun main(args: Array<String>) {
@@ -82,13 +82,6 @@ fun main(args: Array<String>) {
             else -> println(cmd.getFormattedHelp())
         }
 
-    } catch (e: Exception) {
-
-        logger.error(e.localizedMessage)
-
-        e.stackTrace.forEach { logger.error(it) }
-
-        exitProcess(e.hashCode())
     }
 }
 

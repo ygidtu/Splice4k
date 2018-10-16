@@ -37,6 +37,8 @@ class FileValidator() {
 
         } catch (e: SAMFormatException) {
 
+        } catch (e: java.lang.RuntimeException) {
+
         }
         return false
     }
@@ -182,6 +184,15 @@ class FileValidator() {
         return false
     }
 
+
+    /**
+     * 是否为gmap的align输出文件
+     */
+    private fun isGmap( infile: File ): Boolean {
+
+        return false
+    }
+
     /**
      * 调用的api
      * @param infile 输入文件
@@ -207,6 +218,6 @@ class FileValidator() {
             return "gtf"
         }
 
-        return "Unknown"
+        return "gmap"
     }
 }
