@@ -45,14 +45,12 @@ class SJIndex(
     val data = mutableMapOf<String, JunctionsGraph>()
 
     init {
-        if ( smrt && this.fileFormat !in arrayOf("bam", "gmap") ) {
+        if ( this.smrt && this.fileFormat !in arrayOf("bam", "gmap") ) {
             this.logger.error("Please check ${this.infile} format, it should be BAM|SAM or extract file from gmap")
             exitProcess(2)
         }
 
         this.getAllSJ()
-
-
     }
 
 
@@ -69,11 +67,6 @@ class SJIndex(
                 this.logger.error("Please check ${this.infile} format")
                 exitProcess(2)
             }
-        }
-
-        if ( this.data.isEmpty() ) {
-            this.logger.error("${this.infile} format error")
-            exitProcess("format error".toInt())
         }
     }
 
@@ -182,7 +175,11 @@ class SJIndex(
                         else -> JunctionsGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
                     }
 
-                    tmpGraph.addEdge(start = info["start"]!!.toInt(), end = info["end"]!!.toInt(), freq = info["count"]!!.toInt())
+                    tmpGraph.addEdge(
+                            start = info["start"]!!.toInt(),
+                            end = info["end"]!!.toInt(),
+                            freq = info["count"]!!.toInt()
+                    )
 
                     this.data[key] = tmpGraph
                 } catch ( e: NullPointerException ) {
@@ -264,7 +261,6 @@ class SJIndex(
 
             val spliceSites = this.extractSpliceFromCigar(record)
 
-
             /*
              这个问题以前从没注意过，跟STAR比对过才发现在这个问题
              mate reverse strand或者read reverse strand都有可能代表了这条reads真实存在的链情况
@@ -316,11 +312,9 @@ class SJIndex(
                         ))
                     }
                 } catch ( e: com.splice4k.errors.ChromosomeException ) {
-                    this.logger.error(e.localizedMessage)
-                    println(record.readName)
-                    println("${record.start}\t${record.end}")
-                    println(spliceSites)
-                    exitProcess(0)
+                    // 会有特殊情况下的read，有一定的异常，这部分目前没法识别，直接跳过了
+                    this.logger.warn("${record.readName} -> ${e.localizedMessage}")
+                    continue
                 }
 
                 this.transcripts.add(tmpGene)
@@ -375,7 +369,7 @@ class SJIndex(
             for ( i in 0..(introns.size - 2) step 2) {
                 val key = "$chromosome\t${introns[i]}\t${introns[i + 1]}\t$strand"
 
-                junctions[key] = junctions[key]?: 0 + 1
+                junctions[key] = (junctions[key]?: 0) + 1
 
                 // construct exons
                 exons.add(introns[i] - 1)

@@ -17,7 +17,7 @@ import com.splice4k.cli.Iso
  * @version 20181006
  */
 
-const val VERSION = "Splice4k version: 1.1.3 -> 2018.10.16"
+const val VERSION = "Splice4k version: 1.1.4 -> 2018.10.17"
 
 
 fun main(args: Array<String>) {

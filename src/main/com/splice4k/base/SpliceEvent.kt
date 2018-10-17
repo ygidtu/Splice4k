@@ -36,7 +36,6 @@ class SpliceEvent(
 
     var psi: Double? = null
     val otherPSi = mutableListOf<Double>()
-
     var isNovel = true
 
 

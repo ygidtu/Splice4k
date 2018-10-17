@@ -140,7 +140,7 @@ class JunctionsGraph(
             for ( i in starts!!.getSites() ) {
                 for ( j in ends!!.getSites() ) {
 
-                    if ( i < j ) {
+                    if ( j.site - i.site > error ) {
 
                         val tmpEvent = SpliceEvent(
                                 event = "SE",
@@ -412,6 +412,7 @@ class JunctionsGraph(
     /**
      * 获取范围内所有符合要求的junctions位点，以start位点为标准
      * 获取范围内start对应的所有点的
+     * @param range Pair<Int, Int> 一对int，表明查询的范围
      */
     fun getSites( range: Pair<Int, Int> ): List<Site> {
         val res = mutableListOf<Site>()

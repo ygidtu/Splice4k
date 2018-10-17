@@ -26,18 +26,20 @@ import kotlin.system.exitProcess
 
 
 
-class SGS: CliktCommand(help = "Find AS from NGS") {
+class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-seq") {
     private val input by argument(
-            help = "Path to input file, multiple files separate by space [bam|sam|sj|star SJ.out.tab]"
+            help = "Path to input file, multiple files separate by space [BAM|SAM|STAR SJ.out.tab|gmap align|SJ]"
     ).file(exists = true).multiple()
 
     private val bam by option(
             "-b",
             "--bam",
-            help = "Path to BAM/SAM files, or the directory contains BAM/SAM files. [default: current running directory]\n" +
-                    "\tIf input files are BAM/SAM files, this parameter won't work\n" +
-                    "\tIf specified path to directory contains BAM/SAM files corresponding to STAR SJ.out.tab files, this program will auto match those files\n" +
-                    "\tIf specified BAM/SAM file with this parameter, then this program will calculate PSI of IR using this file\n"
+            help = """
+                Path to BAM/SAM files, or the directory contains BAM/SAM files. [default: current running directory]
+                - If input files are BAM/SAM files, this parameter won't work
+                - If specified path to directory contains BAM/SAM files corresponding to STAR SJ.out.tab files, this program will auto match those files
+                - If specified BAM/SAM file with this parameter, then this program will calculate PSI of IR using this file
+                """
     ).file(exists = true)
 
 
@@ -201,8 +203,8 @@ class SGS: CliktCommand(help = "Find AS from NGS") {
                 }
 
                 val gene = mutableSetOf<String>()
-                val transcript = mutableListOf<String>()
-                val exon = mutableListOf<String>()
+                val transcript = mutableSetOf<String>()
+                val exon = mutableSetOf<String>()
 
                 for (v in values) {
                     v.source["gene"]?.let {

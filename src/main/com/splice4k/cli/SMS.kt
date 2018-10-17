@@ -25,10 +25,10 @@ import kotlin.system.exitProcess
 
 
 
-class SMS: CliktCommand(help = "Find AS from PacBio data") {
+class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-seq") {
 
     private val input by argument(
-            help = "Path to input Bam/Sam file"
+            help = "Path to input file, multiple files separate by space [BAM|SAM|gmap align|SJ]"
     ).file(exists = true).multiple()
 
 

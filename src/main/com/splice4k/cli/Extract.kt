@@ -16,11 +16,11 @@ import com.splice4k.index.SJIndex
  */
 
 
-class Extract: CliktCommand(help = "Extract junctions from Bam/Sam files") {
+class Extract: CliktCommand(help = "Extract splice junctions from BAM/SAM files") {
     private val input by option(
             "-i",
             "--input",
-            help = "Path to input Bam/Sam file"
+            help = "Path to input BAM/SAM file or gmap align (-A parameter) output file"
     ).file(exists = true).required()
 
     private val output by option(

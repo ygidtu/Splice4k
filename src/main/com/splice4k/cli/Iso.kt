@@ -22,7 +22,7 @@ import kotlin.system.exitProcess
  */
 
 
-class Iso: CliktCommand(help = "Construct Isoforms through SMRT data") {
+class Iso: CliktCommand(help = "Construct Isoforms through SMRT-seq data") {
 
     private val input by argument(
             help = "Path to input BAM/SAM files, multiple files separate by space"
