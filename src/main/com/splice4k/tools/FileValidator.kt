@@ -188,9 +188,28 @@ class FileValidator() {
     /**
      * 是否为gmap的align输出文件
      */
-    private fun isGmap( infile: File ): Boolean {
+    private fun isGmap( infile: File ): Boolean? {
 
-        return false
+        val gmapAlignExtracted = "^[\\w\\.]+\t\\d+\t\\d+\t[+-]\t(\\d+,?)*$"
+        val gmapAlign = "^\\s+[+-][\\w\\.]+:\\d+-\\d+\\s+\\(\\d+-\\d+\\)\\s+\\d{0,3}%\\s+->\\s+[\\.]{3}\\d+[\\.]{3}(\\s+)(\\s+\\d\\.\\d{3},?)+"
+
+        val reader = Scanner(infile)
+
+        // -X:167209161-167209106  (1-56)   100% ->   ...1054...  0.997, 0.999
+
+        while ( reader.hasNext() ) {
+            val line = reader.nextLine()
+
+            if ( line.matches( gmapAlign.toRegex() ) ) {
+                return true
+            }
+
+            if ( line.matches( gmapAlignExtracted.toRegex() ) ) {
+                return false
+            }
+        }
+
+        return null
     }
 
     /**
@@ -218,6 +237,10 @@ class FileValidator() {
             return "gtf"
         }
 
-        return "gmap"
+        return when ( this.isGmap(infile) ) {
+            true -> "gmap"
+            false -> "gmapE"
+            null -> "unknown"
+        }
     }
 }

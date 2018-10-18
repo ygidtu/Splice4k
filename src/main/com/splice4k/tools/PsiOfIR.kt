@@ -77,18 +77,8 @@ class PsiOfIR {
         val exons = mutableMapOf<Int, Int>()
         val junctions = mutableMapOf<Int, Int>()
 
-        for ( i in (regionStart - 20)..regionStart ) {
-            exons[i] = 0
-        }
 
-        for ( i in (regionEnd..regionEnd + 20) ) {
-            exons[i] = 0
-        }
-
-        for ( i in (regionStart + 1)..(regionEnd - 1) ) {
-            junctions[i] = 0
-        }
-
+        // bai index needed, if .bai not found generate one
         try{
             if ( !File("$bamFile.bai").exists() ) {
                 val tmpReader =  SamReaderFactory
@@ -106,6 +96,8 @@ class PsiOfIR {
             this.logger.info("Create index failed, ${e.localizedMessage}")
         }
 
+
+        // read from BAM/SAM file
         try{
             val tmpReader =  SamReaderFactory
                     .makeDefault()
@@ -114,17 +106,18 @@ class PsiOfIR {
                     .open(bamFile)
 
             tmpReader.use {
-                for ( i in tmpReader.query( chromosome, regionStart, regionEnd, false ) ) {
+                for ( i in tmpReader.query( chromosome, regionStart - 20, regionEnd + 20, false ) ) {
 
                     val sites = this.extractSpliceFromCigar(i)
                     for ( j in 0..(sites.size - 2) step 2 ) {
-                        for ( k in sites[j]..sites[j + 1] ) {
-                            if ( exons.containsKey(k) ) {
-                                exons[k] = 1 + exons[k]!!
-                            }
 
-                            if ( junctions.containsKey(k) ) {
-                                junctions[k] = 1 + junctions[k]!!
+                        val startSite = kotlin.math.max(sites[j], regionStart - 20)
+                        val endSite = kotlin.math.min(sites[j + 1], regionEnd + 20)
+
+                        for ( k in startSite..endSite ) {
+                            when ( k in regionStart..regionEnd) {
+                                true -> junctions[k] = junctions[k] ?: 0 + 1
+                                false -> exons[k] = exons[k] ?: 0 + 1
                             }
                         }
                     }
@@ -138,7 +131,7 @@ class PsiOfIR {
             return null
         }
 
-        fun getMean(data: Map<Int, Int>): Double {
+        fun getMean( data: Map<Int, Int> ): Double {
             return data.values.sum().toDouble() / data.size
         }
 

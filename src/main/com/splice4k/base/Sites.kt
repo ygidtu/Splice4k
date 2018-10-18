@@ -56,7 +56,7 @@ class Sites( val node: Int ): Comparable<Sites> {
      * @return 获取这个节点上对应的所有其他点
      */
     fun getSites(): List<Site> {
-        return this.pos.values.toList()
+        return this.pos.values.toMutableList().sorted()
     }
 
 

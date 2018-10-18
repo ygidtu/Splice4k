@@ -135,13 +135,12 @@ class JunctionsGraph(
     ) {
         val exonSkipped = hashSetOf<Int>()
 
-        try {
+        if (starts != null && ends != null) {
             // finding potential SE
-            for ( i in starts!!.getSites() ) {
-                for ( j in ends!!.getSites() ) {
+            for ( i in starts.getSites() ) {
+                for ( j in ends.getSites() ) {
 
                     if ( j.site - i.site > error ) {
-
                         val tmpEvent = SpliceEvent(
                                 event = "SE",
                                 chromosome = this.chromosome,
@@ -152,7 +151,7 @@ class JunctionsGraph(
                         )
 
                         tmpEvent.otherPSi.add(starts.getPsi(i.site))
-                        tmpEvent.otherPSi.add(starts.getPsi(j.site))
+                        tmpEvent.otherPSi.add(ends.getPsi(j.site))
                         tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
 
                         res.add(tmpEvent)
@@ -165,13 +164,12 @@ class JunctionsGraph(
                     }
                 }
             }
-        } catch (e: NullPointerException) {
 
         }
 
-        try {
+        if ( starts != null ) {
             // finding A3/A5
-            for ( i in 0..(starts!!.size - 2) ) {
+            for ( i in 0..(starts.size - 2) ) {
                 for ( j in (i + 1)..(starts.size - 1) ) {
                     val sites = mutableListOf(
                             starts.node,
@@ -204,13 +202,11 @@ class JunctionsGraph(
                     }
                 }
             }
-        } catch (e: NullPointerException) {
-
         }
 
-        try{
+        if ( ends != null ) {
             // finding A3/A5
-            for ( i in 0..(ends!!.size - 2) ) {
+            for ( i in 0..(ends.size - 2) ) {
                 for ( j in (i + 1)..(ends.size - 1) ) {
 
                     val sites = mutableListOf(
@@ -244,8 +240,6 @@ class JunctionsGraph(
                     }
                 }
             }
-        } catch (e: NullPointerException) {
-
         }
 
     }

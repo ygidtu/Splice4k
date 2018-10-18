@@ -22,6 +22,8 @@ import kotlin.system.exitProcess
  * @author Zhang Yiming
  * @since ???
  * @version 20181006
+ *
+ * 2018.10.18 添加对gmap align文件的支持，重新format一下代码结构
  */
 
 
@@ -44,12 +46,22 @@ class SJIndex(
     // chromosome and splice graph
     val data = mutableMapOf<String, JunctionsGraph>()
 
+
+    // 数据类，用以提取BAM，gmap align文件中的信息，构建AS所需图
+    data class Reads(
+            val chromosome: String,
+            val start: Int,
+            val end: Int,
+            val strand: Char,
+            val introns: List<Int>,
+            val exons: List<Int>
+    )
+
     init {
-        if ( this.smrt && this.fileFormat !in arrayOf("bam", "gmap") ) {
-            this.logger.error("Please check ${this.infile} format, it should be BAM|SAM or extract file from gmap")
+        if ( this.smrt && this.fileFormat !in arrayOf("bam", "gmap", "gmapE") ) {
+            this.logger.error("Please check ${this.infile} format, it should be BAM|SAM or gmap align file")
             exitProcess(2)
         }
-
         this.getAllSJ()
     }
 
@@ -58,98 +70,76 @@ class SJIndex(
      * 获取所有的可变剪接事件
      */
     private fun getAllSJ() {
-        when ( fileFormat ) {
-            "sj" -> this.readSJ()
-            "star" -> this.readSJ()
-            "bam" -> this.readBam()
-            "gmap" -> this.readGmap()
+
+        val reads = mutableListOf<Reads>()
+        val junctions = mutableMapOf<String, Int>()
+
+        this.logger.info("Reading from ${this.infile}")
+
+        when ( this.fileFormat ) {
+            "bam" -> this.readBam( junctions = junctions, reads = reads )
+            in arrayOf("gmap", "gmapE") -> this.readGmap( junctions = junctions, reads = reads )
+            in arrayOf( "star", "sj" ) -> this.readSJ( junctions = junctions )
             else -> {
                 this.logger.error("Please check ${this.infile} format")
                 exitProcess(2)
             }
         }
-    }
 
+        // 构建转录本
+        if ( this.smrt ) {
+            reads.forEach {
+                // init Genes
+                val tmpGene = Genes(
+                        chromosome = it.chromosome,
+                        start = it.start,
+                        end = it.end,
+                        geneName = "NA",
+                        strand = it.strand
+                )
 
-    /*
-        val pattern = when ( star ) {
-            false -> "^([\\w\\.]+):(\\d+)-(\\d+)([+-\\.]?)\t(\\d+)$".toRegex()
-            else -> when (this.unique) {
-            true -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s1\\s+(\\d+).*$".toRegex()
-            else -> "^([\\w\\.]+)\\s(\\d+)\\s(\\d+)\\s([12])\\s\\d+\\s[01]\\s+(\\d+).*$".toRegex()
+                // construct exon to transcripts
+                try{
+                    for ( i in 0..(it.exons.size - 2) step 2 ) {
+                        tmpGene.exons.add(Exons(
+                                chromosome = it.chromosome,
+                                start = it.exons[i],
+                                end = it.exons[i + 1],
+                                exonId = ""
+                        ))
+                    }
+                } catch ( e: com.splice4k.errors.ChromosomeException ) {
+                    this.logger.error(e.localizedMessage)
+                    println(it.exons)
+                    exitProcess(0)
+                }
+
+                this.transcripts.add(tmpGene)
             }
         }
 
-        var (chromosome, tmpStart, tmpEnd, strand, count) = pattern.find(line)!!.destructured
 
-        strand = when( strand  ) {
-            "" -> "."
-            "1" -> "+"
-            "2" -> "-"
-            else -> strand
+        // 构建junction图
+        for ( (key, v) in junctions ) {
+            if ( v < this.filter ) {
+                continue
+            }
+
+            val intron = key.split("\t")
+
+            val dataKey = "${intron[0]}${intron[3]}"
+
+            this.data[dataKey] = this.data[dataKey] ?: JunctionsGraph(intron[0], intron[3].toCharArray()[0])
+
+            this.data[dataKey]!!.addEdge(intron[1].toInt(), intron[2].toInt(), freq = v)
         }
-     */
-
-
-    /**
-     * 从sj文件中通过split的方式获取数据。
-     * @param line 文件行
-     * @return 关键字map
-     */
-    private fun getSitesFromSJ(line: String): Map<String, String> {
-        val results = mutableMapOf<String, String>()
-
-        var lines = line.replace("\n", "").split("\t")
-
-        results["count"] = lines.last()
-
-        results["strand"] = when {
-            lines.first().endsWith("+") -> "+"
-            lines.first().endsWith("-") -> "-"
-            else -> "."
-        }
-
-        lines = lines.first().split(":")
-
-        results["chromosome"] = lines.first()
-
-        lines = lines.last().split("-")
-
-        results["start"] = lines.first()
-
-        results["end"] = lines[1].replace("[+-\\.]".toRegex(), "")
-
-        return results
-    }
-
-
-    /**
-     * 从star文件中通过split的方式获取数据。
-     * @param line 文件行
-     * @return 关键字map
-     */
-    private fun getSitesFromSTAR(line: String): Map<String, String> {
-        val lines = line.split("\\s+".toRegex())
-
-        return mapOf(
-                "chromosome" to lines[0],
-                "start" to lines[1],
-                "end" to lines[2],
-                "strand" to when (lines[3]) {
-                    "1" -> "+"
-                    "2" -> "-"
-                    else -> "."
-                },
-                "uniq" to lines[5],
-                "count" to lines[6]
-        )
     }
 
 
     /**
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
      */
-    private fun readSJ() {
+    private fun readSJ( junctions: MutableMap<String, Int> ) {
         logger.info("Reading from ${this.infile}")
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
@@ -160,28 +150,23 @@ class SJIndex(
 
                 try{
 
-                    val info = when(this.fileFormat) {
-                        "sj" -> getSitesFromSJ(line)
-                        else -> getSitesFromSTAR(line)
+                    when(this.fileFormat) {
+                        "sj" -> {
+                            val cleanedLine = line.replace("[:-]".toRegex(), "\t").split("\t")
+                            junctions[cleanedLine.subList(0, cleanedLine.size - 1).joinToString("\t")] = cleanedLine.last().toInt()
+                        }
+                        else -> {
+                            val lines = line.split("\\s+".toRegex())
+                            val strand = when (lines[3]) {
+                                "1" -> "+"
+                                "2" -> "-"
+                                else -> "."
+                            }
+                            junctions["${lines[0]}\t${lines[1]}\t${lines[2]}\t$strand"] = lines[6].toInt()
+                        }
                     }
 
-                    if ( info["count"]!!.toInt() < this.filter ) {
-                        continue
-                    }
 
-                    val key = "${info["chromosome"]!!}${info["strand"]!!}"
-                    val tmpGraph = when ( this.data.containsKey(key) ) {
-                        true -> this.data[key]!!
-                        else -> JunctionsGraph(chromosome = info["chromosome"]!!, strand = info["strand"]!!.toCharArray().first())
-                    }
-
-                    tmpGraph.addEdge(
-                            start = info["start"]!!.toInt(),
-                            end = info["end"]!!.toInt(),
-                            freq = info["count"]!!.toInt()
-                    )
-
-                    this.data[key] = tmpGraph
                 } catch ( e: NullPointerException ) {
                     continue
                 }
@@ -232,17 +217,18 @@ class SJIndex(
 
     /**
      * 从Bam文件中提取所有Splice junctions和其转录本等信息
+     * @param junctions junctions的count map
+     * @param reads Reads的列表
      */
-    private fun readBam() {
+    private fun readBam( junctions: MutableMap<String, Int>, reads: MutableList<Reads> ) {
         val tmpReader =  SamReaderFactory
                 .makeDefault()
                 .open(this.infile)
                 .iterator()
 
-        this.logger.info("Reading from ${this.infile}")
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val pb = ProgressBar.wrap(tmpReader, pbb)
-        val junctions = mutableMapOf<String, Int>()
+
 
         for ( record in pb) {
 
@@ -282,146 +268,137 @@ class SJIndex(
                 false -> '+'
             }
 
-
+            val introns = mutableListOf<Int>()
+            val exons = mutableListOf<Int>()
             // 统计所有的junctions的数量，便于filter
-            for ( i in 1..(spliceSites.size - 2) step 2) {
-                val key = "${record.referenceName}\t${spliceSites[i]}\t${spliceSites[i + 1]}\t$strand"
-                junctions[key] = junctions[key]?: 0 + 1
-            }
+            for ( i in 0..(spliceSites.size - 1) ) {
 
-            // SMRT 构建list of transcripts
-            if ( this.smrt ) {
+                if ( i % 2 == 1 ) {
+                    introns.add( spliceSites[i] )
+                    introns.add( spliceSites[i + 1] )
+                    val key = "${record.referenceName}\t${spliceSites[i]}\t${spliceSites[i + 1]}\t$strand"
+                    junctions[key] = junctions[key]?: 0 + 1
+                } else {
+                    exons.add( when ( i ) {
+                        0 -> spliceSites[i]
+                        else -> spliceSites[i] + 1
+                    } )
 
-                // init Genes
-                val tmpGene = Genes(
-                        chromosome = record.referenceName,
-                        start = record.alignmentStart,
-                        end = record.alignmentEnd,
-                        geneName = record.readName,
-                        strand = strand
-                )
-
-                // construct exon to transcripts
-                try{
-                    for ( i in 0..(spliceSites.size - 2) step 2 ) {
-                        tmpGene.exons.add(Exons(
-                                chromosome = record.referenceName,
-                                start = spliceSites[i],
-                                end = spliceSites[i + 1],
-                                exonId = ""
-                        ))
-                    }
-                } catch ( e: com.splice4k.errors.ChromosomeException ) {
-                    // 会有特殊情况下的read，有一定的异常，这部分目前没法识别，直接跳过了
-                    this.logger.warn("${record.readName} -> ${e.localizedMessage}")
-                    continue
+                    exons.add( when (i + 1) {
+                        spliceSites.size -> spliceSites[i + 1]
+                        else -> spliceSites[i + 1] - 1
+                    } )
                 }
-
-                this.transcripts.add(tmpGene)
             }
+
+            reads.add(Reads(
+                    chromosome = record.referenceName,
+                    start = record.alignmentStart,
+                    end = record.alignmentEnd,
+                    strand = strand,
+                    introns = introns,
+                    exons = exons
+            ))
         }
 
         tmpReader.close()
-
-        for ( (key, v) in junctions ) {
-            if ( v < this.filter ) {
-                continue
-            }
-
-            val intron = key.split("\t")
-
-            val dataKey = "${intron[0]}${intron[3]}"
-
-            this.data[dataKey] = this.data[dataKey] ?: JunctionsGraph(intron[0], intron[3].toCharArray()[0])
-
-            this.data[dataKey]!!.addEdge(intron[1].toInt(), intron[2].toInt(), freq = v)
-        }
     }
 
 
     /**
      * 从gmap align的文件中提取读取reads来做三代
+     * @param junctions junctions的count map
+     * @param reads Reads的列表
      */
-    private fun readGmap() {
+    private fun readGmap( junctions: MutableMap<String, Int>, reads: MutableList<Reads> ) {
 
-        this.logger.info("Reading from ${this.infile}")
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
-        val junctions = mutableMapOf<String, Int>()
-
+        val tmpSites = mutableListOf<Int>()     // gmap align extracted sites from single reads
+        var tmpStrand: Char? = null                            // gmap align extracted strand from single reads
+        var tmpChromo: String? = null                          // same as tmpStrand
 
         while ( reader.hasNext() ) {
             val line = reader.nextLine()
-            val lines = line.split("\t")
 
-            if ( lines[4] == "" ) {
-                continue
-            }
-
-            val chromosome = lines[0]
-            val start = lines[1].toInt()
-            val end = lines[2].toInt()
-            val strand = lines[3].toCharArray()[0]
-
-            val introns = lines[4].split(",").map { it.toInt() }
-            val exons = mutableListOf(start)
-
-            for ( i in 0..(introns.size - 2) step 2) {
-                val key = "$chromosome\t${introns[i]}\t${introns[i + 1]}\t$strand"
-
-                junctions[key] = (junctions[key]?: 0) + 1
-
-                // construct exons
-                exons.add(introns[i] - 1)
-                exons.add(introns[i + 1] + 1)
-            }
-
-            exons.add(end)
-
-            // init Genes
-            val tmpGene = Genes(
-                    chromosome = chromosome,
-                    start = start,
-                    end = end,
-                    geneName = "NA",
-                    strand = strand
-            )
-
-            // construct exon to transcripts
-            try{
-                for ( i in 0..(exons.size - 2) step 2 ) {
-                    tmpGene.exons.add(Exons(
-                            chromosome = chromosome,
-                            start = exons[i],
-                            end = exons[i + 1],
-                            exonId = ""
-                    ))
+            if ( this.fileFormat == "gmapE" ) {
+                val lines = line.split("\t")
+                if ( lines[4] == "" ) {
+                    continue
                 }
-            } catch ( e: com.splice4k.errors.ChromosomeException ) {
-                this.logger.error(e.localizedMessage)
-                println(exons)
-                exitProcess(0)
+
+                val chromosome = lines[0]
+                val start = lines[1].toInt()
+                val end = lines[2].toInt()
+                val strand = lines[3].toCharArray()[0]
+                val introns = lines[4].split(",").map { it.toInt() }
+                val exons = mutableListOf(start)
+
+                for ( i in 0..(introns.size - 2) step 2) {
+                    val key = "$chromosome\t${introns[i]}\t${introns[i + 1]}\t$strand"
+
+                    junctions[key] = junctions[key]?: 0 + 1
+
+                    // construct exons
+                    exons.add(introns[i] - 1)
+                    exons.add(introns[i + 1] + 1)
+                }
+
+                exons.add(end)
+
+                reads.add(Reads(
+                        chromosome = chromosome,
+                        start = start,
+                        end = end,
+                        strand = strand,
+                        introns = introns,
+                        exons = exons
+                ))
+            } else if ( this.fileFormat == "gmap" ) {
+                val gmapPattern = "^\\s+([+-])([\\w\\.]+):(\\d+)-(\\d+)\\s+\\(\\d+-\\d+\\)\\s+\\d{0,3}%.*"
+
+                if ( line.matches(gmapPattern.toRegex()) ) {
+                    val (strand, chromosome, start, end, _) = gmapPattern.toRegex().matchEntire(line)!!.destructured
+                    if ( tmpStrand == null ) {
+                        tmpStrand = strand.toCharArray()[0]
+                    }
+
+                    if ( tmpChromo == null ) {
+                        tmpChromo = chromosome
+                    }
+
+                    tmpSites.add( start.toInt() )
+                    tmpSites.add( end.toInt() )
+                } else {
+                    if ( tmpSites.size > 2 ) {
+                        val introns = mutableListOf<Int>()
+
+                        for ( i in 1..(tmpSites.size - 2) step 2 ) {
+                            introns.add( tmpSites[i] + 1 )
+                            introns.add( tmpSites[i + 1] - 1 )
+
+                            val key = "$tmpChromo\t${tmpSites[i] + 1}\t${tmpSites[i + 1] - 1}\t$tmpStrand"
+
+                            junctions[key] = junctions[key]?: 0 + 1
+                        }
+
+                        reads.add(Reads(
+                                chromosome = tmpChromo!!,
+                                start = tmpSites.first(),
+                                end = tmpSites.last(),
+                                strand = tmpStrand!!,
+                                introns = introns,
+                                exons = tmpSites.subList(1, tmpSites.size - 1)
+                        ))
+                    }
+
+                    tmpChromo = null; tmpStrand = null; tmpSites.clear()
+                }
             }
 
-            this.transcripts.add(tmpGene)
         }
 
         reader.close()
-
-        for ( (key, v) in junctions ) {
-            if ( v < this.filter ) {
-                continue
-            }
-
-            val intron = key.split("\t")
-
-            val dataKey = "${intron[0]}${intron[3]}"
-
-            this.data[dataKey] = this.data[dataKey] ?: JunctionsGraph(intron[0], intron[3].toCharArray()[0])
-
-            this.data[dataKey]!!.addEdge(intron[1].toInt(), intron[2].toInt(), freq = v)
-        }
-
     }
 
 

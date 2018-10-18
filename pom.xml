@@ -6,7 +6,7 @@
 
     <groupId>groupId</groupId>
     <artifactId>Splice4k</artifactId>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
 
     <properties>
         <kotlin.version>1.2.71</kotlin.version>
