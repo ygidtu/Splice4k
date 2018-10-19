@@ -277,7 +277,7 @@ class SJIndex(
                     introns.add( spliceSites[i] )
                     introns.add( spliceSites[i + 1] )
                     val key = "${record.referenceName}\t${spliceSites[i]}\t${spliceSites[i + 1]}\t$strand"
-                    junctions[key] = junctions[key]?: 0 + 1
+                    junctions[key] = (junctions[key]?: 0) + 1
                 } else {
                     exons.add( when ( i ) {
                         0 -> spliceSites[i]
@@ -337,7 +337,7 @@ class SJIndex(
                 for ( i in 0..(introns.size - 2) step 2) {
                     val key = "$chromosome\t${introns[i]}\t${introns[i + 1]}\t$strand"
 
-                    junctions[key] = junctions[key]?: 0 + 1
+                    junctions[key] = (junctions[key]?: 0) + 1
 
                     // construct exons
                     exons.add(introns[i] - 1)
@@ -371,6 +371,7 @@ class SJIndex(
                     tmpSites.add( end.toInt() )
                 } else {
                     if ( tmpSites.size > 2 ) {
+                        tmpSites.sort()
                         val introns = mutableListOf<Int>()
 
                         for ( i in 1..(tmpSites.size - 2) step 2 ) {
@@ -379,7 +380,7 @@ class SJIndex(
 
                             val key = "$tmpChromo\t${tmpSites[i] + 1}\t${tmpSites[i + 1] - 1}\t$tmpStrand"
 
-                            junctions[key] = junctions[key]?: 0 + 1
+                            junctions[key] = (junctions[key]?: 0) + 1
                         }
 
                         reads.add(Reads(
@@ -388,7 +389,7 @@ class SJIndex(
                                 end = tmpSites.last(),
                                 strand = tmpStrand!!,
                                 introns = introns,
-                                exons = tmpSites.subList(1, tmpSites.size - 1)
+                                exons = tmpSites
                         ))
                     }
 
