@@ -176,13 +176,13 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
 
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
-            writer.println("#spliceRange\tspliceType\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
                 for ( v in values ) {
                     val psi = mutableListOf<String>()
                     for ( label in labels ) {
-                        psi.add(psis[key]!![label]?.toString() ?: "NA")
+                        psi.add(psis[key]!![label] ?: "NA")
                     }
                     tmpResults.add("$key\t${key.isNovel}\t$v\t${psi.joinToString("\t")}")
                 }

@@ -139,7 +139,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         } else {                     // this.bam is directory, then try to find the corresponding bam file
                             var bamFile = bamDirectory
 
-                            val pattern = ".*${it.name.replace("[_\\.]SJ.out.tab".toRegex(), "")}[\\._](\\w+\\.)*bam$"
+                            val pattern = ".*${it.name.replace("[_.]SJ.out.tab".toRegex(), "")}[._](\\w+.)*bam$"
                                     .toRegex(RegexOption.IGNORE_CASE)
 
                             for ( i in bamDirectory.walkTopDown() ) {
@@ -194,12 +194,12 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
 
-            writer.println("#spliceRange\tspliceType\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
                 val psi = mutableListOf<String>()
                 for ( label in labels ) {
-                    psi.add(psis[key]!![label]?.toString() ?: "NA")
+                    psi.add(psis[key]!![label] ?: "NA")
                 }
 
                 val gene = mutableSetOf<String>()

@@ -37,6 +37,7 @@ class SpliceEvent(
     var psi: Double? = null
     val otherPSi = mutableListOf<Double>()
     var isNovel = true
+    var subtypes = "NA"
 
 
     /**
@@ -60,7 +61,7 @@ class SpliceEvent(
     }
 
     override fun toString(): String {
-        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}\t${this.event}\t${this.chromosome}:${this.sliceSites.joinToString(prefix = "", postfix = "", separator = "-")}"
+        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}\t${this.event}\t${this.subtypes}\t${this.chromosome}:${this.sliceSites.joinToString(prefix = "", postfix = "", separator = "-")}"
     }
 
 }

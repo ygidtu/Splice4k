@@ -2,6 +2,7 @@ package com.splice4k.tools
 
 import com.splice4k.base.Exons
 import com.splice4k.base.SpliceEvent
+import kotlin.math.abs
 
 /**
  * 检查各种剪接时间发生于哪个外显子上
@@ -16,15 +17,35 @@ class CheckAS() {
      */
     private fun checkSE(currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons> {
         val res = mutableListOf<Exons>()
+        val subtypes = mutableSetOf<String>()
+
         for ( currentExon in exonList ) {
 
             if ( currentEvent.sliceSites[1] <= currentExon.start &&
                     currentEvent.sliceSites[2] >= currentExon.end ) {
 
+                subtypes.add( when {
+                    abs(currentEvent.sliceSites[1] - currentExon.start) <= 1 &&
+                            abs(currentEvent.sliceSites[2] - currentExon.end ) <= 1 -> "exact_${currentExon.source["transcript"]}"
+                    abs(currentEvent.sliceSites[1] - currentExon.start) <= 1 ||
+                            abs(currentEvent.sliceSites[2] - currentExon.end ) <= 1 -> "part_${currentExon.source["transcript"]}"
+                    else -> "other_${currentExon.source["transcript"]}"
+                } )
+
                 currentEvent.isNovel = false
                 res.add(currentExon)
             }
         }
+
+        currentEvent.subtypes = when ( subtypes.size ) {
+            0 -> "NA"
+            1 -> subtypes.first().split("_").first()
+            else -> when ( subtypes.asSequence().map { it.split("_").last() }.toSet().size ) {
+                1 -> "single-transcript"
+                else -> "multi-transcripts"
+            }
+        }
+
         return res
     }
 
