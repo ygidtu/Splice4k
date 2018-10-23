@@ -12,6 +12,7 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.sms.tools.SJFinder
 import com.splice4k.sms.tools.TranscriptsReadsCoupler
+import com.splice4k.tools.PSITable
 import org.apache.log4j.Logger
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -50,6 +51,12 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             "--output",
             help = "Path to output file"
     ).file().required()
+
+
+    private val outputPSITable by option(
+            "--psi",
+            help = "Output PSI table of same starts and same ends junctions"
+    ).flag(default = false)
 
 
     private val threads by option(
@@ -116,6 +123,8 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
         val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
+        val psiTable = PSITable()
+
 
         val ref = AnnotationIndex(
                 infile = this.reference.absoluteFile,
@@ -132,6 +141,11 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                     smrt = true,
                     filter = this.junctionsFilter
             )
+
+            if ( this.outputPSITable ) {
+                psiTable.addJunctionGraph(bam)
+            }
+
 
             logger.info("Start to compare ref and reads")
             val matched = TranscriptsReadsCoupler(
@@ -189,6 +203,11 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
             writer.close()
+
+            if ( this.outputPSITable ) {
+                psiTable.writeTo( this.output.absoluteFile )
+            }
+
         }
     }
 }

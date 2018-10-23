@@ -174,3 +174,10 @@ Arguments:
 ```
 ## FAQ
 1. If there are too many input files, may result in failed to check input file format, and so on.
+2. subtypes of SE events
+  - exact: the junciton just cross exact one exons -> junciont : 100-200, then the exon is 101-199
+  - part: only one side of junciton match with known exon
+  - other: junctions cross only one exon, but both start and end sites do not match with 
+  - single: junction cross multiple exons of same transcript
+  - multi: junction cross multiple exons from different transcripts
+  

@@ -13,6 +13,7 @@ import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.tools.IdentifyAS
+import com.splice4k.tools.PSITable
 import org.apache.log4j.Logger
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -56,6 +57,10 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             help = "Path to output file"
     ).file().required()
 
+    private val outputPSITable by option(
+            "--psi",
+            help = "Output PSI table of same starts and same ends junctions"
+    ).flag(default = false)
 
     private val junctionsFilter by option(
             "-c",
@@ -111,6 +116,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
+            val psiTable = PSITable()
 
             val ref = AnnotationIndex(
                     infile = this.reference.absoluteFile,
@@ -126,6 +132,11 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         silent = !this.show,
                         smrt = false
                 )
+
+
+                if ( this.outputPSITable ) {
+                    psiTable.addJunctionGraph(sj)
+                }
 
 
                 val bamFile = when ( sj.fileFormat ) {
@@ -227,7 +238,11 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
             writer.close()
-        }
 
+
+            if ( this.outputPSITable ) {
+                psiTable.writeTo( this.output.absoluteFile )
+            }
+        }
     }
 }

@@ -41,8 +41,8 @@ class CheckAS() {
             0 -> "NA"
             1 -> subtypes.first().split("_").first()
             else -> when ( subtypes.asSequence().map { it.split("_").last() }.toSet().size ) {
-                1 -> "single-transcript"
-                else -> "multi-transcripts"
+                1 -> "single"
+                else -> "multi"
             }
         }
 

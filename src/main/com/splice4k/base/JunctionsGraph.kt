@@ -29,8 +29,8 @@ class JunctionsGraph(
 ) {
 
     private val logger = Logger.getLogger(JunctionsGraph::class.java)
-    private val starts = mutableMapOf<Int, Sites>()
-    private val ends = mutableMapOf<Int, Sites>()
+    val starts = mutableMapOf<Int, Sites>()
+    val ends = mutableMapOf<Int, Sites>()
 
     // 记录具有A3和A5的位点，便于最后寻找MXE
     private val as35Sites = mapOf<String, HashSet<Int>>(
