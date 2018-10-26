@@ -16,8 +16,8 @@ import java.io.PrintWriter
 
 class PSITable {
     private var total = 0
-    val sameStart = mutableMapOf<String, MutableList<String>>()
-    val sameEnd = mutableMapOf<String, MutableList<String>>()
+    val sameStart = mutableMapOf<String, MutableMap<String, String>>()
+    val sameEnd = mutableMapOf<String, MutableMap<String, String>>()
     val samples = mutableListOf<String>()
 
     /**
@@ -27,21 +27,20 @@ class PSITable {
      * @param chromosome 染色体
      * @param strand 正负链
      */
-    private fun calculateAllPSI( values: Iterable<Sites>, collection: MutableMap<String, MutableList<String>>, chromosome: String, strand: Char) {
+    private fun calculateAllPSI(
+            values: Iterable<Sites>,
+            collection: MutableMap<String, MutableMap<String, String>>,
+            chromosome: String,
+            strand: Char
+    ) {
+
         for ( site in values ) {
             for (i in site.getSites() ) {
                 val key = "$chromosome:${site.node}-${i.site}$strand"
 
-                val listOfPSI = collection[key] ?: mutableListOf()
+                val listOfPSI = collection[key] ?: mutableMapOf()
 
-                var j = listOfPSI.size
-
-                while ( j < this.total - 1 ) {
-                    listOfPSI.add("0")
-                    j++
-                }
-
-                listOfPSI.add( site.getPsi(i.site).toString() )
+                listOfPSI[this.samples.last()] = site.getPsi(i.site).toString()
 
                 collection[key] = listOfPSI
             }
@@ -60,9 +59,19 @@ class PSITable {
         this.samples.add( index.infile.name )
 
         for ( graph in index.data.values ) {
-            this.calculateAllPSI(graph.starts.values, this.sameStart, graph.chromosome, graph.strand)
+            this.calculateAllPSI(
+                    values = graph.starts.values,
+                    collection = this.sameStart,
+                    chromosome = graph.chromosome,
+                    strand = graph.strand
+            )
 
-            this.calculateAllPSI(graph.ends.values, this.sameEnd, graph.chromosome, graph.strand)
+            this.calculateAllPSI(
+                    values = graph.ends.values,
+                    collection = this.sameEnd,
+                    chromosome = graph.chromosome,
+                    strand = graph.strand
+            )
         }
     }
 
@@ -73,23 +82,23 @@ class PSITable {
      */
     fun writeTo(  prefix: File ) {
 
-        fun write( output: String, collection: MutableMap<String, MutableList<String>> ) {
+        fun write(
+                output: String,
+                collection: MutableMap<String, MutableMap<String, String>>
+        ) {
             val writer = PrintWriter(File(output))
 
-            writer.use {
-                writer.println("#junctions\t${this.samples.joinToString(separator = "\t")}")
+            writer.println("#junctions\t${this.samples.joinToString(separator = "\t")}")
 
-                for ( (key, value) in collection) {
-                    var j = value.size
-
-                    while ( j < this.total ) {
-                        value.add("0")
-                        j++
-                    }
-
-                    writer.println("$key\t${value.joinToString(separator = "\t")}")
-                }
+            for ( (junction, value) in collection) {
+                writer.println("$junction\t${this.samples
+                        .asSequence()
+                        .map { value[it] ?: "0" }
+                        .toList()
+                        .joinToString(separator = "\t")}")
             }
+
+            writer.close()
         }
 
         write( "${prefix}.sameStart.PSI.tab", this.sameStart )

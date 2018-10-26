@@ -1,12 +1,11 @@
 package com.splice4k.tools
 
-import java.io.File
-import java.util.Scanner
-import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMException
 import htsjdk.samtools.SAMFormatException
+import htsjdk.samtools.SamReaderFactory
+import java.io.File
 import java.io.IOException
-import java.lang.NumberFormatException
+import java.util.*
 
 /**
  * 检查文件格式
@@ -131,9 +130,9 @@ class FileValidator() {
                         continue
                     }
 
-                    val lines = line.split("\t")
+                    val lines = line.split("\\s+".toRegex())
 
-                    if ( lines[8].matches("([\\w-\\.]+=[\\w:\\s-%,\\.]+;)+([\\w-]+=[\\w:\\s-%,\\.]+)?\$".toRegex()) ) {
+                    if ( lines.subList(8, lines.size).joinToString(separator = " ").matches("([\\w-\\.]+=[\\w:\\s-%,\\.]+;)+([\\w-]+=[\\w:\\s-%,\\.]+)?\$".toRegex()) ) {
                         res = true
                     }
 
@@ -150,7 +149,7 @@ class FileValidator() {
 
 
     /**
-     * 检查是否为gff文件
+     * 检查是否为gtf文件
      * @param infile 输入文件
      */
     private fun isGtf(infile: File): Boolean {
@@ -167,9 +166,8 @@ class FileValidator() {
                         continue
                     }
 
-                    val lines = line.split("\t")
-
-                    if ( lines[8].matches("([\\w-]+ \"[\\w+\\.\\s-%,:]+\"; ?)+".toRegex()) ) {
+                    val lines = line.split("\\s+".toRegex())
+                    if ( lines.subList(8, lines.size).joinToString(separator = " ").matches("([\\w-]+ \"[\\w+\\.\\s-%,:]+\";? ?)+".toRegex()) ) {
                         res = true
                     }
 

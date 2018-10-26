@@ -2,13 +2,9 @@ package com.splice4k
 
 import com.github.ajalt.clikt.core.UsageError
 import com.github.ajalt.clikt.core.subcommands
+import com.splice4k.cli.*
 import org.apache.log4j.Logger
-import com.splice4k.cli.Extract
-import com.splice4k.cli.Parameters
-import com.splice4k.cli.SGS
-import com.splice4k.cli.SMS
 import kotlin.system.exitProcess
-import com.splice4k.cli.Iso
 
 
 /**
@@ -17,7 +13,7 @@ import com.splice4k.cli.Iso
  * @version 20181006
  */
 
-const val VERSION = "Splice4k version: 1.1.5 -> 2018.10.18"
+const val VERSION = "Splice4k version: 1.1.6 -> 2018.10.26"
 
 
 fun main(args: Array<String>) {
