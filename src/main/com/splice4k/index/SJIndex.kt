@@ -140,7 +140,7 @@ class SJIndex(
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
      */
     private fun readSJ( junctions: MutableMap<String, Int> ) {
-        logger.info("Reading from ${this.infile}")
+
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
 

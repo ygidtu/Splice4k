@@ -93,7 +93,7 @@ class PsiOfIR {
                 tmpReader.close()
             }
         } catch ( e: htsjdk.samtools.SAMException ) {
-            this.logger.info("Create index failed, ${e.localizedMessage}")
+            this.logger.info("Create index failed for $bamFile, ${e.localizedMessage}")
         }
 
 

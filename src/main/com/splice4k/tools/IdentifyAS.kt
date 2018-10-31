@@ -5,6 +5,7 @@ import com.splice4k.base.GenomicLoci
 import com.splice4k.base.JunctionsGraph
 import com.splice4k.base.SpliceEvent
 import com.splice4k.errors.ChromosomeException
+import com.splice4k.index.AnnotationIndex
 import org.apache.log4j.Logger
 import java.io.File
 import java.util.concurrent.Callable
@@ -39,6 +40,7 @@ class IdentifyAS(
         private val bamFile: File?
 ) {
     private val logger = Logger.getLogger(IdentifyAS::class.java)
+    private val check = CheckAS()
 
 
     /**
@@ -230,7 +232,7 @@ class IdentifyAS(
      */
     fun matchEventsWithRef(
             event: List<JunctionsGraph>,
-            annotations: Map<String, List<Exons>>,
+            annotations: AnnotationIndex,
             threads: Int,
             error: Int,
             show: Boolean = true
@@ -252,7 +254,7 @@ class IdentifyAS(
             val f = pool.submit(Run(
                     graph = i,
                     bamFile = this.bamFile,
-                    annotations = annotations,
+                    annotations = annotations.data,
                     overlapOfExonIntron = this.overlapOfExonIntron,
                     error = error,
                     show = show,
@@ -267,6 +269,8 @@ class IdentifyAS(
         }
 
         pool.shutdown()
+
+        check.checkALEAFE(res, annotations.transcripts)
 
         return res
     }

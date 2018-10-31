@@ -1,7 +1,9 @@
 package com.splice4k.tools
 
 import com.splice4k.base.Exons
+import com.splice4k.base.Genes
 import com.splice4k.base.SpliceEvent
+import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException
 import kotlin.math.abs
 
 /**
@@ -66,14 +68,20 @@ class CheckAS() {
                         kotlin.math.abs(currentEvent.sliceSites[3] - currentExon.start) <= 3
                 ) {
                     match.add(currentExon)
+                    currentEvent.isNovel = false
                 }
+
             } else if (currentEvent.sliceSites[2] == currentEvent.sliceSites[3]) {
                 if (
                         kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 3 ||
                         kotlin.math.abs(currentEvent.sliceSites[1] - currentExon.end) <= 3
                 ) {
                     match.add(currentExon)
+                    currentEvent.isNovel = false
                 }
+
+            } else if ( currentExon.start > currentEvent.sliceSites[3] + 3 ) {
+                break
             }
         }
 
@@ -180,6 +188,134 @@ class CheckAS() {
             "SE" -> this.checkSE(currentEvent, exonList)
             "MXE" -> this.checkMXE(currentEvent, exonList)
             else -> null
+        }
+    }
+
+
+    private fun binaryCompare( site: MutableList<Int>, target: Int ): Boolean {
+        var low = 0; var high = site.size - 1
+
+        while (high > low + 1) {
+            val mid = (high + low) / 2
+            if (site[mid] > target + 3) {
+                high = mid
+            } else if (site[mid] < target - 3) {
+                low = mid
+            } else {
+                return true
+            }
+        }
+
+        return false
+    }
+
+
+    fun checkALEAFE( res: MutableMap<SpliceEvent, MutableList<Exons>>, transcripts: List<Genes> ) {
+
+        // only collect the second exon
+        val exons = mutableListOf<Exons>()
+        val transcriptsMap = mutableMapOf<String, Genes>()
+
+        for ( transcript in transcripts ) {
+            transcriptsMap[transcript.transcriptId] = transcript
+
+            if ( transcript.exons.size < 2 ) {
+                continue
+            }
+
+            when ( transcript.strand ) {
+                '-' -> {
+                    val tmpExon = transcript.exons[transcript.exons.size - 2]
+
+                    if ( tmpExon.exonIndexBackWards != -2 ) {
+                        throw ValueException("$tmpExon should be the second exon of $transcript")
+                    }
+
+                    exons.add(tmpExon)
+                }
+
+                '+' -> {
+                    val tmpExon = transcript.exons[1]
+
+                    if ( tmpExon.exonIndex != 1 ) {
+                        throw ValueException("$tmpExon should be the second exon of $transcript")
+                    }
+
+                    exons.add(tmpExon)
+                }
+            }
+        }
+
+        exons.sort()
+        val events = res.keys.sorted()
+
+
+        // start compare exons with events
+
+        var i = 0; var j = 0
+
+        while ( i < events.size && j < exons.size ) {
+            val currentEvent = events[i]
+            val currentExon = exons[j]
+
+            if ( currentEvent.event !in arrayOf("A3", "A5") ) {
+                i ++
+                continue
+            }
+
+            when {
+                currentEvent.sliceSites[3] < currentExon.start - 3 -> i++
+                currentEvent.sliceSites[0] > currentExon.end + 3 -> j++
+                else -> {
+                    if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
+                        if ( currentEvent.sliceSites[0] - currentExon.end in -3..3 ) {
+                            val firstExons = mutableListOf<Int>()
+                            for ( tranId in currentExon.source["transcript"]!! ) {
+                                firstExons.add(transcriptsMap[tranId]!!.exons.last().start)
+                            }
+
+                            firstExons.sort()
+
+                            if ( firstExons.size >= 2 ) {
+                                if (
+                                        this.binaryCompare(firstExons, currentEvent.sliceSites[2]) &&
+                                        this.binaryCompare(firstExons, currentEvent.sliceSites[3])
+                                        ) {
+                                    currentEvent.subtypes = when ( currentEvent.strand ) {
+                                        '-' -> "AFE"
+                                        else -> "ALE"
+                                    }
+                                }
+                            }
+
+                        }
+                    } else if ( currentEvent.sliceSites[2] == currentEvent.sliceSites[3] ) {
+                        if ( currentEvent.sliceSites[3] - currentExon.start in -3..3 ) {
+                            val firstExons = mutableListOf<Int>()
+                            for ( tranId in currentExon.source["transcript"]!! ) {
+                                firstExons.add(transcriptsMap[tranId]!!.exons.first().end)
+                            }
+
+                            firstExons.sort()
+
+                            if ( firstExons.size >= 2 ) {
+                                if (
+                                        this.binaryCompare(firstExons, currentEvent.sliceSites[0]) &&
+                                        this.binaryCompare(firstExons, currentEvent.sliceSites[1])
+                                ) {
+                                    currentEvent.subtypes = when ( currentEvent.strand ) {
+                                        '-' -> "ALE"
+                                        else -> "AFE"
+                                    }
+                                }
+                            }
+
+                        }
+                    }
+                    j ++
+                }
+
+            }
         }
     }
 }

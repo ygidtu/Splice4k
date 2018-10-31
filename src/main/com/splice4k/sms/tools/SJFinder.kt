@@ -218,7 +218,7 @@ class SJFinder(
 
         val tmp = identifyAS.matchEventsWithRef(
                 event = bamIndex.data.values.toList(),
-                annotations = refIndex.data,
+                annotations = refIndex,
                 threads = this.threads,
                 error = this.error,
                 show = false

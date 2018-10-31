@@ -57,10 +57,17 @@ class Genes(
         }
     }
 
-    val exons: MutableList<Exons> = mutableListOf()
+    var exons: MutableList<Exons> = mutableListOf()
     get() {
-        field.sort()
-        return field
+        val res = mutableListOf<Exons>()
+
+        for ( (index, exon) in field.withIndex() ) {
+            exon.exonIndex = index
+            exon.exonIndexBackWards = index - field.size
+            res.add(exon)
+        }
+
+        return res
     }
 
     var parent: String = ""

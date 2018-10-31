@@ -123,6 +123,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     smrt = false
             )
 
+
             for ( it in this.input ) {
                 labels.add( it.name )
 
@@ -150,7 +151,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         } else {                     // this.bam is directory, then try to find the corresponding bam file
                             var bamFile = bamDirectory
 
-                            val pattern = ".*${it.name.replace("[_.]SJ.out.tab".toRegex(), "")}[._](\\w+.)*bam$"
+                            val pattern = ".*${it.name.replace("[_.]?SJ.out.tab".toRegex(), "")}[._]?(\\w+.)*bam$"
                                     .toRegex(RegexOption.IGNORE_CASE)
 
                             for ( i in bamDirectory.walkTopDown() ) {
@@ -176,11 +177,13 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
                 val data = identifyAS.matchEventsWithRef(
                         event = sj.data.values.toList(),
-                        annotations = ref.data,
+                        annotations = ref,
                         error = this.error,
                         threads = this.threads,
                         show = this.show
                 )
+
+//                IdentifyFL( data, ref ).identify()
                 
                 for ( (k, values) in data ) {
                     if ( results.containsKey(k) ) {

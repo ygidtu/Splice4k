@@ -101,8 +101,11 @@ class AnnotationIndex(
             val tmpGenes = mutableMapOf<String, Genes>()
             val geneTranscript = mutableMapOf<String, String>()
 
-            val exons: MutableMap<String, MutableList<Exons>> = mutableMapOf()
+            val exons: MutableMap<String, Exons> = mutableMapOf()
             var exonNumber = 1
+
+            // collect transcripts with corresponding exons, to set exon index for ALE, AFE
+            val transcriptExon = mutableMapOf<String, MutableList<String>>()
 
             reader.use {
                 while (reader.hasNext()) {
@@ -147,32 +150,28 @@ class AnnotationIndex(
                             exonNumber ++
                         }
 
-                        val tmp = Exons(
-                                chromosome = lines[0],
-                                start = lines[3].toInt(),
-                                end = lines[4].toInt(),
-                                exonId = exonId
-                        )
+                        val tmp = when( exons.containsKey(exonId) ) {
+                            true -> exons[exonId]!!
+                            false -> Exons(
+                                        chromosome = lines[0],
+                                        start = lines[3].toInt(),
+                                        end = lines[4].toInt(),
+                                        strand = lines[6].toCharArray()[0],
+                                        exonId = exonId
+                                )
+                        }
 
-                        tmp.source["transcript"]!!.add(sources["Parent"] ?: sources["transcript_id"] ?: sources["ID"]!! )
+                        val transcriptId = sources["Parent"] ?: sources["transcript_id"] ?: sources["ID"]!!
+                        tmp.source["transcript"]!!.add(transcriptId)
                         tmp.source["gene"]!!.add(geneTranscript[sources["Parent"]] ?: sources["gene_id"] ?: sources["GeneID"] ?: sources["ID"]!!)
 
-                        val tmpExons = mutableListOf(tmp)
-                        val key = "${lines[0]}${lines[6]}"
-                        if ( this.data.containsKey(key) ) {
-                            this.data[key]!!.addAll(tmpExons)
-                        } else {
-                            this.data[key] = tmpExons
-                        }
+                        exons[exonId] = tmp
 
-                        if ( this.smrt ) {
-                            val tmpExon = mutableListOf(tmp)
+                        // keep the transcript -> exons relationships
+                        val tmpExons = transcriptExon[transcriptId] ?: mutableListOf()
+                        tmpExons.add(exonId)
+                        transcriptExon[transcriptId] = tmpExons
 
-                            if (exons.containsKey(sources["Parent"] ?: sources["transcript_id"]!! )) {
-                                tmpExon.addAll(exons[sources["Parent"] ?: sources["transcript_id"]]!!)
-                            }
-                            exons[sources["Parent"] ?: sources["transcript_id"]!!] = tmpExon
-                        }
 
                         if ( this.iso ) {
                             tmpGenes[sources["gene_id"] ?: sources["GeneID"] ?: geneTranscript[sources["Parent"]!!]  ]!!.exons.add(tmp)
@@ -189,15 +188,13 @@ class AnnotationIndex(
                             continue
                         }
 
-                        if ( this.smrt ) {
-                            this.transcripts.add(Genes(
-                                    chromosome = lines[0],
-                                    start = lines[3].toInt(),
-                                    end = lines[4].toInt(),
-                                    strand = lines[6].toCharArray()[0],
-                                    information = sources
-                            ))
-                        }
+                        this.transcripts.add(Genes(
+                                chromosome = lines[0],
+                                start = lines[3].toInt(),
+                                end = lines[4].toInt(),
+                                strand = lines[6].toCharArray()[0],
+                                information = sources
+                        ))
 
                         exonNumber = 1
                     }
@@ -205,12 +202,27 @@ class AnnotationIndex(
 
             }
 
-            if ( this.smrt ) {
-                // 为转录本指定外显子
-                for (i in this.transcripts) {
-                    if (exons.containsKey(i.transcriptId)) {
-                        i.exons.addAll(exons[i.transcriptId]!!)
-                    }
+            for (i in this.transcripts) {
+
+                // set exons to transcript
+                val exonIds = transcriptExon[i.transcriptId] ?: mutableListOf()
+                var tmpExons = mutableListOf<Exons>()
+                for ( exonId in exonIds ) {
+                    tmpExons.add(exons[exonId]!!)
+                }
+
+                i.exons = tmpExons
+
+                if ( tmpExons.size != i.exons.size ) {
+                    exitProcess(0)
+                }
+
+                // set chrom_pair <-> exon pair to data
+                for ( exon in i.exons ) {
+                    val chromStrand = "${exon.chromosome}${exon.strand}"
+                    tmpExons = this.data[chromStrand] ?: mutableListOf()
+                    tmpExons.add(exon)
+                    this.data[chromStrand] = tmpExons
                 }
             }
 

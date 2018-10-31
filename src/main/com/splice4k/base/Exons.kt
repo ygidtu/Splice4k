@@ -19,9 +19,14 @@ class Exons(
         chromosome: String,
         start: Int,
         end: Int,
+        val strand: Char = '+',
         val exonId: String
 
 ): GenomicLoci(chromosome, start, end) {
+
+    // 指定是第几个外显子
+    var exonIndex = -1
+    var exonIndexBackWards = 1
 
     var source = mutableMapOf(
             "gene" to mutableSetOf<String>(),
