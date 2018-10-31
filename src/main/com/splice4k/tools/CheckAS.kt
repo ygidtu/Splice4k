@@ -180,7 +180,9 @@ class CheckAS() {
         }
     }
 
-
+    /**
+    check event is annotation supported
+     */
     fun check( currentEvent: SpliceEvent, exonList: List<Exons> ): List<Exons>? {
         return when ( currentEvent.event ) {
             "A3" -> this.checkA35(currentEvent, exonList)
@@ -264,55 +266,62 @@ class CheckAS() {
             }
 
             when {
-                currentEvent.sliceSites[3] < currentExon.start - 3 -> i++
-                currentEvent.sliceSites[0] > currentExon.end + 3 -> j++
+                currentEvent.chromosome > currentExon.chromosome -> j++
+                currentEvent.chromosome < currentExon.chromosome -> i++
                 else -> {
-                    if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
-                        if ( currentEvent.sliceSites[0] - currentExon.end in -3..3 ) {
-                            val firstExons = mutableListOf<Int>()
-                            for ( tranId in currentExon.source["transcript"]!! ) {
-                                firstExons.add(transcriptsMap[tranId]!!.exons.last().start)
-                            }
+                    when {
+                        currentEvent.sliceSites[3] < currentExon.start - 3 -> i++
+                        currentEvent.sliceSites[0] > currentExon.end + 3 -> j++
+                        else -> {
+                            if ( currentEvent.sliceSites[0] == currentEvent.sliceSites[1] ) {
+                                if ( currentEvent.sliceSites[0] - currentExon.end in -3..3 ) {
+                                    val firstExons = mutableListOf<Int>()
+                                    for ( tranId in currentExon.source["transcript"]!! ) {
+                                        firstExons.add(transcriptsMap[tranId]!!.exons.last().start)
+                                    }
 
-                            firstExons.sort()
+                                    firstExons.sort()
 
-                            if ( firstExons.size >= 2 ) {
-                                if (
-                                        this.binaryCompare(firstExons, currentEvent.sliceSites[2]) &&
-                                        this.binaryCompare(firstExons, currentEvent.sliceSites[3])
+                                    if ( firstExons.size >= 2 ) {
+                                        if (
+                                                this.binaryCompare(firstExons, currentEvent.sliceSites[2]) &&
+                                                this.binaryCompare(firstExons, currentEvent.sliceSites[3])
                                         ) {
-                                    currentEvent.subtypes = when ( currentEvent.strand ) {
-                                        '-' -> "AFE"
-                                        else -> "ALE"
+                                            currentEvent.subtypes = when ( currentEvent.strand ) {
+                                                '-' -> "AFE"
+                                                else -> "ALE"
+                                            }
+                                        }
                                     }
+
+                                }
+                            } else if ( currentEvent.sliceSites[2] == currentEvent.sliceSites[3] ) {
+                                if ( currentEvent.sliceSites[3] - currentExon.start in -3..3 ) {
+                                    val firstExons = mutableListOf<Int>()
+                                    for ( tranId in currentExon.source["transcript"]!! ) {
+                                        firstExons.add(transcriptsMap[tranId]!!.exons.first().end)
+                                    }
+
+                                    firstExons.sort()
+
+                                    if ( firstExons.size >= 2 ) {
+                                        if (
+                                                this.binaryCompare(firstExons, currentEvent.sliceSites[0]) &&
+                                                this.binaryCompare(firstExons, currentEvent.sliceSites[1])
+                                        ) {
+                                            currentEvent.subtypes = when ( currentEvent.strand ) {
+                                                '-' -> "ALE"
+                                                else -> "AFE"
+                                            }
+                                        }
+                                    }
+
                                 }
                             }
-
+                            j ++
                         }
-                    } else if ( currentEvent.sliceSites[2] == currentEvent.sliceSites[3] ) {
-                        if ( currentEvent.sliceSites[3] - currentExon.start in -3..3 ) {
-                            val firstExons = mutableListOf<Int>()
-                            for ( tranId in currentExon.source["transcript"]!! ) {
-                                firstExons.add(transcriptsMap[tranId]!!.exons.first().end)
-                            }
 
-                            firstExons.sort()
-
-                            if ( firstExons.size >= 2 ) {
-                                if (
-                                        this.binaryCompare(firstExons, currentEvent.sliceSites[0]) &&
-                                        this.binaryCompare(firstExons, currentEvent.sliceSites[1])
-                                ) {
-                                    currentEvent.subtypes = when ( currentEvent.strand ) {
-                                        '-' -> "ALE"
-                                        else -> "AFE"
-                                    }
-                                }
-                            }
-
-                        }
                     }
-                    j ++
                 }
 
             }

@@ -270,7 +270,7 @@ class IdentifyAS(
 
         pool.shutdown()
 
-        check.checkALEAFE(res, annotations.transcripts)
+        this.check.checkALEAFE(res, annotations.transcripts)
 
         return res
     }
