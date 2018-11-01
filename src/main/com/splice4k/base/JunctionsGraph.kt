@@ -154,6 +154,10 @@ class JunctionsGraph(
                         tmpEvent.otherPSi.add(ends.getPsi(j.site))
                         tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
 
+                        tmpEvent.junctionCounts.add(starts.getCount(i.site))
+                        tmpEvent.junctionCounts.add(ends.getCount(j.site))
+                        tmpEvent.junctionCounts.add(starts.getCount(ends.node))
+
                         res.add(tmpEvent)
 
                         exonSkipped.add(Objects.hash(listOf(starts.node, i.site, j.site).sorted()))
@@ -196,6 +200,10 @@ class JunctionsGraph(
                         )
 
                         tmpEvent.psi = starts.getPsi( target = sites[2] )
+
+                        tmpEvent.junctionCounts.add(starts.getCount(target = sites[2]))
+                        tmpEvent.junctionCounts.add(starts.getCount(target = sites[3]))
+
                         res.add(tmpEvent)
 
                         this.as35Sites["start"]!!.add(starts.node)
@@ -233,6 +241,9 @@ class JunctionsGraph(
                         )
 
                         tmpEvent.psi = ends.getPsi( target = sites[1] )
+
+                        tmpEvent.junctionCounts.add(ends.getCount(target = sites[0]))
+                        tmpEvent.junctionCounts.add(ends.getCount(target = sites[1]))
 
                         res.add(tmpEvent)
 
@@ -382,6 +393,22 @@ class JunctionsGraph(
                                                 this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s2].site )
                                         )
                                     })
+
+                                    for ( (idx, value) in mxeSites.withIndex() ) {
+                                        if ( idx in arrayOf(0, 5) ) {
+                                            continue
+                                        }
+
+                                        when ( idx % 2 ) {
+                                            1 -> tmpEvent.junctionCounts.add(
+                                                    this.starts[mxeSites.first()]!!.getCount(value)
+                                            )
+                                            0 -> tmpEvent.junctionCounts.add(
+                                                    this.ends[mxeSites.last()]!!.getCount(value)
+                                            )
+                                        }
+
+                                    }
 
                                     tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
                                     res.add(tmpEvent)

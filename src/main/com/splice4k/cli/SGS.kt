@@ -208,7 +208,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
 
-            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tjunctionCounts\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
                 val psi = mutableListOf<String>()

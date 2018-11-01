@@ -36,6 +36,7 @@ class SpliceEvent(
 
     var psi: Double? = null
     val otherPSi = mutableListOf<Double>()
+    val junctionCounts = mutableListOf<Int>()
     var isNovel = true
     var subtypes = "NA"
 
@@ -51,6 +52,17 @@ class SpliceEvent(
         }
     }
 
+    /**
+     * get junction counts in String
+     * @return counts of junctions involved in this events
+     */
+    fun getJunctionsCounts(): String {
+        return when (  this.junctionCounts.isEmpty() ) {
+            true -> "NA"
+            false -> this.junctionCounts.asSequence().map { it.toString() }.joinToString(separator = ",")
+        }
+    }
+
 
     override fun hashCode(): Int {
         return Objects.hash(this.event, this.chromosome, this.start, this.end, this.sliceSites.sorted())
@@ -61,7 +73,11 @@ class SpliceEvent(
     }
 
     override fun toString(): String {
-        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}\t${this.event}\t${this.subtypes}\t${this.chromosome}:${this.sliceSites.joinToString(prefix = "", postfix = "", separator = "-")}"
+        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}" +
+                "\t${this.event}" +
+                "\t${this.subtypes}" +
+                "\t${this.chromosome}:${this.sliceSites.joinToString(separator = "-")}" +
+                "\t${this.getJunctionsCounts()}"
     }
 
 }

@@ -190,7 +190,7 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
 
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
-            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tjunctionCounts\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
 
             for ((key, values) in results ) {
                 for ( v in values ) {

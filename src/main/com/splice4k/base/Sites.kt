@@ -1,7 +1,6 @@
 package com.splice4k.base
 
 
-import java.util.Objects
 /**
  * @since 2018.09.21
  * @version 20180921
@@ -73,18 +72,12 @@ class Sites( val node: Int ): Comparable<Sites> {
 
 
     /**
-     * 过滤低丰度
-     * @param threshold 过滤的阈值
+     * retrive count value of specific site
+     * @param target the site
+     * @return Int -> count of that site
      */
-    fun filter(threshold: Int) {
-        val filtered = mutableMapOf<Int, Site>()
-        for ( (k, v) in this.pos ) {
-            if ( v.count < threshold ) {
-                filtered[k] = v
-            }
-        }
-
-        filtered.forEach { this.pos.remove(it.key, it.value) }
+    fun getCount(target: Int): Int {
+        return this.pos[target]!!.count
     }
 
 
