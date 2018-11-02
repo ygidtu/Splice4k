@@ -11,10 +11,11 @@ package com.splice4k.base
 /**
  * @param node same start或者same end的核心（就是same的那个start或者end）
  */
-class Sites( val node: Int ): Comparable<Sites> {
+class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
     private val pos = mutableMapOf<Int, Site>()
 
     var total: Double = 0.toDouble()
+    private var current = 0
 
     var size = this.pos.size
     get() {
@@ -72,16 +73,6 @@ class Sites( val node: Int ): Comparable<Sites> {
 
 
     /**
-     * retrive count value of specific site
-     * @param target the site
-     * @return Int -> count of that site
-     */
-    fun getCount(target: Int): Int {
-        return this.pos[target]!!.count
-    }
-
-
-    /**
      * 获取最长的那个位点，即距离node最远的位点
      */
     fun getExtremeSite(): Int {
@@ -102,6 +93,24 @@ class Sites( val node: Int ): Comparable<Sites> {
      */
     override fun compareTo(other: Sites): Int {
         return this.node - other.node
+    }
+
+    /**
+     * override hasNext
+     */
+    override fun hasNext(): Boolean {
+        return this.current < this.total
+    }
+
+    /**
+     * override next
+     */
+    override fun next(): Pair<Int, Int> {
+        this.current++
+
+        val key = this.pos.keys.toList()[this.current - 1]
+        val site = this.pos[key]!!
+        return Pair( site.site, site.count )
     }
 
 }

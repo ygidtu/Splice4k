@@ -26,9 +26,19 @@ import kotlin.math.abs
 class JunctionsGraph(
         val chromosome: String,
         val strand: Char
-) {
+): Iterator<List<Pair<String, Int>>> {
 
     private val logger = Logger.getLogger(JunctionsGraph::class.java)
+    private var current = 0
+
+    /*
+     starts and ends, collect all the same starts and same ends junctions
+     for example:
+     1 -> 1:100-200
+     2 -> 1:100-300
+     3 -> 1:100-300
+     then the starts would be {100: [200 (with count 1), 300 (with count 3)]}
+      */
     val starts = mutableMapOf<Int, Sites>()
     val ends = mutableMapOf<Int, Sites>()
 
@@ -427,6 +437,10 @@ class JunctionsGraph(
     }
 
 
+    /**
+     * override toString
+     * @return String, the txt table of this junction graph (part of final output file)
+     */
     override fun toString(): String {
         var output = ""
         for ( (start, value) in this.starts ) {
@@ -445,5 +459,35 @@ class JunctionsGraph(
             }
         }
         return output
+    }
+
+    /**
+     * override hasNext
+     * @return Boolean
+     */
+    override fun hasNext(): Boolean {
+        return current < this.starts.size
+    }
+
+    /**
+     * override next
+     * @return list of the junction site (start-end) and count pair
+     */
+    override fun next(): List<Pair<String, Int>> {
+        this.current ++
+
+        val index = this.current - 1 - this.starts.size
+
+        val keys = this.starts.keys.toList()
+
+        val sites = this.starts[keys[index]]!!
+
+        val res = mutableListOf<Pair<String, Int>>()
+
+        for ( site in sites ) {
+            res.add(Pair("${sites.node}:${site.first}", site.second))
+        }
+
+        return res
     }
 }

@@ -116,6 +116,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
             val psiTable = PSITable()
+//            val countTable =
 
             val ref = AnnotationIndex(
                     infile = this.reference.absoluteFile,

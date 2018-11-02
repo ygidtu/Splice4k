@@ -15,10 +15,9 @@ import java.io.PrintWriter
 
 
 class PSITable {
-    private var total = 0
-    val sameStart = mutableMapOf<String, MutableMap<String, String>>()
-    val sameEnd = mutableMapOf<String, MutableMap<String, String>>()
-    val samples = mutableListOf<String>()
+    private val sameStart = mutableMapOf<String, MutableMap<String, String>>()
+    private val sameEnd = mutableMapOf<String, MutableMap<String, String>>()
+    private val samples = mutableListOf<String>()
 
     /**
      * 计算所有情况下的PSI
@@ -54,8 +53,6 @@ class PSITable {
      * @param index
      */
     fun addJunctionGraph(index: SJIndex) {
-        this.total++
-
         this.samples.add( index.infile.name )
 
         for ( graph in index.data.values ) {
@@ -101,8 +98,8 @@ class PSITable {
             writer.close()
         }
 
-        write( "${prefix}.sameStart.PSI.tab", this.sameStart )
+        write( "$prefix.sameStart.PSI.tab", this.sameStart )
 
-        write( "${prefix}.sameEnd.PSI.tab", this.sameEnd )
+        write( "$prefix.sameEnd.PSI.tab", this.sameEnd )
     }
 }
