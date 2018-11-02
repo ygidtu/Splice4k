@@ -25,7 +25,6 @@ import kotlin.system.exitProcess
  */
 
 
-
 class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-seq") {
 
     private val input by argument(
@@ -178,9 +177,9 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                 }
 
                 if ( psis.containsKey(k) ) {
-                    psis[k]!![labels.last()] = "${k.psi}|${k.getOtherPsi()}"
+                    psis[k]!![labels.last()] = k.getPsi()
                 } else {
-                    psis[k] = mutableMapOf(labels.last() to "${k.psi}|${k.getOtherPsi()}")
+                    psis[k] = mutableMapOf(labels.last() to k.getPsi())
                 }
             }
 
@@ -190,7 +189,17 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
 
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
-            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tjunctionCounts\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println(
+                    "#spliceRange\t" +
+                    "spliceType\t" +
+                    "subtype\t" +
+                    "spliceSites\t" +
+                    "isNovel\t" +
+                    "gene\t" +
+                    "transcript\t" +
+                    "exon\t" +
+                    labels.joinToString("\t")
+            )
 
             for ((key, values) in results ) {
                 for ( v in values ) {
@@ -198,7 +207,12 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                     for ( label in labels ) {
                         psi.add(psis[key]!![label] ?: "NA")
                     }
-                    tmpResults.add("$key\t${key.isNovel}\t$v\t${psi.joinToString("\t")}")
+                    tmpResults.add(
+                            "$key\t" +
+                            "${if (key.isNovel) 1 else 0}\t" +
+                            "$v\t" +
+                            psi.joinToString("\t")
+                    )
                 }
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))

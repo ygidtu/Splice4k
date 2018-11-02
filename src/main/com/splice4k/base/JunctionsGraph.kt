@@ -150,13 +150,8 @@ class JunctionsGraph(
                                 sliceSites = mutableListOf(starts.node, i.site, j.site, ends.node)
                         )
 
-                        tmpEvent.otherPSi.add(starts.getPsi(i.site))
-                        tmpEvent.otherPSi.add(ends.getPsi(j.site))
-                        tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
-
-                        tmpEvent.junctionCounts.add(starts.getCount(i.site))
-                        tmpEvent.junctionCounts.add(ends.getCount(j.site))
-                        tmpEvent.junctionCounts.add(starts.getCount(ends.node))
+                        val psi = listOf(starts.getPsi(i.site), ends.getPsi(j.site))
+                        tmpEvent.psi = psi.sum() / psi.size
 
                         res.add(tmpEvent)
 
@@ -201,9 +196,6 @@ class JunctionsGraph(
 
                         tmpEvent.psi = starts.getPsi( target = sites[2] )
 
-                        tmpEvent.junctionCounts.add(starts.getCount(target = sites[2]))
-                        tmpEvent.junctionCounts.add(starts.getCount(target = sites[3]))
-
                         res.add(tmpEvent)
 
                         this.as35Sites["start"]!!.add(starts.node)
@@ -241,9 +233,6 @@ class JunctionsGraph(
                         )
 
                         tmpEvent.psi = ends.getPsi( target = sites[1] )
-
-                        tmpEvent.junctionCounts.add(ends.getCount(target = sites[0]))
-                        tmpEvent.junctionCounts.add(ends.getCount(target = sites[1]))
 
                         res.add(tmpEvent)
 
@@ -383,34 +372,13 @@ class JunctionsGraph(
                                             sliceSites = mxeSites.toMutableList()
                                     )
 
-                                    tmpEvent.otherPSi.addAll(when ( this.strand ) {
-                                        '-' -> listOf(
-                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e1].site ),
-                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s1].site )
-                                        )
-                                        else -> listOf(
-                                                this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e2].site ),
-                                                this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s2].site )
-                                        )
-                                    })
 
-                                    for ( (idx, value) in mxeSites.withIndex() ) {
-                                        if ( idx in arrayOf(0, 5) ) {
-                                            continue
-                                        }
+                                    val psi = listOf(
+                                            this.starts[as35Starts[i]]!!.getPsi( target = currentStart[e2].site ),
+                                            this.ends[as35Ends[j]]!!.getPsi( target = currentEnd[s2].site )
+                                    )
 
-                                        when ( idx % 2 ) {
-                                            1 -> tmpEvent.junctionCounts.add(
-                                                    this.starts[mxeSites.first()]!!.getCount(value)
-                                            )
-                                            0 -> tmpEvent.junctionCounts.add(
-                                                    this.ends[mxeSites.last()]!!.getCount(value)
-                                            )
-                                        }
-
-                                    }
-
-                                    tmpEvent.psi = tmpEvent.otherPSi.sum() / tmpEvent.otherPSi.size
+                                    tmpEvent.psi = psi.sum() / psi.size
                                     res.add(tmpEvent)
                                 }
 

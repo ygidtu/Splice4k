@@ -26,7 +26,6 @@ import kotlin.system.exitProcess
  */
 
 
-
 class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-seq") {
     private val input by argument(
             help = "Path to input file, multiple files separate by space [BAM|SAM|STAR SJ.out.tab|gmap align|SJ]"
@@ -183,8 +182,6 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         show = this.show
                 )
 
-//                IdentifyFL( data, ref ).identify()
-                
                 for ( (k, values) in data ) {
                     if ( results.containsKey(k) ) {
                         results[k]!!.addAll(values)
@@ -193,9 +190,9 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     }
 
                     if ( psis.containsKey(k) ) {
-                        psis[k]!![labels.last()] = "${k.psi}|${k.getOtherPsi()}"
+                        psis[k]!![labels.last()] = k.getPsi()
                     } else {
-                        psis[k] = mutableMapOf(labels.last() to "${k.psi}|${k.getOtherPsi()}")
+                        psis[k] = mutableMapOf(labels.last() to k.getPsi())
                     }
                 }
             }
@@ -208,7 +205,17 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val writer = PrintWriter(this.output)
             val tmpResults = mutableSetOf<String>()
 
-            writer.println("#spliceRange\tspliceType\tsubtype\tspliceSites\tjunctionCounts\tisNovel\tgene\ttranscript\texon\t${labels.joinToString("\t")}")
+            writer.println(
+                    "#spliceRange\t" +
+                    "spliceType\t" +
+                    "subtype\t" +
+                    "spliceSites\t" +
+                    "isNovel\t" +
+                    "gene\t" +
+                    "transcript\t" +
+                    "exon\t" +
+                    labels.joinToString("\t")
+            )
 
             for ((key, values) in results ) {
                 val psi = mutableListOf<String>()
@@ -236,7 +243,14 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                 if ( transcript.isEmpty() ) transcript.add("NA")
                 if ( exon.isEmpty() ) exon.add("NA")
 
-                tmpResults.add("$key\t${key.isNovel}\t${gene.joinToString(",")}\t${transcript.joinToString(",")}\t${exon.joinToString(",")}\t${psi.joinToString("\t")}")
+                tmpResults.add(
+                        "$key\t" +
+                        "${if (key.isNovel) 1 else 0}\t" +
+                        "${gene.joinToString(",")}\t" +
+                        "${transcript.joinToString(",")}\t" +
+                        "${exon.joinToString(",")}\t" +
+                        psi.joinToString("\t")
+                )
 
             }
             writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))

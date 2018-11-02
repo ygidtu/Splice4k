@@ -35,49 +35,49 @@ class SpliceEvent(
     }
 
     var psi: Double? = null
-    val otherPSi = mutableListOf<Double>()
-    val junctionCounts = mutableListOf<Int>()
     var isNovel = true
     var subtypes = "NA"
 
 
     /**
-     * 获取其他位点的PSI的值
-     * @return string; None -> NA
+     * get PSI value in string format
+     * only keep 3 decimals
+     * @return PSI value in String, null -> NA; else -> 3 decimals
      */
-    fun getOtherPsi(): String {
-        return when( this.otherPSi.isEmpty() ) {
-            true -> "NA"
-            false -> this.otherPSi.joinToString(separator = ",")
+    fun getPsi(): String {
+        return when (this.psi) {
+            null -> "NA"
+            else -> String.format("%.3f", this.psi)
         }
     }
 
     /**
-     * get junction counts in String
-     * @return counts of junctions involved in this events
+     * calculate hash code only based on the event type, genomic loci and splice sites
+     * @return hash code
      */
-    fun getJunctionsCounts(): String {
-        return when (  this.junctionCounts.isEmpty() ) {
-            true -> "NA"
-            false -> this.junctionCounts.asSequence().map { it.toString() }.joinToString(separator = ",")
-        }
-    }
-
-
     override fun hashCode(): Int {
         return Objects.hash(this.event, this.chromosome, this.start, this.end, this.sliceSites.sorted())
     }
 
+
+    /**
+     * does two splice events equal?
+     * @return bool
+     */
     override fun equals(other: Any?): Boolean {
         return this.hashCode() == other?.hashCode()
     }
 
+
+    /**
+     * format the spliced region, event type, subtype and splice sites into String
+     * @return String, eg: chr1:100-300+\tA3\tNA\tchr1:100-100-200-300
+     */
     override fun toString(): String {
         return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}" +
                 "\t${this.event}" +
                 "\t${this.subtypes}" +
-                "\t${this.chromosome}:${this.sliceSites.joinToString(separator = "-")}" +
-                "\t${this.getJunctionsCounts()}"
+                "\t${this.chromosome}:${this.sliceSites.joinToString(separator = "-")}"
     }
 
 }
