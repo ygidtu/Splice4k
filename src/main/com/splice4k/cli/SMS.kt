@@ -12,8 +12,10 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.sms.tools.SJFinder
 import com.splice4k.sms.tools.TranscriptsReadsCoupler
+import com.splice4k.tools.CountTable
 import com.splice4k.tools.PSITable
 import org.apache.log4j.Logger
+import java.io.File
 import java.io.PrintWriter
 import kotlin.system.exitProcess
 
@@ -53,8 +55,13 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
 
 
     private val outputPSITable by option(
-            "--psi",
+            "--psi-table",
             help = "Output PSI table of same starts and same ends junctions"
+    ).flag(default = false)
+
+    private val outputCountTable by option(
+            "--count-table",
+            help = "Output Count table of junctions"
     ).flag(default = false)
 
 
@@ -80,6 +87,16 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             "--count",
             help = "Filter low abundance junctions [default: 0]"
     ).int().default(0).validate {
+        it >= 0
+    }
+
+    private val overallJunctionFilter by option(
+            "--overal-count",
+            help="Filter low abundance junctions across all samples. " +
+                    "eg: set this parameter to 100, then " +
+                    "junctions that total counts in all samples are lower than 100 will filtered." +
+                    "Note: this parameter won't disable -c"
+    ).int().validate {
         it >= 0
     }
 
@@ -114,6 +131,11 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             exitProcess(0)
         }
 
+        if ( this.input.isEmpty() ) {
+            println("Input files are required")
+            exitProcess(0)
+        }
+
         val logger = Logger.getLogger(SMS::class.java)
 
         // 生成各种文件路径
@@ -123,18 +145,18 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
         val psiTable = PSITable()
-
+        val countTable = CountTable()
+        val junctions = mutableListOf<Pair<SJIndex, File?>>()
 
         val ref = AnnotationIndex(
                 infile = this.reference.absoluteFile,
                 smrt = true
         )
 
-
         for ( it in this.input ) {
             labels.add(it.name)
 
-            val bam =  SJIndex(
+            val sj =  SJIndex(
                     infile = it.absoluteFile,
                     silent = !this.show,
                     smrt = true,
@@ -142,14 +164,38 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             )
 
             if ( this.outputPSITable ) {
-                psiTable.addJunctionGraph(bam)
+                psiTable.addJunctionGraph(sj)
+            }
+            if ( this.outputCountTable ) {
+                countTable.addJunctionGraph(sj)
             }
 
+            junctions.add(
+                    Pair(
+                            sj,
+                            when( sj.fileFormat ) {
+                                "bam" -> sj.infile
+                                else -> this.bamFile
+                            }
+                    )
+            )
+        }
 
-            logger.info("Start to compare ref and reads")
+        val overallFilteredJunctions = mutableMapOf<String, List<Pair<Int, Int>>>()
+        if ( this.overallJunctionFilter != null ) {
+            overallFilteredJunctions.putAll(countTable.filter(this.overallJunctionFilter!!))
+        }
+
+        logger.info("Start to compare ref and reads")
+        for ( (sj, bamFile) in junctions ) {
+
+            if ( this.overallJunctionFilter != null ) {
+                sj.filter(overallFilteredJunctions)
+            }
+
             val matched = TranscriptsReadsCoupler(
                     reference = ref,
-                    reads = bam,
+                    reads = sj,
                     overlap = this.overlapOfRefReads,
                     distanceError = this.error
             )
@@ -157,71 +203,71 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             logger.info("Start to identify splice events")
             val data = SJFinder(
                     template = matched,
-                    bamIndex = bam,
+                    bamIndex = sj,
                     refIndex = ref,
                     silent = !this.show,
                     overlapOfExonIntron = this.overlapOfExonIntron,
                     error = this.error,
                     threads = this.threads,
-                    bamFile = when( bam.fileFormat ) {
-                        "bam" -> bam.infile
-                        else -> this.bamFile
-                    }
+                    bamFile = bamFile
             ).results
 
-            for ( (k, values) in data ) {
-                if ( results.containsKey(k) ) {
+            for ((k, values) in data) {
+                if (results.containsKey(k)) {
                     results[k]!!.addAll(values)
                 } else {
                     results[k] = values.toMutableList()
                 }
 
-                if ( psis.containsKey(k) ) {
+                if (psis.containsKey(k)) {
                     psis[k]!![labels.last()] = k.getPsi()
                 } else {
                     psis[k] = mutableMapOf(labels.last() to k.getPsi())
                 }
             }
+        }
 
-            if ( !this.output.absoluteFile.parentFile.exists() ) {
-                this.output.absoluteFile.parentFile.mkdirs()
-            }
+        if ( !this.output.absoluteFile.parentFile.exists() ) {
+            this.output.absoluteFile.parentFile.mkdirs()
+        }
 
-            val writer = PrintWriter(this.output)
-            val tmpResults = mutableSetOf<String>()
-            writer.println(
-                    "#spliceRange\t" +
-                    "spliceType\t" +
-                    "subtype\t" +
-                    "spliceSites\t" +
-                    "isNovel\t" +
-                    "gene\t" +
-                    "transcript\t" +
-                    "exon\t" +
-                    labels.joinToString("\t")
-            )
+        val writer = PrintWriter(this.output)
+        val tmpResults = mutableSetOf<String>()
+        writer.println(
+                "#spliceRange\t" +
+                "spliceType\t" +
+                "subtype\t" +
+                "spliceSites\t" +
+                "isNovel\t" +
+                "gene\t" +
+                "transcript\t" +
+                "exon\t" +
+                labels.joinToString("\t")
+        )
 
-            for ((key, values) in results ) {
-                for ( v in values ) {
-                    val psi = mutableListOf<String>()
-                    for ( label in labels ) {
-                        psi.add(psis[key]!![label] ?: "NA")
-                    }
-                    tmpResults.add(
-                            "$key\t" +
-                            "${if (key.isNovel) 1 else 0}\t" +
-                            "$v\t" +
-                            psi.joinToString("\t")
-                    )
+        for ((key, values) in results ) {
+            for ( v in values ) {
+                val psi = mutableListOf<String>()
+                for ( label in labels ) {
+                    psi.add(psis[key]!![label] ?: "NA")
                 }
+                tmpResults.add(
+                        "$key\t" +
+                        "${if (key.isNovel) 1 else 0}\t" +
+                        "$v\t" +
+                        psi.joinToString("\t")
+                )
             }
-            writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
-            writer.close()
+        }
+        writer.print(tmpResults.asSequence().sorted().distinct().joinToString("\n"))
+        writer.close()
 
-            if ( this.outputPSITable ) {
-                psiTable.writeTo( this.output.absoluteFile )
-            }
+        if ( this.outputPSITable ) {
+            psiTable.writeTo( this.output.absoluteFile )
+        }
 
+        if ( this.outputCountTable ) {
+            countTable.writeTo( this.output.absoluteFile )
         }
     }
 }

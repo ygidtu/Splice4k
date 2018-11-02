@@ -113,4 +113,13 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
         return Pair( site.site, site.count )
     }
 
+    /**
+     * get rid of specific site
+     */
+    fun getRidOf(target: Int) {
+        if ( target in this.pos.keys )  {
+            this.pos.remove(target)
+        }
+    }
+
 }

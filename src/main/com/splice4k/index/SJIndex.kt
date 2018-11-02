@@ -427,4 +427,16 @@ class SJIndex(
             }
         }
     }
+
+
+    /**
+     * filter junctions which counts low that threshold across all samples
+     */
+    fun filter( data: Map<String, List<Pair<Int, Int>>> ) {
+        for ( (chromosome, sites) in data ) {
+            if ( this.data.containsKey(chromosome) ) {
+                this.data[chromosome]!!.filter(sites)
+            }
+        }
+    }
 }

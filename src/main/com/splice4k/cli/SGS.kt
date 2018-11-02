@@ -12,9 +12,11 @@ import com.splice4k.base.Exons
 import com.splice4k.base.SpliceEvent
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
+import com.splice4k.tools.CountTable
 import com.splice4k.tools.IdentifyAS
 import com.splice4k.tools.PSITable
 import org.apache.log4j.Logger
+import java.io.File
 import java.io.PrintWriter
 import kotlin.system.exitProcess
 
@@ -57,8 +59,13 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
     ).file().required()
 
     private val outputPSITable by option(
-            "--psi",
+            "--psi-table",
             help = "Output PSI table of same starts and same ends junctions"
+    ).flag(default = false)
+
+    private val outputCountTable by option(
+            "--count-table",
+            help = "Output Count table of Junctions"
     ).flag(default = false)
 
     private val junctionsFilter by option(
@@ -66,6 +73,16 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             "--count",
             help = "Filter low abundance junctions [default: 3]"
     ).int().default(3).validate {
+        it >= 0
+    }
+
+    private val overallJunctionFilter by option(
+            "--overal-count",
+            help="Filter low abundance junctions across all samples. " +
+                    "eg: set this parameter to 100, then " +
+                    "junctions that total counts in all samples are lower than 100 will filtered." +
+                    "Note: this parameter won't disable -c"
+    ).int().validate {
         it >= 0
     }
 
@@ -116,7 +133,8 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
             val psiTable = PSITable()
-//            val countTable =
+            val countTable = CountTable()
+            val junctions = mutableListOf<Pair<SJIndex, File?>>()
 
             val ref = AnnotationIndex(
                     infile = this.reference.absoluteFile,
@@ -139,6 +157,9 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     psiTable.addJunctionGraph(sj)
                 }
 
+                if ( this.outputCountTable ) {
+                    countTable.addJunctionGraph(sj)
+                }
 
                 val bamFile = when ( sj.fileFormat ) {
                     "bam" -> it
@@ -166,8 +187,24 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     else -> this.bam
                 }
 
+                junctions.add(Pair(sj, bamFile))
+
+            }
+
+            val overallFilteredJunctions = mutableMapOf<String, List<Pair<Int, Int>>>()
+            if ( this.overallJunctionFilter != null ) {
+                overallFilteredJunctions.putAll(countTable.filter(this.overallJunctionFilter!!))
+            }
+
+            // start to calculate AS
+            for ( (sj, bamFile) in junctions ) {
+
                 if ( sj.fileFormat == "star" && bamFile != null ) {
                     logger.info( "${sj.infile.name} -> ${bamFile.name}" )
+                }
+
+                if ( this.overallJunctionFilter != null ) {
+                    sj.filter(overallFilteredJunctions)
                 }
 
                 val identifyAS = IdentifyAS(
@@ -260,6 +297,10 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
             if ( this.outputPSITable ) {
                 psiTable.writeTo( this.output.absoluteFile )
+            }
+
+            if ( this.outputCountTable ) {
+                countTable.writeTo( this.output.absoluteFile )
             }
         }
     }

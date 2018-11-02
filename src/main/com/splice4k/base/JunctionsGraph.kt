@@ -490,4 +490,20 @@ class JunctionsGraph(
 
         return res
     }
+
+    /**
+     * filter the low count by overall threshold
+     */
+    fun filter( data: List<Pair<Int, Int>> ) {
+        for ( i in data ) {
+            if ( this.starts.containsKey(i.first) ) {
+                this.starts[i.first]!!.getRidOf(i.second)
+            }
+
+            if ( this.ends.containsKey(i.second) ) {
+                this.ends[i.second]!!.getRidOf(i.first)
+            }
+        }
+    }
+
 }

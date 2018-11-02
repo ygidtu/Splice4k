@@ -16,16 +16,13 @@ import java.io.PrintWriter
 
 class CountTable {
     private val junctionCounts = mutableMapOf<String, Map<String, Int>>()
-    private val samples = mutableListOf<String>()
 
     /**
      * 添加某次计算过程中收集到的所有junctions等信息
      * @param index
      */
     fun addJunctionGraph(index: SJIndex) {
-        this.samples.add( index.infile.name )
-
-        this.junctionCounts[this.samples.last()] = this.formatJunctionGraphToMap(index.data)
+        this.junctionCounts[index.infile.name] = this.formatJunctionGraphToMap(index.data)
     }
 
     /**
@@ -64,11 +61,11 @@ class CountTable {
                 collection: MutableMap<String, Map<String, Int>>
         ) {
             val writer = PrintWriter(File(output))
-
-            writer.println("#junctions\t${this.samples.joinToString(separator = "\t")}")
+            val samples = this.junctionCounts.keys.toList()
+            writer.println("#junctions\t${samples.joinToString(separator = "\t")}")
 
             for ( (junction, value) in collection) {
-                writer.println("$junction\t${this.samples
+                writer.println("$junction\t${samples
                         .asSequence()
                         .map { value[it] ?: 0 }
                         .toList()
@@ -79,5 +76,45 @@ class CountTable {
         }
 
         write( "$prefix.junction_counts.tab", this.junctionCounts )
+    }
+
+    /**
+     * collect the junctions that not overall counts lower than threshold
+     */
+    fun filter(threshold: Int): Map<String, List<Pair<Int, Int>>> {
+        val res = mutableMapOf<String, MutableList<Pair<Int, Int>>>()
+
+        val tmp = mutableMapOf<String, Int>()
+
+        for ( junctions in this.junctionCounts.values ) {
+            for ( (junction, count) in junctions ) {
+                var currentCount = tmp[junction] ?: 0
+                currentCount += count
+                tmp[junction] = currentCount
+            }
+        }
+
+
+        for ( (junction, count) in tmp ) {
+            if ( count < threshold ) {
+                val chromosome = junction.split(":").first()
+                val sites = junction.split(":").last()
+
+                val strand = sites.toCharArray().last()
+
+                val sitesInt = sites.split("-")
+
+                val tmpList = res["$chromosome$strand"] ?: mutableListOf()
+                tmpList.add(
+                        Pair(
+                            sitesInt.first().toInt(),
+                            sitesInt.last().toInt()
+                    )
+                )
+                res["$chromosome$strand"] = tmpList
+            }
+        }
+
+        return res
     }
 }

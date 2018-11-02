@@ -17,7 +17,6 @@ import java.io.PrintWriter
 class PSITable {
     private val sameStart = mutableMapOf<String, MutableMap<String, String>>()
     private val sameEnd = mutableMapOf<String, MutableMap<String, String>>()
-    private val samples = mutableListOf<String>()
 
     /**
      * 计算所有情况下的PSI
@@ -30,7 +29,8 @@ class PSITable {
             values: Iterable<Sites>,
             collection: MutableMap<String, MutableMap<String, String>>,
             chromosome: String,
-            strand: Char
+            strand: Char,
+            sample: String
     ) {
 
         for ( site in values ) {
@@ -39,7 +39,7 @@ class PSITable {
 
                 val listOfPSI = collection[key] ?: mutableMapOf()
 
-                listOfPSI[this.samples.last()] = site.getPsi(i.site).toString()
+                listOfPSI[sample] = site.getPsi(i.site).toString()
 
                 collection[key] = listOfPSI
             }
@@ -53,21 +53,22 @@ class PSITable {
      * @param index
      */
     fun addJunctionGraph(index: SJIndex) {
-        this.samples.add( index.infile.name )
 
         for ( graph in index.data.values ) {
             this.calculateAllPSI(
                     values = graph.starts.values,
                     collection = this.sameStart,
                     chromosome = graph.chromosome,
-                    strand = graph.strand
+                    strand = graph.strand,
+                    sample = index.infile.name
             )
 
             this.calculateAllPSI(
                     values = graph.ends.values,
                     collection = this.sameEnd,
                     chromosome = graph.chromosome,
-                    strand = graph.strand
+                    strand = graph.strand,
+                    sample = index.infile.name
             )
         }
     }
@@ -85,10 +86,11 @@ class PSITable {
         ) {
             val writer = PrintWriter(File(output))
 
-            writer.println("#junctions\t${this.samples.joinToString(separator = "\t")}")
+            val samples = this.sameStart.keys.toList()
+            writer.println("#junctions\t${samples.joinToString(separator = "\t")}")
 
             for ( (junction, value) in collection) {
-                writer.println("$junction\t${this.samples
+                writer.println("$junction\t${samples
                         .asSequence()
                         .map { value[it] ?: "0" }
                         .toList()
