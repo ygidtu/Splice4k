@@ -54,7 +54,7 @@ class PSITable {
      */
     fun addJunctionGraph(index: SJIndex) {
 
-        for ( graph in index.data.values ) {
+        for ( graph in index.getJunctionGraph(null) ) {
             this.calculateAllPSI(
                     values = graph.starts.values,
                     collection = this.sameStart,

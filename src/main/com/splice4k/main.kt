@@ -25,7 +25,7 @@ fun main(args: Array<String>) {
             .subcommands(Iso())
 
     // help message
-    if (args.size <= 1) {
+    if (args.size <= 1 || "-h" in args || "--help" in args ) {
         val help = when {
             args.isEmpty() -> cmd.getFormattedHelp()
             args[0].toLowerCase() == "sms" -> SMS().getFormattedHelp()
@@ -38,21 +38,6 @@ fun main(args: Array<String>) {
             }
             else -> cmd.getFormattedHelp()
         }
-        println(help)
-        exitProcess(0)
-    }
-
-    // help message
-    if ( "-h" in args || "--help" in args ) {
-        println(VERSION)
-        val help = when (args[0].toLowerCase()) {
-            "sms" -> SMS().getFormattedHelp()
-            "extract" -> Extract().getFormattedHelp()
-            "sgs" -> SGS().getFormattedHelp()
-            "iso" -> Iso().getFormattedHelp()
-            else -> cmd.getFormattedHelp()
-        }
-
         println(help)
         exitProcess(0)
     }

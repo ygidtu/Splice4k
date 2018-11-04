@@ -1,7 +1,7 @@
 package com.splice4k.tools
 
-import com.splice4k.base.JunctionsGraph
 import com.splice4k.index.SJIndex
+import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 
@@ -15,38 +15,25 @@ import java.io.PrintWriter
 
 
 class CountTable {
-    private val junctionCounts = mutableMapOf<String, Map<String, Int>>()
-
-    /**
-     * 添加某次计算过程中收集到的所有junctions等信息
-     * @param index
-     */
-    fun addJunctionGraph(index: SJIndex) {
-        this.junctionCounts[index.infile.name] = this.formatJunctionGraphToMap(index.data)
-    }
+    private val logger = Logger.getLogger(CountTable::class.java)
 
     /**
      * as function name says
-     *
+     * format all the junctions counts across all samples into matrix
+     * @return Map<Sample, Map<Junction, Count>
      */
-    private fun formatJunctionGraphToMap( data: Map<String, JunctionsGraph> ): Map<String, Int> {
-        val res = mutableMapOf<String, Int>()
-        for ( (key, graph) in data ) {
+    private fun formatJunctionGraphToMap( data: List<SJIndex> ): Map<String, Map<String, Int>> {
+        val res = mutableMapOf<String, MutableMap<String, Int>>()
+        data.forEach {
+            for ( (key, count) in it.data ) {
 
-            val strand = key.toCharArray().last()
+                val tmpMap = res[it.infile.name] ?: mutableMapOf()
 
-            val chromosome = key.toCharArray().toList()
-
-            for ( i in graph ) {
-                for ( j in i ) {
-                    val site = "${chromosome.subList(0, chromosome.size - 1).joinToString(separator = "")}:" +
-                            j.first +
-                            "$strand"
-
-                    res[site] = j.second
-                }
+                tmpMap[key] = count
+                res[it.infile.name] = tmpMap
             }
         }
+
         return res
     }
 
@@ -54,67 +41,74 @@ class CountTable {
      * save count table to file
      * @param prefix prefix of output file
      */
-    fun writeTo( prefix: File) {
+    fun writeTo( prefix: File, data: List<SJIndex>) {
+        this.logger.info("Extract Junction's Counts")
 
         fun write(
-                output: String,
-                collection: MutableMap<String, Map<String, Int>>
+                data: Map<String, Map<String, Int>>,
+                output: String
         ) {
             val writer = PrintWriter(File(output))
-            val samples = this.junctionCounts.keys.toList()
+            val samples = data.keys.toList()
+            val junctions = mutableSetOf<String>()
+
+            data.values.forEach {
+                junctions.addAll(it.keys)
+            }
+
             writer.println("#junctions\t${samples.joinToString(separator = "\t")}")
 
-            for ( (junction, value) in collection) {
-                writer.println("$junction\t${samples
-                        .asSequence()
-                        .map { value[it] ?: 0 }
-                        .toList()
-                        .joinToString(separator = "\t")}")
+
+            for ( row in junctions ) {
+                var count = ""
+                for ( col in samples ) {
+                    if ( count != "" ) {
+                        count += "\t"
+                    }
+                    count += data[col]!![row]?.toString() ?: "0"
+                }
+                val genomicLoci = row.split("\t")
+                val genomicLociFormatted = "${genomicLoci[0]}:${genomicLoci[1]}-${genomicLoci[2]}${genomicLoci[3]}"
+                writer.println("$genomicLociFormatted\t$count")
             }
 
             writer.close()
         }
 
-        write( "$prefix.junction_counts.tab", this.junctionCounts )
+        write(
+                data = this.formatJunctionGraphToMap(data),
+                output = "$prefix.junction_counts.tab"
+        )
     }
 
     /**
      * collect the junctions that not overall counts lower than threshold
      */
-    fun filter(threshold: Int): Map<String, List<Pair<Int, Int>>> {
-        val res = mutableMapOf<String, MutableList<Pair<Int, Int>>>()
+    fun filter(data: List<SJIndex>, threshold: Int): HashSet<String> {
+        this.logger.info("Filtering by junctions across samples")
 
-        val tmp = mutableMapOf<String, Int>()
+        val res = hashSetOf<String>()
 
-        for ( junctions in this.junctionCounts.values ) {
-            for ( (junction, count) in junctions ) {
-                var currentCount = tmp[junction] ?: 0
-                currentCount += count
-                tmp[junction] = currentCount
+        val junctions = mutableSetOf<String>()
+
+        data.forEach {
+            junctions.addAll(it.data.keys)
+        }
+
+        this.logger.info("Before: Total junctions: ${junctions.size}")
+
+        for ( junction in junctions ) {
+            var totalCount = 0
+            data.forEach {
+                totalCount += (it.data[junction] ?: 0)
+            }
+
+            if ( totalCount < threshold ) {
+                res.add(junction)
             }
         }
 
-
-        for ( (junction, count) in tmp ) {
-            if ( count < threshold ) {
-                val chromosome = junction.split(":").first()
-                val sites = junction.split(":").last()
-
-                val strand = sites.toCharArray().last()
-
-                val sitesInt = sites.split("-")
-
-                val tmpList = res["$chromosome$strand"] ?: mutableListOf()
-                tmpList.add(
-                        Pair(
-                            sitesInt.first().toInt(),
-                            sitesInt.last().toInt()
-                    )
-                )
-                res["$chromosome$strand"] = tmpList
-            }
-        }
-
+        this.logger.info("After: Total junctions: ${junctions.size - res.size}")
         return res
     }
 }

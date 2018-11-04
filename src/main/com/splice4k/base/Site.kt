@@ -61,5 +61,9 @@ class Site(val site: Int): Comparable<Site> {
     override fun compareTo(other: Site): Int {
         return this.site - other.site
     }
+
+    override fun toString(): String {
+        return "${this.site}[${this.count}]"
+    }
 }
 

@@ -85,17 +85,18 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
     private val junctionsFilter by option(
             "-c",
             "--count",
-            help = "Filter low abundance junctions [default: 0]"
-    ).int().default(0).validate {
-        it >= 0
+            help = "Filter low abundance junctions [default: 1]"
+    ).int().validate {
+        it >= 1
     }
 
     private val overallJunctionFilter by option(
-            "--overal-count",
-            help="Filter low abundance junctions across all samples. " +
-                    "eg: set this parameter to 100, then " +
-                    "junctions that total counts in all samples are lower than 100 will filtered." +
-                    "Note: this parameter won't disable -c"
+            "--overall-count",
+            help="""
+                Filter low abundance junctions across all samples.
+                Eg: set this parameter to 100, then junctions that total counts in all samples are lower than 100 will filtered.
+                Note: this parameter won't disable -c|--count, when this parameter is used, the -c will set to 1 by default
+            """
     ).int().validate {
         it >= 0
     }
@@ -145,7 +146,6 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
         val psiTable = PSITable()
-        val countTable = CountTable()
         val junctions = mutableListOf<Pair<SJIndex, File?>>()
 
         val ref = AnnotationIndex(
@@ -160,14 +160,11 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                     infile = it.absoluteFile,
                     silent = !this.show,
                     smrt = true,
-                    filter = this.junctionsFilter
+                    filter = this.junctionsFilter ?: 0
             )
 
             if ( this.outputPSITable ) {
                 psiTable.addJunctionGraph(sj)
-            }
-            if ( this.outputCountTable ) {
-                countTable.addJunctionGraph(sj)
             }
 
             junctions.add(
@@ -181,17 +178,26 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             )
         }
 
-        val overallFilteredJunctions = mutableMapOf<String, List<Pair<Int, Int>>>()
+        if ( this.outputCountTable ) {
+            val countTable = CountTable()
+
+            countTable.writeTo(
+                    this.output,
+                    junctions.map { it.first }
+            )
+        }
+
+        var overallFiltered: HashSet<String>? = null
         if ( this.overallJunctionFilter != null ) {
-            overallFilteredJunctions.putAll(countTable.filter(this.overallJunctionFilter!!))
+            val countTable = CountTable()
+            overallFiltered = countTable.filter(
+                    junctions.map { it.first },
+                    this.overallJunctionFilter!!
+            )
         }
 
         logger.info("Start to compare ref and reads")
         for ( (sj, bamFile) in junctions ) {
-
-            if ( this.overallJunctionFilter != null ) {
-                sj.filter(overallFilteredJunctions)
-            }
 
             val matched = TranscriptsReadsCoupler(
                     reference = ref,
@@ -209,7 +215,8 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                     overlapOfExonIntron = this.overlapOfExonIntron,
                     error = this.error,
                     threads = this.threads,
-                    bamFile = bamFile
+                    bamFile = bamFile,
+                    overallFiltered = overallFiltered
             ).results
 
             for ((k, values) in data) {
@@ -264,10 +271,6 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
 
         if ( this.outputPSITable ) {
             psiTable.writeTo( this.output.absoluteFile )
-        }
-
-        if ( this.outputCountTable ) {
-            countTable.writeTo( this.output.absoluteFile )
         }
     }
 }

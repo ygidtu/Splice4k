@@ -26,10 +26,9 @@ import kotlin.math.abs
 class JunctionsGraph(
         val chromosome: String,
         val strand: Char
-): Iterator<List<Pair<String, Int>>> {
+) {
 
     private val logger = Logger.getLogger(JunctionsGraph::class.java)
-    private var current = 0
 
     /*
      starts and ends, collect all the same starts and same ends junctions
@@ -72,7 +71,7 @@ class JunctionsGraph(
             list: MutableMap<Int, Sites>,
             index: Int,
             site: Int,
-            freq: Int?=null,
+            freq: Int = 1,
             transcript: String? = null,
             gene: String? = null
     ) {
@@ -107,10 +106,11 @@ class JunctionsGraph(
     fun addEdge(
             start: Int,
             end: Int,
-            freq: Int?=null,
+            freq: Int = 1,
             transcript: String? = null,
             gene: String? = null
     ) {
+
         this.insertSites(
                 list = this.starts,
                 index = start,
@@ -460,50 +460,4 @@ class JunctionsGraph(
         }
         return output
     }
-
-    /**
-     * override hasNext
-     * @return Boolean
-     */
-    override fun hasNext(): Boolean {
-        return current < this.starts.size
-    }
-
-    /**
-     * override next
-     * @return list of the junction site (start-end) and count pair
-     */
-    override fun next(): List<Pair<String, Int>> {
-        this.current ++
-
-        val index = this.current - 1 - this.starts.size
-
-        val keys = this.starts.keys.toList()
-
-        val sites = this.starts[keys[index]]!!
-
-        val res = mutableListOf<Pair<String, Int>>()
-
-        for ( site in sites ) {
-            res.add(Pair("${sites.node}:${site.first}", site.second))
-        }
-
-        return res
-    }
-
-    /**
-     * filter the low count by overall threshold
-     */
-    fun filter( data: List<Pair<Int, Int>> ) {
-        for ( i in data ) {
-            if ( this.starts.containsKey(i.first) ) {
-                this.starts[i.first]!!.getRidOf(i.second)
-            }
-
-            if ( this.ends.containsKey(i.second) ) {
-                this.ends[i.second]!!.getRidOf(i.first)
-            }
-        }
-    }
-
 }

@@ -72,16 +72,17 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             "-c",
             "--count",
             help = "Filter low abundance junctions [default: 3]"
-    ).int().default(3).validate {
+    ).int().validate {
         it >= 0
     }
 
     private val overallJunctionFilter by option(
-            "--overal-count",
-            help="Filter low abundance junctions across all samples. " +
-                    "eg: set this parameter to 100, then " +
-                    "junctions that total counts in all samples are lower than 100 will filtered." +
-                    "Note: this parameter won't disable -c"
+            "--overall-count",
+            help="""
+                Filter low abundance junctions across all samples.
+                Eg: set this parameter to 100, then junctions that total counts in all samples are lower than 100 will filtered.
+                Note: this parameter won't disable -c|--count, when this parameter is used, the -c will set to 1 by default
+            """
     ).int().validate {
         it >= 0
     }
@@ -133,7 +134,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
             val psiTable = PSITable()
-            val countTable = CountTable()
+
             val junctions = mutableListOf<Pair<SJIndex, File?>>()
 
             val ref = AnnotationIndex(
@@ -141,13 +142,18 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     smrt = false
             )
 
+            val junctionsFilter = when {
+                this.junctionsFilter != null -> this.junctionsFilter!!
+                this.overallJunctionFilter != null && this.junctionsFilter == null -> 1
+                else -> 3
+            }
 
             for ( it in this.input ) {
                 labels.add( it.name )
 
                 val sj = SJIndex(
                         infile = it.absoluteFile,
-                        filter = this.junctionsFilter,
+                        filter = junctionsFilter,
                         silent = !this.show,
                         smrt = false
                 )
@@ -155,10 +161,6 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
                 if ( this.outputPSITable ) {
                     psiTable.addJunctionGraph(sj)
-                }
-
-                if ( this.outputCountTable ) {
-                    countTable.addJunctionGraph(sj)
                 }
 
                 val bamFile = when ( sj.fileFormat ) {
@@ -191,10 +193,26 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
             }
 
-            val overallFilteredJunctions = mutableMapOf<String, List<Pair<Int, Int>>>()
-            if ( this.overallJunctionFilter != null ) {
-                overallFilteredJunctions.putAll(countTable.filter(this.overallJunctionFilter!!))
+
+            if ( this.outputCountTable ) {
+                val countTable = CountTable()
+
+                countTable.writeTo(
+                        this.output,
+                        junctions.map { it.first }
+                )
             }
+
+            var overallFiltered: HashSet<String>? = null
+            if ( this.overallJunctionFilter != null ) {
+                val countTable = CountTable()
+
+                overallFiltered = countTable.filter(
+                        junctions.map { it.first },
+                        this.overallJunctionFilter!!
+                )
+            }
+
 
             // start to calculate AS
             for ( (sj, bamFile) in junctions ) {
@@ -203,17 +221,13 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     logger.info( "${sj.infile.name} -> ${bamFile.name}" )
                 }
 
-                if ( this.overallJunctionFilter != null ) {
-                    sj.filter(overallFilteredJunctions)
-                }
-
                 val identifyAS = IdentifyAS(
                         overlapOfExonIntron = this.overlapOfExonIntron,
                         bamFile = bamFile
                 )
 
                 val data = identifyAS.matchEventsWithRef(
-                        event = sj.data.values.toList(),
+                        event = sj.getJunctionGraph(overallFiltered),
                         annotations = ref,
                         error = this.error,
                         threads = this.threads,
@@ -297,10 +311,6 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
             if ( this.outputPSITable ) {
                 psiTable.writeTo( this.output.absoluteFile )
-            }
-
-            if ( this.outputCountTable ) {
-                countTable.writeTo( this.output.absoluteFile )
             }
         }
     }

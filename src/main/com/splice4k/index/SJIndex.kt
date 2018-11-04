@@ -44,7 +44,7 @@ class SJIndex(
     val transcripts = mutableListOf<Genes>()
     val fileFormat = FileValidator().check( this.infile )
     // chromosome and splice graph
-    val data = mutableMapOf<String, JunctionsGraph>()
+    val data = mutableMapOf<String, Int>()
 
 
     // 数据类，用以提取BAM，gmap align文件中的信息，构建AS所需图
@@ -72,14 +72,13 @@ class SJIndex(
     private fun getAllSJ() {
 
         val reads = mutableListOf<Reads>()
-        val junctions = mutableMapOf<String, Int>()
 
         this.logger.info("Reading from ${this.infile}")
 
         when ( this.fileFormat ) {
-            "bam" -> this.readBam( junctions = junctions, reads = reads )
-            in arrayOf("gmap", "gmapE") -> this.readGmap( junctions = junctions, reads = reads )
-            in arrayOf( "star", "sj" ) -> this.readSJ( junctions = junctions )
+            "bam" -> this.readBam( reads = reads )
+            in arrayOf("gmap", "gmapE") -> this.readGmap( reads = reads )
+            in arrayOf( "star", "sj" ) -> this.readSJ()
             else -> {
                 this.logger.error("Please check ${this.infile} format")
                 exitProcess(2)
@@ -117,29 +116,13 @@ class SJIndex(
                 this.transcripts.add(tmpGene)
             }
         }
-
-
-        // 构建junction图
-        for ( (key, v) in junctions ) {
-            if ( v < this.filter ) {
-                continue
-            }
-
-            val intron = key.split("\t")
-
-            val dataKey = "${intron[0]}${intron[3]}"
-
-            this.data[dataKey] = this.data[dataKey] ?: JunctionsGraph(intron[0], intron[3].toCharArray()[0])
-
-            this.data[dataKey]!!.addEdge(intron[1].toInt(), intron[2].toInt(), freq = v)
-        }
     }
 
 
     /**
      * 从extracted splice junctions或者STAR SJ.out.tab文件读取剪接事件
      */
-    private fun readSJ( junctions: MutableMap<String, Int> ) {
+    private fun readSJ() {
 
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
@@ -153,7 +136,7 @@ class SJIndex(
                     when(this.fileFormat) {
                         "sj" -> {
                             val cleanedLine = line.replace("[:-]".toRegex(), "\t").split("\t")
-                            junctions[cleanedLine.subList(0, cleanedLine.size - 1).joinToString("\t")] = cleanedLine.last().toInt()
+                            this.data[cleanedLine.subList(0, cleanedLine.size - 1).joinToString("\t")] = cleanedLine.last().toInt()
                         }
                         else -> {
                             val lines = line.split("\\s+".toRegex())
@@ -162,7 +145,7 @@ class SJIndex(
                                 "2" -> "-"
                                 else -> "."
                             }
-                            junctions["${lines[0]}\t${lines[1]}\t${lines[2]}\t$strand"] = lines[6].toInt()
+                            this.data["${lines[0]}\t${lines[1]}\t${lines[2]}\t$strand"] = lines[6].toInt()
                         }
                     }
 
@@ -220,7 +203,7 @@ class SJIndex(
      * @param junctions junctions的count map
      * @param reads Reads的列表
      */
-    private fun readBam( junctions: MutableMap<String, Int>, reads: MutableList<Reads> ) {
+    private fun readBam( reads: MutableList<Reads> ) {
         val tmpReader =  SamReaderFactory
                 .makeDefault()
                 .open(this.infile)
@@ -277,7 +260,7 @@ class SJIndex(
                     introns.add( spliceSites[i] )
                     introns.add( spliceSites[i + 1] )
                     val key = "${record.referenceName}\t${spliceSites[i]}\t${spliceSites[i + 1]}\t$strand"
-                    junctions[key] = (junctions[key]?: 0) + 1
+                    this.data[key] = (this.data[key]?: 0) + 1
                 } else {
                     exons.add( when ( i ) {
                         0 -> spliceSites[i]
@@ -310,7 +293,7 @@ class SJIndex(
      * @param junctions junctions的count map
      * @param reads Reads的列表
      */
-    private fun readGmap( junctions: MutableMap<String, Int>, reads: MutableList<Reads> ) {
+    private fun readGmap( reads: MutableList<Reads> ) {
 
         val pbb = ProgressBarBuilder().setStyle(ProgressBarStyle.ASCII).setTaskName("Reading")
         val reader = Scanner(ProgressBar.wrap(FileInputStream(this.infile), pbb))
@@ -337,7 +320,7 @@ class SJIndex(
                 for ( i in 0..(introns.size - 2) step 2) {
                     val key = "$chromosome\t${introns[i]}\t${introns[i + 1]}\t$strand"
 
-                    junctions[key] = (junctions[key]?: 0) + 1
+                    this.data[key] = (this.data[key]?: 0) + 1
 
                     // construct exons
                     exons.add(introns[i] - 1)
@@ -380,7 +363,7 @@ class SJIndex(
 
                             val key = "$tmpChromo\t${tmpSites[i] + 1}\t${tmpSites[i + 1] - 1}\t$tmpStrand"
 
-                            junctions[key] = (junctions[key]?: 0) + 1
+                            this.data[key] = (this.data[key]?: 0) + 1
                         }
 
                         reads.add(Reads(
@@ -430,13 +413,38 @@ class SJIndex(
 
 
     /**
-     * filter junctions which counts low that threshold across all samples
+     * get junctionGraph
+     * @return List<JunctionGraph>
      */
-    fun filter( data: Map<String, List<Pair<Int, Int>>> ) {
-        for ( (chromosome, sites) in data ) {
-            if ( this.data.containsKey(chromosome) ) {
-                this.data[chromosome]!!.filter(sites)
+    fun getJunctionGraph(filtered: HashSet<String>?): List<JunctionsGraph> {
+        return this.getJunctionGraphMap(filtered).values.toList()
+    }
+
+
+    /**
+     * get junctionGraph separated by chromosome and strands
+     * @return Map<String, JunctionGraph>, keys are chromosome+strand
+     */
+    fun getJunctionGraphMap(filtered: HashSet<String>?): Map<String, JunctionsGraph> {
+        val res = mutableMapOf<String, JunctionsGraph>()
+        // 构建junction图
+        for ( (key, v) in this.data ) {
+            if ( v < this.filter ) {
+                continue
             }
+
+            if ( filtered != null && key in filtered ) {
+                continue
+            }
+
+            val intron = key.split("\t")
+
+            val dataKey = "${intron[0]}${intron[3]}"
+
+            res[dataKey] = res[dataKey] ?: JunctionsGraph(intron[0], intron[3].toCharArray()[0])
+
+            res[dataKey]!!.addEdge(intron[1].toInt(), intron[2].toInt(), freq = v)
         }
+        return res
     }
 }

@@ -4,9 +4,9 @@ package com.splice4k.isoforms.tools
 import com.splice4k.base.Exons
 import com.splice4k.base.Genes
 import com.splice4k.base.GenomicLoci
+import com.splice4k.base.JunctionsGraph
 import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.base.JunctionsGraph
 import com.splice4k.isoforms.base.SpliceGraph
 import me.tongfei.progressbar.ProgressBar
 import java.io.File
@@ -34,7 +34,7 @@ class GeneReadsCoupler(
 
     init {
         bamIndex.forEach {
-            for ( ( key, value ) in it.data ) {
+            for ( ( key, value ) in it.getJunctionGraphMap(null) ) {
                 if ( this.junctions.containsKey( key ) ) {
                     this.junctions[key]!!.add( value )
                 } else {

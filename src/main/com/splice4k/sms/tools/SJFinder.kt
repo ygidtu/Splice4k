@@ -42,7 +42,8 @@ class SJFinder(
         val overlapOfExonIntron: Double,
         val error: Int,
         val threads: Int,
-        val bamFile: File?
+        val bamFile: File?,
+        private val overallFiltered: HashSet<String>?
 ) {
     private val template = template.templates
     private val logger = Logger.getLogger(SJFinder::class.java.toString())
@@ -217,7 +218,7 @@ class SJFinder(
         this.logger.info("Finding alternative splicing events by another algorithm")
 
         val tmp = identifyAS.matchEventsWithRef(
-                event = bamIndex.data.values.toList(),
+                event = bamIndex.getJunctionGraph(this.overallFiltered),
                 annotations = refIndex,
                 threads = this.threads,
                 error = this.error,

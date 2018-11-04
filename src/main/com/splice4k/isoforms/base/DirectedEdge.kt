@@ -1,7 +1,7 @@
 package com.splice4k.isoforms.base
 
 import com.splice4k.base.Exons
-import java.util.Objects
+import java.util.*
 
 /**
  * @author Zhang Yiming

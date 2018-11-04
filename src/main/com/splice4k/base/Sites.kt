@@ -11,11 +11,11 @@ package com.splice4k.base
 /**
  * @param node same start或者same end的核心（就是same的那个start或者end）
  */
-class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
+class Sites( val node: Int ): Comparable<Sites> {
     private val pos = mutableMapOf<Int, Site>()
 
-    var total: Double = 0.toDouble()
-    private var current = 0
+    // this total is totalFreq frequencies of sites, not the number of sites
+    var totalFreq = 0.0
 
     var size = this.pos.size
     get() {
@@ -29,7 +29,7 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
      * @param transcript 位点来源的转录本
      * @param gene 位点来源的基因
      */
-    fun addSite( site: Int, freq: Int? = null, transcript: String? = null, gene: String? = null ) {
+    fun addSite( site: Int, freq: Int = 1, transcript: String? = null, gene: String? = null ) {
         val tmp = when (this.pos.containsKey(site)) {
             true -> this.pos[site]!!
             else -> Site(site)
@@ -37,7 +37,7 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
         tmp.addSource(transcript = transcript, gene = gene)
         tmp.addCount(freq)
 
-        this.total += freq ?: 1
+        this.totalFreq = this.totalFreq + freq
 
         this.pos[site] = tmp
     }
@@ -67,7 +67,7 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
      */
     fun getPsi(target: Int): Double {
         this.pos[target]!!.let {
-            return it.count / this.total
+            return it.count / this.totalFreq
         }
     }
 
@@ -94,32 +94,4 @@ class Sites( val node: Int ): Comparable<Sites>, Iterator<Pair<Int, Int>> {
     override fun compareTo(other: Sites): Int {
         return this.node - other.node
     }
-
-    /**
-     * override hasNext
-     */
-    override fun hasNext(): Boolean {
-        return this.current < this.total
-    }
-
-    /**
-     * override next
-     */
-    override fun next(): Pair<Int, Int> {
-        this.current++
-
-        val key = this.pos.keys.toList()[this.current - 1]
-        val site = this.pos[key]!!
-        return Pair( site.site, site.count )
-    }
-
-    /**
-     * get rid of specific site
-     */
-    fun getRidOf(target: Int) {
-        if ( target in this.pos.keys )  {
-            this.pos.remove(target)
-        }
-    }
-
 }
