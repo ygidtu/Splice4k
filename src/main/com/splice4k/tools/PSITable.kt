@@ -15,6 +15,7 @@ import java.io.PrintWriter
 
 
 class PSITable {
+    // <sample, <junctions, PSI>>
     private val sameStart = mutableMapOf<String, MutableMap<String, String>>()
     private val sameEnd = mutableMapOf<String, MutableMap<String, String>>()
 
@@ -32,19 +33,17 @@ class PSITable {
             strand: Char,
             sample: String
     ) {
-
         for ( site in values ) {
             for (i in site.getSites() ) {
                 val key = "$chromosome:${site.node}-${i.site}$strand"
 
-                val listOfPSI = collection[key] ?: mutableMapOf()
+                val listOfPSI = collection[sample] ?: mutableMapOf()
 
-                listOfPSI[sample] = site.getPsi(i.site).toString()
+                listOfPSI[key] = site.getPsi(i.site).toString()
 
-                collection[key] = listOfPSI
+                collection[sample] = listOfPSI
             }
         }
-
     }
 
 
@@ -87,14 +86,23 @@ class PSITable {
             val writer = PrintWriter(File(output))
 
             val samples = this.sameStart.keys.toList()
+            val junctions = mutableSetOf<String>()
+            collection.values.forEach {
+                junctions.addAll(it.keys)
+            }
+
             writer.println("#junctions\t${samples.joinToString(separator = "\t")}")
 
-            for ( (junction, value) in collection) {
-                writer.println("$junction\t${samples
-                        .asSequence()
-                        .map { value[it] ?: "0" }
-                        .toList()
-                        .joinToString(separator = "\t")}")
+            for ( row in junctions ) {
+                var count = ""
+                for ( col in samples ) {
+                    if ( count != "" ) {
+                        count += "\t"
+                    }
+                    count += collection[col]!![row]?.toString() ?: "NA"
+                }
+
+                writer.println("$row\t$count")
             }
 
             writer.close()

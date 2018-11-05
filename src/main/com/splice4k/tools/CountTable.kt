@@ -58,14 +58,13 @@ class CountTable {
 
             writer.println("#junctions\t${samples.joinToString(separator = "\t")}")
 
-
             for ( row in junctions ) {
                 var count = ""
                 for ( col in samples ) {
                     if ( count != "" ) {
                         count += "\t"
                     }
-                    count += data[col]!![row]?.toString() ?: "0"
+                    count += data[col]!![row]?.toString() ?: "NA"
                 }
                 val genomicLoci = row.split("\t")
                 val genomicLociFormatted = "${genomicLoci[0]}:${genomicLoci[1]}-${genomicLoci[2]}${genomicLoci[3]}"
