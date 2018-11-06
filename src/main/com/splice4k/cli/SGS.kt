@@ -37,13 +37,13 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             "-b",
             "--bam",
             help = """
-                Path to BAM/SAM files, or the directory contains BAM/SAM files. [default: current running directory]
-                - If input files are BAM/SAM files, this parameter won't work
-                - If specified path to directory contains BAM/SAM files corresponding to STAR SJ.out.tab files, this program will auto match those files
+                Path to BAM/SAM files, or the directory contains BAM/SAM files.
+                - If input files are BAM/SAM files, this parameter won't work.
+                - If auto was set, then this program will auto match BAM/SAM files under the input file directory.
+                - If specified path to directory contains BAM/SAM files which name matches the input files, this program will auto match those files
                 - If specified BAM/SAM file with this parameter, then this program will calculate PSI of IR using this file
                 """
-    ).file(exists = true)
-
+    )
 
     private val reference by option(
             "-r",
@@ -120,6 +120,29 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
     ).flag(default = false)
 
 
+    /**
+     * extract matched bam files from input directory
+     * @param it: Input files, like SJ.out.tab
+     * @param dir: directory store the corresponding BAM/SAM files
+     * @return BAM file
+     */
+    private fun extractBamFile( it: File, dir: File ): File? {
+        val pattern = ".*${it.name.replace("[_.]?SJ.out.tab".toRegex(), "")}[._]?(\\w+.)*bam$"
+                .toRegex(RegexOption.IGNORE_CASE)
+
+        var res: File? = null
+
+        for ( i in dir.walkTopDown() ) {
+            if ( i.name.matches( pattern ) ) {
+                res = i.absoluteFile
+                break
+            }
+        }
+
+        return res
+    }
+
+
     override fun run() {
         val logger = Logger.getLogger(SGS::class.java)
         if ( this.output.isDirectory ) {
@@ -148,7 +171,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                 else -> 3
             }
 
-            for ( it in this.input ) {
+            for ( (idx, it) in this.input.withIndex() ) {
                 labels.add( it.name )
 
                 val sj = SJIndex(
@@ -163,30 +186,36 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                     psiTable.addJunctionGraph(sj)
                 }
 
-                val bamFile = when ( sj.fileFormat ) {
-                    "bam" -> it
-                    "star" -> {
 
-                        val bamDirectory = this.bam ?: it.absoluteFile.parentFile
+                val bamFile: File?
+                if ( sj.fileFormat == "bam" ) {
+                    bamFile = it
+                } else {
+                    bamFile = when ( this.bam ) {
+                        null -> this.bam
+                        "auto" -> {
+                            this.extractBamFile(it, it.absoluteFile.parentFile)
+                        }
 
-                        if ( bamDirectory!!.isFile ) {   // bam is file, this use this file
-                            bamDirectory
-                        } else {                     // this.bam is directory, then try to find the corresponding bam file
-                            var bamFile = bamDirectory
-
-                            val pattern = ".*${it.name.replace("[_.]?SJ.out.tab".toRegex(), "")}[._]?(\\w+.)*bam$"
-                                    .toRegex(RegexOption.IGNORE_CASE)
-
-                            for ( i in bamDirectory.walkTopDown() ) {
-                                if ( i.name.matches( pattern ) ) {
-                                    bamFile = i.absoluteFile
-                                    break
+                        else -> {
+                            when {
+                                File(this.bam).isDirectory -> {
+                                    this.extractBamFile(it, File(this.bam))
                                 }
+                                File(this.bam).isFile -> File(this.bam)
+                                "," in this.bam!! -> {
+                                    val files = this.bam!!.split(",")
+
+                                    if ( idx >= files.size ) {
+                                        File(files[idx - files.size])
+                                    } else {
+                                        File(files[idx])
+                                    }
+                                }
+                                else -> null
                             }
-                            bamFile
                         }
                     }
-                    else -> this.bam
                 }
 
                 junctions.add(Pair(sj, bamFile))

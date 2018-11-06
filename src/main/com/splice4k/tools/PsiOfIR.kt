@@ -77,15 +77,14 @@ class PsiOfIR {
         val exons = mutableMapOf<Int, Int>()
         val junctions = mutableMapOf<Int, Int>()
 
-
+        var tmpReader =  SamReaderFactory
+                .makeDefault()
+                .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
+                .validationStringency(ValidationStringency.LENIENT)
+                .open(bamFile)
         // bai index needed, if .bai not found generate one
         try{
             if ( !File("$bamFile.bai").exists() ) {
-                val tmpReader =  SamReaderFactory
-                        .makeDefault()
-                        .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
-                        .validationStringency(ValidationStringency.LENIENT)
-                        .open(bamFile)
 
                 this.logger.info("Creating index for $bamFile")
                 BAMIndexer.createIndex(tmpReader, File("$bamFile.bai"))
@@ -94,16 +93,18 @@ class PsiOfIR {
             }
         } catch ( e: htsjdk.samtools.SAMException ) {
             this.logger.info("Create index failed for $bamFile, ${e.localizedMessage}")
+        } finally {
+            tmpReader.close()
         }
 
 
         // read from BAM/SAM file
+        tmpReader =  SamReaderFactory
+                .makeDefault()
+                .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
+                .validationStringency(ValidationStringency.LENIENT)
+                .open(bamFile)
         try{
-            val tmpReader =  SamReaderFactory
-                    .makeDefault()
-                    .enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
-                    .validationStringency(ValidationStringency.LENIENT)
-                    .open(bamFile)
 
             tmpReader.use {
                 for ( i in tmpReader.query( chromosome, regionStart - 20, regionEnd + 20, false ) ) {
@@ -129,6 +130,8 @@ class PsiOfIR {
         } catch (e: BufferUnderflowException) {
             this.logger.warn("Can't get reads around $chromosome:$regionStart-$regionEnd from ${bamFile.name}")
             return null
+        } finally {
+            tmpReader.close()
         }
 
         fun getMean( data: Map<Int, Int> ): Double {
