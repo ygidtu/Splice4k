@@ -30,7 +30,7 @@ import kotlin.system.exitProcess
 class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-seq") {
 
     private val input by argument(
-            help = "Path to input file, multiple files separate by space [BAM|SAM|gmap align|SJ]"
+            help = "Path to input file, multiple files separate by space [BAM|SAM|gmap alignments(-A without -f parameters)|SJ]"
     ).file(exists = true).multiple()
 
 

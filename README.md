@@ -33,7 +33,7 @@ Splice4k依赖了如下框架：
 #### 输入文件 Input file format
 
 - STAR SJ.out.tab
-- gmap align output file (gmap with -A parameter)
+- gmap align output file (gmap with -A, but without -f parameters)
 - BAM/SAM
 - splice junctions file extracted by Splice4k
 

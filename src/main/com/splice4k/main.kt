@@ -13,7 +13,7 @@ import kotlin.system.exitProcess
  * @version 20181006
  */
 
-const val VERSION = "Splice4k version: 1.2.0 -> 2018.11.01"
+const val VERSION = "Splice4k version: 1.2.4 -> 2018.11.08"
 
 
 fun main(args: Array<String>) {
