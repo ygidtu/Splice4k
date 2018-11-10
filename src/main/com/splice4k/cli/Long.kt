@@ -27,7 +27,7 @@ import kotlin.system.exitProcess
  */
 
 
-class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-seq") {
+class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-seq") {
 
     private val input by argument(
             help = "Path to input file, multiple files separate by space [BAM|SAM|gmap alignments(-A without -f parameters)|SJ]"
@@ -137,7 +137,7 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             exitProcess(0)
         }
 
-        val logger = Logger.getLogger(SMS::class.java)
+        val logger = Logger.getLogger(Long::class.java)
 
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
@@ -207,6 +207,7 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
             )
 
             logger.info("Start to identify splice events")
+            logger.info("Predicting Alternative Splicing events of ${sj.infile.name}")
             val data = SJFinder(
                     template = matched,
                     bamIndex = sj,
@@ -219,6 +220,7 @@ class SMS: CliktCommand(help = "Identify alternative splicing events from SMRT-s
                     overallFiltered = overallFiltered
             ).results
 
+            labels.add( sj.infile.name )
             for ((k, values) in data) {
                 if (results.containsKey(k)) {
                     results[k]!!.addAll(values)

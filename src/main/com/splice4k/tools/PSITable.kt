@@ -99,7 +99,7 @@ class PSITable {
                     if ( count != "" ) {
                         count += "\t"
                     }
-                    count += collection[col]!![row]?.toString() ?: "NA"
+                    count += collection[col]!![row] ?: "NA"
                 }
 
                 writer.println("$row\t$count")

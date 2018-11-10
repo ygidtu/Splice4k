@@ -28,7 +28,7 @@ import kotlin.system.exitProcess
  */
 
 
-class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-seq") {
+class Short: CliktCommand(help = "Identify alternative splicing events from RNA-seq") {
     private val input by argument(
             help = "Path to input file, multiple files separate by space [BAM|SAM|STAR SJ.out.tab|gmap align|SJ]"
     ).file(exists = true).multiple()
@@ -144,7 +144,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
 
 
     override fun run() {
-        val logger = Logger.getLogger(SGS::class.java)
+        val logger = Logger.getLogger(Short::class.java)
         if ( this.output.isDirectory ) {
             logger.error("Please set path of output file [event not exists]")
             exitProcess(0)
@@ -172,8 +172,6 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
             }
 
             for ( (idx, it) in this.input.withIndex() ) {
-                labels.add( it.name )
-
                 val sj = SJIndex(
                         infile = it.absoluteFile,
                         filter = junctionsFilter,
@@ -255,6 +253,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         bamFile = bamFile
                 )
 
+                logger.info("Predicting Alternative Splicing events of ${sj.infile.name}")
                 val data = identifyAS.matchEventsWithRef(
                         event = sj.getJunctionGraph(overallFiltered),
                         annotations = ref,
@@ -263,6 +262,7 @@ class SGS: CliktCommand(help = "Identify alternative splicing events from RNA-se
                         show = this.show
                 )
 
+                labels.add( sj.infile.name )
                 for ( (k, values) in data ) {
                     if ( results.containsKey(k) ) {
                         results[k]!!.addAll(values)

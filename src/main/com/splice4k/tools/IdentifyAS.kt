@@ -238,8 +238,6 @@ class IdentifyAS(
             show: Boolean = true
     ): Map<SpliceEvent, List<Exons>> {
 
-        this.logger.info("Predicting Alternative Splicing events")
-
         // val events = mutableMapOf<String, List<SpliceEvent>>()
         val res = HashMap<SpliceEvent, MutableList<Exons>>()
         val pool = Executors.newFixedThreadPool( threads )

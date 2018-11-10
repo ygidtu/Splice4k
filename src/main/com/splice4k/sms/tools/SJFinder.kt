@@ -181,7 +181,7 @@ class SJFinder(
      * 识别各种可变剪接类型
      */
     private fun identifySJ( bamFile: File? ) {
-        this.logger.info("Finding alternative splicing events")
+
         // 这个gap就是为了控制输出一个合适的进度条的
         val pool = Executors.newFixedThreadPool(this.threads)
         val futures = mutableListOf<Future<HashMap<SpliceEvent, MutableList<String>>>>()
@@ -214,8 +214,6 @@ class SJFinder(
                     else -> bamFile
                 }
         )
-
-        this.logger.info("Finding alternative splicing events by another algorithm")
 
         val tmp = identifyAS.matchEventsWithRef(
                 event = bamIndex.getJunctionGraph(this.overallFiltered),
