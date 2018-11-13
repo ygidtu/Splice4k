@@ -214,8 +214,6 @@ class CheckAS() {
 
     fun checkALEAFE( res: MutableMap<SpliceEvent, MutableList<Exons>>, transcripts: List<Genes> ) {
 
-        val afterCheck = mutableMapOf<SpliceEvent, List<Exons>>()
-
         // only collect the second exon
         val exons = mutableListOf<Exons>()
         val transcriptsMap = mutableMapOf<String, Genes>()

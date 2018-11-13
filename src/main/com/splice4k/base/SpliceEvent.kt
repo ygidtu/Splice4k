@@ -80,4 +80,15 @@ class SpliceEvent(
                 "\t${this.chromosome}:${this.sliceSites.joinToString(separator = "-")}"
     }
 
+
+    /**
+     * get formatted string, just add new subtypes
+     */
+    fun getString(subtypes: String): String {
+        return "${this.chromosome}:${this.sliceSites.first()}-${this.sliceSites.last()}${this.strand}" +
+                "\t${this.event}" +
+                "\t$subtypes" +
+                "\t${this.chromosome}:${this.sliceSites.joinToString(separator = "-")}"
+    }
+
 }

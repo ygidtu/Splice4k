@@ -156,6 +156,7 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
             val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
             val labels = mutableListOf<String>()
             val results = mutableMapOf<SpliceEvent, MutableList<Exons>>()
+            val subtypes = mutableMapOf<SpliceEvent, HashSet<String>>()
             val psiTable = PSITable()
 
             val junctions = mutableListOf<Pair<SJIndex, File?>>()
@@ -264,17 +265,19 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
 
                 labels.add( sj.infile.name )
                 for ( (k, values) in data ) {
-                    if ( results.containsKey(k) ) {
-                        results[k]!!.addAll(values)
-                    } else {
-                        results[k] = values.toMutableList()
-                    }
+                    val tmpRes = results[k] ?: mutableListOf()
+                    tmpRes.addAll(values)
+                    results[k] = tmpRes
 
-                    if ( psis.containsKey(k) ) {
-                        psis[k]!![labels.last()] = k.getPsi()
-                    } else {
-                        psis[k] = mutableMapOf(labels.last() to k.getPsi())
+                    val tmpPSI = psis[k] ?: mutableMapOf()
+                    tmpPSI[labels.last()] = k.getPsi()
+                    psis[k] = tmpPSI
+
+                    val tmpSubtypes = subtypes[k] ?: hashSetOf()
+                    if ( k.subtypes != "NA" ) {
+                        tmpSubtypes.add(k.subtypes)
                     }
+                    subtypes[k] = tmpSubtypes
                 }
             }
 
@@ -324,8 +327,13 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
                 if ( transcript.isEmpty() ) transcript.add("NA")
                 if ( exon.isEmpty() ) exon.add("NA")
 
-                tmpResults.add(
-                        "$key\t" +
+                var tmpSubtype = subtypes[key]?.joinToString(separator = ",") ?: "NA"
+                if ( tmpSubtype == "" ) {
+                    tmpSubtype = "NA"
+                }
+
+                writer.println(
+                        "${key.getString(tmpSubtype)}\t" +
                         "${if (key.isNovel) 1 else 0}\t" +
                         "${gene.joinToString(",")}\t" +
                         "${transcript.joinToString(",")}\t" +

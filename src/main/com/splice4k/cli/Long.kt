@@ -146,6 +146,7 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
         val labels = mutableListOf<String>()
         val results = mutableMapOf<SpliceEvent, MutableList<String>>()
         val psiTable = PSITable()
+        val subtypes = mutableMapOf<SpliceEvent, HashSet<String>>()
         val junctions = mutableListOf<Pair<SJIndex, File?>>()
 
         val ref = AnnotationIndex(
@@ -222,17 +223,19 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
 
             labels.add( sj.infile.name )
             for ((k, values) in data) {
-                if (results.containsKey(k)) {
-                    results[k]!!.addAll(values)
-                } else {
-                    results[k] = values.toMutableList()
-                }
+                val tmpRes = results[k] ?: mutableListOf()
+                tmpRes.addAll(values)
+                results[k] = tmpRes
 
-                if (psis.containsKey(k)) {
-                    psis[k]!![labels.last()] = k.getPsi()
-                } else {
-                    psis[k] = mutableMapOf(labels.last() to k.getPsi())
+                val tmpPSI = psis[k] ?: mutableMapOf()
+                tmpPSI[labels.last()] = k.getPsi()
+                psis[k] = tmpPSI
+
+                val tmpSubtypes = subtypes[k] ?: hashSetOf()
+                if ( k.subtypes != "NA" ) {
+                    tmpSubtypes.add(k.subtypes)
                 }
+                subtypes[k] = tmpSubtypes
             }
         }
 
@@ -260,8 +263,14 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
                 for ( label in labels ) {
                     psi.add(psis[key]!![label] ?: "NA")
                 }
+
+                var tmpSubtype = subtypes[key]?.joinToString(separator = ",") ?: "NA"
+                if ( tmpSubtype == "" ) {
+                    tmpSubtype = "NA"
+                }
+
                 tmpResults.add(
-                        "$key\t" +
+                        "${key.getString(tmpSubtype)}\t" +
                         "${if (key.isNovel) 1 else 0}\t" +
                         "$v\t" +
                         psi.joinToString("\t")
