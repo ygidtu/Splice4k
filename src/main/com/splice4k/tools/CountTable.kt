@@ -1,7 +1,6 @@
 package com.splice4k.tools
 
 import com.splice4k.index.SJIndex
-import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 
@@ -15,7 +14,6 @@ import java.io.PrintWriter
 
 
 class CountTable {
-    private val logger = Logger.getLogger(CountTable::class.java)
 
     /**
      * as function name says
@@ -42,7 +40,7 @@ class CountTable {
      * @param prefix prefix of output file
      */
     fun writeTo( prefix: File, data: List<SJIndex>) {
-        this.logger.info("Extract Junction's Counts")
+        println("Extract Junction's Counts")
 
         fun write(
                 data: Map<String, Map<String, Int>>,
@@ -84,7 +82,7 @@ class CountTable {
      * collect the junctions that not overall counts lower than threshold
      */
     fun filter(data: List<SJIndex>, threshold: Int): HashSet<String> {
-        this.logger.info("Filtering by junctions across samples")
+        println("Filtering by junctions across samples")
 
         val res = hashSetOf<String>()
 
@@ -94,7 +92,7 @@ class CountTable {
             junctions.addAll(it.data.keys)
         }
 
-        this.logger.info("Before: Total junctions: ${junctions.size}")
+        println("Before: Total junctions: ${junctions.size}")
 
         for ( junction in junctions ) {
             var totalCount = 0
@@ -107,7 +105,7 @@ class CountTable {
             }
         }
 
-        this.logger.info("After: Total junctions: ${junctions.size - res.size}")
+        println("After: Total junctions: ${junctions.size - res.size}")
         return res
     }
 }

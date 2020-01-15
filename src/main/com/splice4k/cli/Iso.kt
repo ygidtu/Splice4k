@@ -7,10 +7,8 @@ import com.github.ajalt.clikt.parameters.arguments.multiple
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.double
 import com.github.ajalt.clikt.parameters.types.file
-import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
-import com.splice4k.isoforms.tools.GeneReadsCoupler
-import org.apache.log4j.Logger
+import com.splice4k.isoforms.Uniquor
 import kotlin.system.exitProcess
 
 
@@ -29,15 +27,7 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT-seq data") {
             help = "Path to input BAM/SAM files, multiple files separate by space"
     ).file(exists = true).multiple()
 
-
-    private val reference by option(
-            "-r",
-            "--reference",
-            help = "Path to reference file [gtf|gff3]"
-    ).file(exists = true).required()
-
-
-    private val output by option(
+        private val output by option(
             "-o",
             "--output",
             help = "Path to output file"
@@ -60,21 +50,13 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT-seq data") {
 
 
     override fun run() {
-        val logger = Logger.getLogger(Iso::class.java)
 
         this.output.apply {
             if ( this.isDirectory ) {
-                logger.error("Please set path of output file [event not exists]")
+                println("Please set path of output file [event not exists]")
                 exitProcess(0)
             }
         }
-
-
-        val ref = AnnotationIndex(
-                infile = this.reference.absoluteFile,
-                smrt = true,
-                iso = true
-        )
 
         val bam = this.input.map {
                 SJIndex(
@@ -85,11 +67,11 @@ class Iso: CliktCommand(help = "Construct Isoforms through SMRT-seq data") {
                 )
         }
 
-        GeneReadsCoupler(
-                bamIndex = bam,
-                reference = ref,
-                overlapLevel = this.overlapOfRefReads
-        ).saveTo( this.output )
+        val uniq = Uniquor(
+                reads = bam.first().reads
+        )
+
+        uniq.writeTo(this.output)
 
     }
 }

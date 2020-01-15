@@ -89,7 +89,7 @@ open class GenomicLoci: Comparable<GenomicLoci> {
     /**
      * 重载的compareTo，用来比较位点的上下游
      */
-    override fun compareTo(other: GenomicLoci) = compareValuesBy(this, other, {it.chromosome}, {it.start}, {it.end})
+    open override fun compareTo(other: GenomicLoci) = compareValuesBy(this, other, {it.chromosome}, {it.start}, {it.end})
 
     /**
      * 判断该位点是否为另一个位点的上游

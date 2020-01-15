@@ -1,7 +1,8 @@
 package com.splice4k.index
 
-import com.splice4k.base.Exons
+
 import com.splice4k.base.Genes
+import com.splice4k.base.Reads
 import com.splice4k.base.JunctionsGraph
 import com.splice4k.tools.FileValidator
 import htsjdk.samtools.SAMRecord
@@ -9,7 +10,6 @@ import htsjdk.samtools.SamReaderFactory
 import me.tongfei.progressbar.ProgressBar
 import me.tongfei.progressbar.ProgressBarBuilder
 import me.tongfei.progressbar.ProgressBarStyle
-import org.apache.log4j.Logger
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -40,26 +40,16 @@ class SJIndex(
         private val silent: Boolean,
         private val smrt: Boolean = false
 ) {
-    private val logger = Logger.getLogger(SJIndex::class.java)
+
     val transcripts = mutableListOf<Genes>()
+    val reads = mutableListOf<Reads>()
     val fileFormat = FileValidator().check( this.infile )
     // chromosome and splice graph
     val data = mutableMapOf<String, Int>()
 
-
-    // 数据类，用以提取BAM，gmap align文件中的信息，构建AS所需图
-    data class Reads(
-            val chromosome: String,
-            val start: Int,
-            val end: Int,
-            val strand: Char,
-            val introns: List<Int>,
-            val exons: List<Int>
-    )
-
     init {
         if ( this.smrt && this.fileFormat !in arrayOf("bam", "gmap", "gmapE") ) {
-            this.logger.error("Please check ${this.infile} format, it should be BAM|SAM or gmap align file")
+            println("Please check ${this.infile} format, it should be BAM|SAM or gmap align file")
             exitProcess(2)
         }
         this.getAllSJ()
@@ -71,23 +61,21 @@ class SJIndex(
      */
     private fun getAllSJ() {
 
-        val reads = mutableListOf<Reads>()
-
-        this.logger.info("Reading from ${this.infile}")
+        println("Reading from ${this.infile}")
 
         when ( this.fileFormat ) {
-            "bam" -> this.readBam( reads = reads )
-            in arrayOf("gmap", "gmapE") -> this.readGmap( reads = reads )
+            "bam" -> this.readBam( reads = this.reads )
+            in arrayOf("gmap", "gmapE") -> this.readGmap( reads = this.reads )
             in arrayOf( "star", "sj" ) -> this.readSJ()
             else -> {
-                this.logger.error("Please check ${this.infile} format")
+                println("Please check ${this.infile} format")
                 exitProcess(2)
             }
         }
 
         // 构建转录本
         if ( this.smrt ) {
-            reads.forEach {
+            this.reads.forEach {
                 // init Genes
                 val tmpGene = Genes(
                         chromosome = it.chromosome,
@@ -99,17 +87,10 @@ class SJIndex(
 
                 // construct exon to transcripts
                 try{
-                    for ( i in 0..(it.exons.size - 2) step 2 ) {
-                        tmpGene.exons.add(Exons(
-                                chromosome = it.chromosome,
-                                start = it.exons[i],
-                                end = it.exons[i + 1],
-                                exonId = ""
-                        ))
-                    }
+                    tmpGene.exons = it.getExon().toMutableList()
                 } catch ( e: com.splice4k.errors.ChromosomeException ) {
-                    this.logger.error(e.localizedMessage)
-                    println(it.exons)
+                    println(e.localizedMessage)
+                    println(it.getExon())
                     exitProcess(0)
                 }
 
@@ -168,7 +149,7 @@ class SJIndex(
     private fun extractSpliceFromCigar( record: SAMRecord ): List<Int> {
         var position = record.alignmentStart
         val tmp = mutableListOf<Char>()
-        val results: MutableList<Int> = mutableListOf( position )
+        val results: MutableList<Int> = mutableListOf()
 
         for ( i in record.cigarString ) {
             if (i in '0'..'9') {  // 如果是数字，就加到list中
@@ -178,8 +159,7 @@ class SJIndex(
                     continue
                 }
 
-                // 'D', 'H', 'P',
-                if (i !in arrayOf('S', 'D') ) {
+                if (i in arrayOf('M', 'I', 'N') ) {
                     position += tmp.joinToString(separator = "").toInt()
                 }
 
@@ -193,7 +173,8 @@ class SJIndex(
                 tmp.clear()
             }
         }
-        results.add( record.alignmentEnd )
+
+        results.add(position - 1)
         return results
     }
 
@@ -223,7 +204,7 @@ class SJIndex(
                 if ( mapped <= 0 || mapped > 1) continue
             } else {
                 // 没有NH标签的reads，通常也会造成其他错误，因此直接放弃
-                if (!this.silent) this.logger.warn("${record.readName} does not have attribute NH")
+                if (!this.silent) println("${record.readName} does not have attribute NH")
                 continue
             }
 
@@ -251,36 +232,13 @@ class SJIndex(
                 false -> '+'
             }
 
-            val introns = mutableListOf<Int>()
-            val exons = mutableListOf<Int>()
-            // 统计所有的junctions的数量，便于filter
-            for ( i in 0..(spliceSites.size - 1) ) {
-
-                if ( i % 2 == 1 ) {
-                    introns.add( spliceSites[i] )
-                    introns.add( spliceSites[i + 1] )
-                    val key = "${record.referenceName}\t${spliceSites[i]}\t${spliceSites[i + 1]}\t$strand"
-                    this.data[key] = (this.data[key]?: 0) + 1
-                } else {
-                    exons.add( when ( i ) {
-                        0 -> spliceSites[i]
-                        else -> spliceSites[i] + 1
-                    } )
-
-                    exons.add( when (i + 1) {
-                        spliceSites.size -> spliceSites[i + 1]
-                        else -> spliceSites[i + 1] - 1
-                    } )
-                }
-            }
-
             reads.add(Reads(
                     chromosome = record.referenceName,
                     start = record.alignmentStart,
-                    end = record.alignmentEnd,
+                    end = spliceSites.last(),
+                    name = record.readName,
                     strand = strand,
-                    introns = introns,
-                    exons = exons
+                    introns = spliceSites.slice(0..(spliceSites.size - 2))
             ))
         }
 
@@ -333,9 +291,9 @@ class SJIndex(
                         chromosome = chromosome,
                         start = start,
                         end = end,
+                        name = "",
                         strand = strand,
-                        introns = introns,
-                        exons = exons
+                        introns = introns
                 ))
             } else if ( this.fileFormat == "gmap" ) {
                 val gmapPattern = "^\\s+([+-])([\\w\\.]+):(\\d+)-(\\d+)\\s+\\(\\d+-\\d+\\)\\s+\\d{0,3}%.*"
@@ -370,9 +328,9 @@ class SJIndex(
                                 chromosome = tmpChromo!!,
                                 start = tmpSites.first(),
                                 end = tmpSites.last(),
+                                name = tmpChromo,
                                 strand = tmpStrand!!,
-                                introns = introns,
-                                exons = tmpSites
+                                introns = introns
                         ))
                     }
 
@@ -404,9 +362,9 @@ class SJIndex(
             }
             writer.close()
         } catch (err: IOException) {
-            logger.error(err.message)
+            println(err.message)
             for (i in err.stackTrace) {
-                logger.error(i)
+                println(i)
             }
         }
     }

@@ -1,7 +1,6 @@
 package com.splice4k.base
 
 
-import org.apache.log4j.Logger
 import java.util.Objects
 import kotlin.collections.HashSet
 import kotlin.collections.component1
@@ -27,8 +26,6 @@ class JunctionsGraph(
         val chromosome: String,
         val strand: Char
 ) {
-
-    private val logger = Logger.getLogger(JunctionsGraph::class.java)
 
     /*
      starts and ends, collect all the same starts and same ends junctions
@@ -279,7 +276,7 @@ class JunctionsGraph(
     fun identifyAS(error: Int, silent: Boolean = false): List<SpliceEvent> {
 
         if (!silent) {
-            this.logger.info("Finding Alternative splicing events of ${this.chromosome}${this.strand}")
+            println("Finding Alternative splicing events of ${this.chromosome}${this.strand}")
         }
 
         val res = mutableListOf<SpliceEvent>()

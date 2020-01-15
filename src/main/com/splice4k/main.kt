@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.subcommands
 import com.splice4k.cli.*
 import com.splice4k.cli.Long
 import com.splice4k.cli.Short
-import org.apache.log4j.Logger
 import kotlin.system.exitProcess
 
 
@@ -19,7 +18,6 @@ const val VERSION = "Splice4k version: 1.2.5 -> 2018.11.10"
 
 
 fun main(args: Array<String>) {
-    val logger = Logger.getLogger("main")
     val cmd = Parameters()
             .subcommands(Extract())
             .subcommands(Short())
@@ -48,8 +46,7 @@ fun main(args: Array<String>) {
     try{
         cmd.parse(args)
 
-
-        logger.info("Done")
+        println("Done")
 
     } catch (e: UsageError) {
 

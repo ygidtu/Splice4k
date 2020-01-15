@@ -6,7 +6,6 @@ import com.splice4k.base.JunctionsGraph
 import com.splice4k.base.SpliceEvent
 import com.splice4k.errors.ChromosomeException
 import com.splice4k.index.AnnotationIndex
-import org.apache.log4j.Logger
 import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -39,7 +38,6 @@ class IdentifyAS(
         private val overlapOfExonIntron: Double,
         private val bamFile: File?
 ) {
-    private val logger = Logger.getLogger(IdentifyAS::class.java)
     private val check = CheckAS()
 
 
@@ -59,8 +57,7 @@ class IdentifyAS(
             private val annotations: Map<String, List<Exons>>,
             private val overlapOfExonIntron: Double,
             private val error: Int,
-            private val show: Boolean,
-            private val logger: Logger
+            private val show: Boolean
     ): Callable<MutableMap<SpliceEvent, MutableList<Exons>>> {
         private val psiOfIR = PsiOfIR()
         private val checkAS = CheckAS()
@@ -97,12 +94,12 @@ class IdentifyAS(
                                     }
 
                                 } catch (error: kotlin.KotlinNullPointerException ) {
-                                    this.logger.error(error)
+                                    println(error)
 
                                     for ( e in error.stackTrace ) {
-                                        this.logger.error(e)
+                                        println(e)
                                     }
-                                    this.logger.error("Event is $currentEvent")
+                                    println("Event is $currentEvent")
                                 }
                             }
 
@@ -255,8 +252,7 @@ class IdentifyAS(
                     annotations = annotations.data,
                     overlapOfExonIntron = this.overlapOfExonIntron,
                     error = error,
-                    show = show,
-                    logger = this.logger
+                    show = show
             ))
 
             futures.add(f)

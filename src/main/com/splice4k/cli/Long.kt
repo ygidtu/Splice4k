@@ -14,7 +14,6 @@ import com.splice4k.sms.tools.SJFinder
 import com.splice4k.sms.tools.TranscriptsReadsCoupler
 import com.splice4k.tools.CountTable
 import com.splice4k.tools.PSITable
-import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -136,9 +135,7 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
             println("Input files are required")
             exitProcess(0)
         }
-
-        val logger = Logger.getLogger(Long::class.java)
-
+        
         // 生成各种文件路径
         if (!this.output.absoluteFile.parentFile.exists()) this.output.absoluteFile.parentFile.mkdirs()
 
@@ -197,7 +194,7 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
             )
         }
 
-        logger.info("Start to compare ref and reads")
+        println("Start to compare ref and reads")
         for ( (sj, bamFile) in junctions ) {
 
             val matched = TranscriptsReadsCoupler(
@@ -207,8 +204,8 @@ class Long: CliktCommand(help = "Identify alternative splicing events from SMRT-
                     distanceError = this.error
             )
 
-            logger.info("Start to identify splice events")
-            logger.info("Predicting Alternative Splicing events of ${sj.infile.name}")
+            println("Start to identify splice events")
+            println("Predicting Alternative Splicing events of ${sj.infile.name}")
             val data = SJFinder(
                     template = matched,
                     bamIndex = sj,

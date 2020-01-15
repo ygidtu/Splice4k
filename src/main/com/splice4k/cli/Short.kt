@@ -15,7 +15,6 @@ import com.splice4k.index.SJIndex
 import com.splice4k.tools.CountTable
 import com.splice4k.tools.IdentifyAS
 import com.splice4k.tools.PSITable
-import org.apache.log4j.Logger
 import java.io.File
 import java.io.PrintWriter
 import kotlin.system.exitProcess
@@ -144,14 +143,14 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
 
 
     override fun run() {
-        val logger = Logger.getLogger(Short::class.java)
+
         if ( this.output.isDirectory ) {
-            logger.error("Please set path of output file [event not exists]")
+            println("Please set path of output file [event not exists]")
             exitProcess(0)
         }
 
         if ( this.input.isEmpty() ) {
-            logger.error("input files are required")
+            println("input files are required")
         } else {
             val psis = mutableMapOf<SpliceEvent, MutableMap<String, String>>()
             val labels = mutableListOf<String>()
@@ -195,24 +194,21 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
                         "auto" -> {
                             this.extractBamFile(it, it.absoluteFile.parentFile)
                         }
-
-                        else -> {
-                            when {
-                                File(this.bam).isDirectory -> {
-                                    this.extractBamFile(it, File(this.bam))
-                                }
-                                File(this.bam).isFile -> File(this.bam)
-                                "," in this.bam!! -> {
-                                    val files = this.bam!!.split(",")
-
-                                    if ( idx >= files.size ) {
-                                        File(files[idx - files.size])
-                                    } else {
-                                        File(files[idx])
-                                    }
-                                }
-                                else -> null
+                        else -> when {
+                            File(this.bam).isDirectory -> {
+                                this.extractBamFile(it, File(this.bam))
                             }
+                            File(this.bam).isFile -> File(this.bam)
+                            "," in this.bam!! -> {
+                                val files = this.bam!!.split(",")
+
+                                if ( idx >= files.size ) {
+                                    File(files[idx - files.size])
+                                } else {
+                                    File(files[idx])
+                                }
+                            }
+                            else -> null
                         }
                     }
                 }
@@ -220,7 +216,6 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
                 junctions.add(Pair(sj, bamFile))
 
             }
-
 
             if ( this.outputCountTable ) {
                 val countTable = CountTable()
@@ -246,7 +241,7 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
             for ( (sj, bamFile) in junctions ) {
 
                 if ( sj.fileFormat == "star" && bamFile != null ) {
-                    logger.info( "${sj.infile.name} -> ${bamFile.name}" )
+                    println( "${sj.infile.name} -> ${bamFile.name}" )
                 }
 
                 val identifyAS = IdentifyAS(
@@ -254,7 +249,7 @@ class Short: CliktCommand(help = "Identify alternative splicing events from RNA-
                         bamFile = bamFile
                 )
 
-                logger.info("Predicting Alternative Splicing events of ${sj.infile.name}")
+                println("Predicting Alternative Splicing events of ${sj.infile.name}")
                 val data = identifyAS.matchEventsWithRef(
                         event = sj.getJunctionGraph(overallFiltered),
                         annotations = ref,

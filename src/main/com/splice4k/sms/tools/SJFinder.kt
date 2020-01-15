@@ -11,7 +11,6 @@ import com.splice4k.sms.base.Template
 import com.splice4k.tools.CheckAS
 import com.splice4k.tools.IdentifyAS
 import com.splice4k.tools.PsiOfIR
-import org.apache.log4j.Logger
 import java.io.File
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -46,7 +45,6 @@ class SJFinder(
         private val overallFiltered: HashSet<String>?
 ) {
     private val template = template.templates
-    private val logger = Logger.getLogger(SJFinder::class.java.toString())
     val results = hashMapOf<SpliceEvent, MutableList<String>>()
     private val identified = mutableSetOf<String>()
 

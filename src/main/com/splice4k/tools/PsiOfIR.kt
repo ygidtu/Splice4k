@@ -1,7 +1,6 @@
 package com.splice4k.tools
 
 import htsjdk.samtools.*
-import org.apache.log4j.Logger
 import java.io.File
 import java.nio.BufferUnderflowException
 
@@ -17,7 +16,6 @@ import java.nio.BufferUnderflowException
 
 
 class PsiOfIR {
-    private val logger = Logger.getLogger(PsiOfIR::class.java)
 
     /**
      * private function
@@ -86,13 +84,13 @@ class PsiOfIR {
         try{
             if ( !File("$bamFile.bai").exists() ) {
 
-                this.logger.info("Creating index for $bamFile")
+                println("Creating index for $bamFile")
                 BAMIndexer.createIndex(tmpReader, File("$bamFile.bai"))
 
                 tmpReader.close()
             }
         } catch ( e: htsjdk.samtools.SAMException ) {
-            this.logger.info("Create index failed for $bamFile, ${e.localizedMessage}")
+            println("Create index failed for $bamFile, ${e.localizedMessage}")
         } finally {
             tmpReader.close()
         }
@@ -128,7 +126,7 @@ class PsiOfIR {
         } catch (e: SAMException) {
             return null
         } catch (e: BufferUnderflowException) {
-            this.logger.warn("Can't get reads around $chromosome:$regionStart-$regionEnd from ${bamFile.name}")
+            println("Can't get reads around $chromosome:$regionStart-$regionEnd from ${bamFile.name}")
             return null
         } finally {
             tmpReader.close()

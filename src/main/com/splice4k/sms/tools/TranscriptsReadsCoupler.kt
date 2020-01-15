@@ -6,7 +6,6 @@ import com.splice4k.index.AnnotationIndex
 import com.splice4k.index.SJIndex
 import com.splice4k.sms.base.GeneRead
 import com.splice4k.sms.base.Template
-import org.apache.log4j.Logger
 
 
 /**
@@ -32,7 +31,6 @@ class TranscriptsReadsCoupler(
         private val overlap: Double,
         private val distanceError: Int
         ) {
-    private val logger = Logger.getLogger(TranscriptsReadsCoupler::class.java)
 
     private val novelReads = mutableListOf<Genes>()
 
@@ -63,7 +61,7 @@ class TranscriptsReadsCoupler(
 
         var i = 0; var j = 0
 
-        this.logger.info("Start to matching genes and reads")
+        println("Start to matching genes and reads")
         // 统计所有的配对信息
         while ( i < this.reference.size && j < this.reads.size ) {
 
